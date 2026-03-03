@@ -14,7 +14,6 @@ class NewsItem(BaseModel):
     severity: Optional[str] = None
     type: str  # news | analysis | report | advisory
     category: str  # research | deep-dives | beginner | dark-web | breaking
-    # Feed-enriched fields
     author: Optional[str] = None
     source_name: Optional[str] = None
     image_url: Optional[str] = None

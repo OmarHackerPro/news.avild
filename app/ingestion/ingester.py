@@ -59,7 +59,7 @@ async def upsert_article(session: AsyncSession, article: NormalizedArticle) -> b
     stmt = (
         pg_insert(NewsArticle)
         .values(**article)
-        .on_conflict_do_nothing(index_elements=["slug"])
+        .on_conflict_do_nothing(index_elements=["slug", "published_at"])
     )
     result = await session.execute(stmt)
     return result.rowcount == 1
