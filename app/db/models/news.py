@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Identity, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,9 +11,11 @@ from app.db.base import Base
 class NewsArticle(Base):
     __tablename__ = "news_articles"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    slug: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    guid: Mapped[str | None] = mapped_column(String(2048), unique=True, nullable=True)
+    # Composite primary key required by PARTITION BY RANGE (published_at).
+    # id is a BIGINT identity column; published_at is the partition key.
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
+    slug: Mapped[str] = mapped_column(String(255), index=True)
+    guid: Mapped[str | None] = mapped_column(String(2048), nullable=True, index=True)
 
     # Source tracking
     source_id: Mapped[int | None] = mapped_column(
@@ -38,7 +40,7 @@ class NewsArticle(Base):
     keywords: Mapped[list] = mapped_column(ARRAY(String), default=list)
 
     published_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), index=True
+        DateTime(timezone=True), server_default=func.now(), primary_key=True, index=True
     )
     severity: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # news | analysis | report | advisory | alert
