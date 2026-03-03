@@ -1,4 +1,24 @@
 services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      PROJECT_NAME: news.avild.com
+      DEBUG: "false"
+      DATABASE_URL: postgresql+asyncpg://postgres:${DB_PASSWORD:-password}@db:5432/avild_news
+    depends_on:
+      - db
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -6,8 +26,6 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
       POSTGRES_DB: avild_news
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
