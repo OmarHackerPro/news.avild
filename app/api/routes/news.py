@@ -40,6 +40,11 @@ def _row_to_item(row: NewsArticleDB) -> NewsItem:
         severity=row.severity,
         type=row.type,
         category=row.category,
+        author=row.author,
+        source_name=row.source_name,
+        image_url=row.image_url,
+        cvss_score=row.cvss_score,
+        cve_ids=row.cve_ids or [],
     )
 
 
