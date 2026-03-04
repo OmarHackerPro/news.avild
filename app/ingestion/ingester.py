@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from typing import Optional
 
@@ -7,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.news import NewsArticle
+from app.db.models.raw_feed_snapshot import RawFeedSnapshot
 from app.db.session import AsyncSessionLocal
 from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle
 from app.ingestion.sources import FEED_SOURCES, FeedSource
@@ -66,6 +68,39 @@ async def upsert_article(session: AsyncSession, article: NormalizedArticle) -> b
 
 
 # ---------------------------------------------------------------------------
+# Raw feed snapshot archival
+# ---------------------------------------------------------------------------
+
+async def store_raw_snapshot(
+    session: AsyncSession,
+    source_name: str,
+    source_url: str,
+    content: str,
+    entry_count: int | None = None,
+) -> int | None:
+    """Store raw feed XML. Returns snapshot id, or None if content was a duplicate.
+
+    Uses SHA-256 content_hash with ON CONFLICT DO NOTHING so identical fetches
+    (common when feeds update infrequently) are silently deduplicated.
+    """
+    content_hash = hashlib.sha256(content.encode()).hexdigest()
+    stmt = (
+        pg_insert(RawFeedSnapshot)
+        .values(
+            source_name=source_name,
+            source_url=source_url,
+            raw_content=content,
+            content_hash=content_hash,
+            entry_count=entry_count,
+        )
+        .on_conflict_do_nothing(index_elements=["content_hash"])
+        .returning(RawFeedSnapshot.id)
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+# ---------------------------------------------------------------------------
 # Per-source ingestion
 # ---------------------------------------------------------------------------
 
@@ -96,6 +131,27 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient) -> dict:
         )
 
     entries = feed.get("entries", [])
+
+    # Archive raw XML before any DB article writes.
+    # Committed in its own transaction so it persists even if article upserts fail.
+    if AsyncSessionLocal is not None:
+        try:
+            async with AsyncSessionLocal() as snap_session:
+                async with snap_session.begin():
+                    snap_id = await store_raw_snapshot(
+                        snap_session,
+                        source_name=name,
+                        source_url=source["url"],
+                        content=content,
+                        entry_count=len(entries),
+                    )
+                    if snap_id:
+                        logger.info("[%s] Stored raw snapshot id=%d (%d entries)", name, snap_id, len(entries))
+                    else:
+                        logger.debug("[%s] Feed content unchanged — snapshot deduplicated.", name)
+        except Exception:
+            logger.exception("[%s] Failed to store raw snapshot (continuing ingestion).", name)
+
     if not entries:
         logger.info("[%s] Feed parsed but contained 0 entries.", name)
         return stats
