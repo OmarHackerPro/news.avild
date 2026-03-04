@@ -1,17 +1,20 @@
 import hashlib
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 import feedparser
 import httpx
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.feed_source import FeedSource as FeedSourceModel
 from app.db.models.news import NewsArticle
 from app.db.models.raw_feed_snapshot import RawFeedSnapshot
 from app.db.session import AsyncSessionLocal
 from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle
-from app.ingestion.sources import FEED_SOURCES, FeedSource
+from app.ingestion.sources import FeedSource
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +101,43 @@ async def store_raw_snapshot(
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
+
+
+# ---------------------------------------------------------------------------
+# Source queries
+# ---------------------------------------------------------------------------
+
+async def get_active_sources(session: AsyncSession) -> list[FeedSourceModel]:
+    """Return all feed sources with is_active = true, ordered by id."""
+    result = await session.execute(
+        select(FeedSourceModel)
+        .where(FeedSourceModel.is_active.is_(True))
+        .order_by(FeedSourceModel.id)
+    )
+    return list(result.scalars().all())
+
+
+async def mark_source_success(session: AsyncSession, source_id: int) -> None:
+    """Update last_fetched_at and reset consecutive_failures after a successful fetch."""
+    await session.execute(
+        update(FeedSourceModel)
+        .where(FeedSourceModel.id == source_id)
+        .values(
+            last_fetched_at=datetime.now(timezone.utc),
+            consecutive_failures=0,
+        )
+    )
+
+
+async def mark_source_failure(session: AsyncSession, source_id: int) -> None:
+    """Increment consecutive_failures after a failed fetch."""
+    await session.execute(
+        update(FeedSourceModel)
+        .where(FeedSourceModel.id == source_id)
+        .values(
+            consecutive_failures=FeedSourceModel.consecutive_failures + 1,
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -203,21 +243,47 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient) -> dict:
 # ---------------------------------------------------------------------------
 
 async def ingest_all_feeds() -> None:
-    """Run ingestion for every source in FEED_SOURCES.
+    """Run ingestion for every active source from the feed_sources DB table.
 
     A single httpx.AsyncClient is shared across all sources for connection reuse.
     Source-level exceptions are caught so one broken source never blocks others.
+    Operational state (last_fetched_at, consecutive_failures) is updated after
+    each source.
     """
+    if AsyncSessionLocal is None:
+        logger.error("Database not configured (DATABASE_URL missing).")
+        return
+
+    async with AsyncSessionLocal() as session:
+        sources = await get_active_sources(session)
+
+    if not sources:
+        logger.warning("No active feed sources found in DB. Run scripts/seed_sources.py first.")
+        return
+
+    logger.info("Found %d active feed source(s).", len(sources))
+
     async with httpx.AsyncClient() as client:
-        for source in FEED_SOURCES:
-            logger.info("=== Ingesting: %s ===", source["name"])
+        for src in sources:
+            source_dict = src.to_source_dict()
+            logger.info("=== Ingesting: %s ===", src.name)
             try:
-                stats = await ingest_source(source, client)
+                stats = await ingest_source(source_dict, client)
                 logger.info(
                     "[%s] Done - fetched=%d inserted=%d skipped=%d errors=%d",
-                    source["name"],
+                    src.name,
                     stats["fetched"], stats["inserted"],
                     stats["skipped"], stats["errors"],
                 )
+                # Update operational state
+                async with AsyncSessionLocal() as session:
+                    async with session.begin():
+                        await mark_source_success(session, src.id)
             except Exception:
-                logger.exception("Fatal error ingesting '%s'", source["name"])
+                logger.exception("Fatal error ingesting '%s'", src.name)
+                try:
+                    async with AsyncSessionLocal() as session:
+                        async with session.begin():
+                            await mark_source_failure(session, src.id)
+                except Exception:
+                    logger.exception("Failed to record failure for '%s'", src.name)

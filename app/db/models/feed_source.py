@@ -27,6 +27,28 @@ class FeedSource(Base):
     fetch_interval_minutes: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="60"
     )
+    consecutive_failures: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now(), nullable=True
+    )
+
+    def to_source_dict(self) -> dict:
+        """Return a dict matching the FeedSource TypedDict shape.
+
+        Normalizers access source["name"], source["default_type"], etc.
+        This bridges the ORM model to that interface without changing
+        any normalizer code.
+        """
+        return {
+            "name": self.name,
+            "url": self.url,
+            "default_type": self.default_type,
+            "default_category": self.default_category,
+            "default_severity": self.default_severity,
+            "normalizer": self.normalizer_key,
+        }

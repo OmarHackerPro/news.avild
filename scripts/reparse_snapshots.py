@@ -26,17 +26,22 @@ import feedparser
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from app.db.models.feed_source import FeedSource as FeedSourceModel
 from app.db.models.news import NewsArticle
 from app.db.models.raw_feed_snapshot import RawFeedSnapshot
 from app.db.session import AsyncSessionLocal
 from app.ingestion.ingester import upsert_article
 from app.ingestion.normalizer import NORMALIZER_REGISTRY
-from app.ingestion.sources import FEED_SOURCES, FeedSource
 
 logger = logging.getLogger(__name__)
 
-# Build lookup: source_name → FeedSource dict
-SOURCE_BY_NAME: dict[str, FeedSource] = {s["name"]: s for s in FEED_SOURCES}
+
+async def _load_source_lookup() -> dict[str, dict]:
+    """Build source_name → source dict from the feed_sources DB table."""
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(FeedSourceModel))
+        sources = result.scalars().all()
+    return {s.name: s.to_source_dict() for s in sources}
 
 
 async def _upsert_or_update(session, article: dict) -> bool:
@@ -55,11 +60,17 @@ async def _upsert_or_update(session, article: dict) -> bool:
     return result.rowcount == 1
 
 
-async def reparse_snapshot(snapshot: RawFeedSnapshot, *, dry_run: bool, update: bool) -> dict:
+async def reparse_snapshot(
+    snapshot: RawFeedSnapshot,
+    source_by_name: dict[str, dict],
+    *,
+    dry_run: bool,
+    update: bool,
+) -> dict:
     """Re-parse one snapshot. Returns stats dict."""
     stats = {"entries": 0, "upserted": 0, "skipped": 0, "errors": 0}
 
-    source = SOURCE_BY_NAME.get(snapshot.source_name)
+    source = source_by_name.get(snapshot.source_name)
     if source is None:
         logger.warning(
             "No source config for '%s' — skipping snapshot %d",
@@ -116,6 +127,11 @@ async def main(args: argparse.Namespace) -> None:
         logger.error("DATABASE_URL not configured.")
         return
 
+    source_by_name = await _load_source_lookup()
+    if not source_by_name:
+        logger.error("No feed sources found in DB. Run scripts/seed_sources.py first.")
+        return
+
     query = select(RawFeedSnapshot).order_by(RawFeedSnapshot.fetched_at.asc())
     if args.source:
         query = query.where(RawFeedSnapshot.source_name == args.source)
@@ -134,7 +150,9 @@ async def main(args: argparse.Namespace) -> None:
             "Re-parsing snapshot %d (%s, fetched %s)...",
             snap.id, snap.source_name, snap.fetched_at,
         )
-        stats = await reparse_snapshot(snap, dry_run=args.dry_run, update=args.update)
+        stats = await reparse_snapshot(
+            snap, source_by_name, dry_run=args.dry_run, update=args.update,
+        )
         for k in totals:
             totals[k] += stats[k]
         logger.info(
