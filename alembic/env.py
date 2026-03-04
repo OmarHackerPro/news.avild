@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.db.base import Base
 import app.db.models.news        # noqa: F401 — registers NewsArticle with Base.metadata
 import app.db.models.feed_source  # noqa: F401 — registers FeedSource with Base.metadata
+import app.db.models.raw_feed_snapshot  # noqa: F401 — registers RawFeedSnapshot with Base.metadata
 
 config = context.config
 
