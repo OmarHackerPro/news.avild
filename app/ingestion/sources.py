@@ -10,8 +10,9 @@ class FeedSource(TypedDict):
     normalizer: str         # key into NORMALIZER_REGISTRY in normalizer.py
 
 
-# To add a new feed: append one FeedSource entry here. Nothing else changes.
-FEED_SOURCES: list[FeedSource] = [
+# Seed data — used by scripts/seed_sources.py and migration 5b2c3d4e6f7a.
+# Runtime ingestion reads from the feed_sources DB table instead.
+SEED_SOURCES: list[FeedSource] = [
     FeedSource(
         name="The Hacker News",
         url="https://feeds.feedburner.com/TheHackersNews",
