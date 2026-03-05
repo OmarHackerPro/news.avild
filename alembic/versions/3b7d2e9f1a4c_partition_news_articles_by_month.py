@@ -45,6 +45,21 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     op.execute("ALTER TABLE news_articles RENAME TO news_articles_old")
 
+    # Drop old indexes (they kept their names after the rename)
+    op.execute("DROP INDEX IF EXISTS ix_news_articles_published_at")
+    op.execute("DROP INDEX IF EXISTS ix_news_articles_slug")
+    op.execute("DROP INDEX IF EXISTS ix_news_articles_source_id")
+    op.execute("DROP INDEX IF EXISTS ix_news_articles_source_name")
+    op.execute("DROP INDEX IF EXISTS ix_news_articles_author")
+    op.execute("DROP INDEX IF EXISTS ix_news_articles_category")
+    op.execute("DROP INDEX IF EXISTS ix_news_articles_cvss_score")
+    op.execute("DROP INDEX IF EXISTS ix_news_articles_tags_gin")
+    op.execute("DROP INDEX IF EXISTS ix_news_articles_keywords_gin")
+    op.execute("DROP INDEX IF EXISTS ix_news_articles_cve_ids_gin")
+    op.execute("DROP INDEX IF EXISTS uix_news_articles_slug_date")
+    op.execute("DROP INDEX IF EXISTS uix_news_articles_guid_date")
+    op.execute("ALTER TABLE news_articles_old DROP CONSTRAINT IF EXISTS uq_news_articles_guid")
+
     # ------------------------------------------------------------------
     # 2. Create the partitioned parent table
     #    Primary key must include the partition key (published_at).
@@ -60,7 +75,7 @@ def upgrade() -> None:
             source_name  VARCHAR(255),
             title        VARCHAR(500)   NOT NULL,
             author       VARCHAR(255),
-            desc         TEXT,
+            "desc"       TEXT,
             content_html TEXT,
             image_url    VARCHAR(2048),
             tags         TEXT[]         NOT NULL DEFAULT '{}',
@@ -163,13 +178,13 @@ def upgrade() -> None:
     op.execute("""
         INSERT INTO news_articles (
             id, slug, guid, source_id, source_name, title, author,
-            desc, content_html, image_url, tags, keywords, published_at,
+            "desc", content_html, image_url, tags, keywords, published_at,
             severity, type, category, source_url, cvss_score, cve_ids,
             raw_metadata, created_at, updated_at
         )
         SELECT
             id, slug, guid, source_id, source_name, title, author,
-            desc, content_html, image_url, tags, keywords, published_at,
+            "desc", content_html, image_url, tags, keywords, published_at,
             severity, type, category, source_url, cvss_score, cve_ids,
             raw_metadata, created_at, updated_at
         FROM news_articles_old
@@ -204,7 +219,7 @@ def downgrade() -> None:
             source_name  VARCHAR(255),
             title        VARCHAR(500)   NOT NULL,
             author       VARCHAR(255),
-            desc         TEXT,
+            "desc"       TEXT,
             content_html TEXT,
             image_url    VARCHAR(2048),
             tags         TEXT[]         NOT NULL DEFAULT '{}',
