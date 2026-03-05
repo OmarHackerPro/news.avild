@@ -25,3 +25,7 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+cursor.zip
+
+# User uploads (avatars, etc.)
+static/uploads/

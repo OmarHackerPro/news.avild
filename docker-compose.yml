@@ -16,6 +16,16 @@ services:
       PROJECT_NAME: news.avild.com
       DEBUG: "false"
       DATABASE_URL: postgresql+asyncpg://postgres:${DB_PASSWORD:-password}@db:5432/avild_news
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-in-production}
+      JWT_EXPIRE_MINUTES: "10080"
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@kiber.info}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
+    volumes:
+      - avatar_uploads:/app/static/uploads/avatars
     depends_on:
       - db
 
@@ -31,3 +41,4 @@ services:
 
 volumes:
   postgres_data:
+  avatar_uploads:
