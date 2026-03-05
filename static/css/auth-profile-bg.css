@@ -1,0 +1,85 @@
+/**
+ * Shared background for auth pages (login, signup, forgot-password, reset-password)
+ * and profile page. Works in both dark and light mode.
+ */
+.auth-page,
+.profile-page {
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+  background: var(--bg-dark);
+}
+
+/* Layer 1: soft gradient orbs */
+.auth-page::before,
+.profile-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 100% 70% at 20% 0%, rgba(17, 151, 222, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 90% 20%, rgba(63, 185, 80, 0.08) 0%, transparent 45%),
+    radial-gradient(ellipse 70% 50% at 10% 80%, rgba(88, 166, 255, 0.1) 0%, transparent 45%),
+    radial-gradient(ellipse 60% 40% at 70% 90%, rgba(163, 113, 247, 0.06) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Layer 2: dot grid */
+.auth-page::after,
+.profile-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--text-muted) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.14;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Layer 3: extra soft blobs */
+.auth-page .auth-bg-dots,
+.profile-page .auth-bg-dots {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 15% 25%, rgba(255, 255, 255, 0.04) 0%, transparent 12%),
+    radial-gradient(circle at 85% 75%, rgba(255, 255, 255, 0.03) 0%, transparent 10%),
+    radial-gradient(circle at 70% 15%, rgba(17, 151, 222, 0.06) 0%, transparent 14%),
+    radial-gradient(circle at 25% 70%, rgba(88, 166, 255, 0.05) 0%, transparent 11%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Card / content above background */
+.auth-page .auth-card,
+.profile-page .profile-card {
+  position: relative;
+  z-index: 1;
+}
+
+/* ----- Light mode ----- */
+html.theme-light .auth-page::before,
+html.theme-light .profile-page::before {
+  background:
+    radial-gradient(ellipse 100% 70% at 20% 0%, rgba(9, 105, 218, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 90% 20%, rgba(26, 127, 55, 0.12) 0%, transparent 45%),
+    radial-gradient(ellipse 70% 50% at 10% 80%, rgba(88, 166, 255, 0.14) 0%, transparent 45%),
+    radial-gradient(ellipse 60% 40% at 70% 90%, rgba(138, 99, 210, 0.08) 0%, transparent 40%);
+}
+
+html.theme-light .auth-page::after,
+html.theme-light .profile-page::after {
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+  opacity: 0.5;
+}
+
+html.theme-light .auth-page .auth-bg-dots,
+html.theme-light .profile-page .auth-bg-dots {
+  background-image:
+    radial-gradient(circle at 15% 25%, rgba(9, 105, 218, 0.08) 0%, transparent 14%),
+    radial-gradient(circle at 85% 75%, rgba(26, 127, 55, 0.07) 0%, transparent 12%),
+    radial-gradient(circle at 70% 15%, rgba(0, 0, 0, 0.04) 0%, transparent 10%),
+    radial-gradient(circle at 25% 70%, rgba(88, 166, 255, 0.06) 0%, transparent 11%);
+}

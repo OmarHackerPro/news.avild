@@ -73,6 +73,11 @@
           </div>
         </div>
         <button type="button" class="nav-subscribe-btn" aria-label="Subscribe"><i class="fas fa-bell"></i> <span data-i18n-key="nav.subscribe">Subscribe</span></button>
+        <a href="/login" class="nav-subscribe-btn" id="navUserLink" aria-label="Log in or account">
+          <i class="fas fa-user-circle" id="navUserIcon"></i>
+          <span id="navUserAvatar" hidden><img id="navUserAvatarImg" src="" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;"></span>
+          <span id="navUserName" hidden style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        </a>
         <button type="button" class="nav-theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
           <span class="theme-icon">
             <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5" fill="currentColor"/><line x1="12" y1="12" x2="12" y2="2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="12" y2="22" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="2" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="22" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="5" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="19" y2="19" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="19" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="5" y2="19" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
@@ -205,5 +210,6 @@
   <script src="/static/js/components/theme.js"></script>
   <script src="/static/js/data/preferences.js"></script>
   <script src="/static/js/features/preferences-page.js"></script>
+  <script src="/static/js/components/auth.js"></script>
 </body>
 </html>

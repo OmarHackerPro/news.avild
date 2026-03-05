@@ -72,6 +72,11 @@
             <i class="fas fa-bell"></i>
             <span data-i18n-key="nav.subscribe">Subscribe</span>
           </button>
+          <a href="/login" class="nav-subscribe-btn" id="navUserLink" aria-label="Log in or account">
+            <i class="fas fa-user-circle" id="navUserIcon"></i>
+            <span id="navUserAvatar" hidden><img id="navUserAvatarImg" src="" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;"></span>
+            <span id="navUserName" hidden style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+          </a>
           <button
             type="button"
             class="nav-theme-toggle"
@@ -216,5 +221,6 @@
     </div>
   </nav>
   <script src="/static/js/core/loader.js"></script>
+  <script src="/static/js/components/auth.js"></script>
 </body>
 </html>

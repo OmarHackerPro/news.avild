@@ -10,6 +10,9 @@ COPY alembic/ alembic/
 COPY alembic.ini .
 COPY main.py .
 COPY scripts/ scripts/
+COPY static/ static/
+
+RUN mkdir -p static/uploads/avatars
 
 EXPOSE 8000
 

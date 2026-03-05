@@ -1,14 +1,17 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import news
+from app.api.routes import auth, news
 from app.core.config import settings
 from app.db.session import engine
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    Path("static/uploads/avatars").mkdir(parents=True, exist_ok=True)
     yield
     if engine is not None:
         await engine.dispose()
@@ -21,4 +24,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 app.include_router(news.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
