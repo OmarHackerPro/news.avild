@@ -38,19 +38,22 @@
   z-index: 10002; /* above nav-bottom and main so dropdowns (RSS, lang) stay on top */
 }
 
-/* Bottom row: logo + nav links + search */
+/* Bottom row: logo | slider (centered) | search */
 .nav-bottom {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
   padding: 0.5rem 1.5rem;
   gap: 1rem;
-  flex-wrap: nowrap;
   min-height: 48px;
   min-width: 0;
   position: relative;
-  z-index: 10001; /* below nav-top so top-row dropdowns appear above this row */
+  z-index: 10001;
 }
+
+.nav-brand       { justify-self: start; }
+.nav-links-slider { justify-self: center; width: 100%; max-width: 680px; }
+.nav-bottom .search-box.nav-bottom-search { justify-self: end; }
 
 .nav-bottom .search-box.nav-bottom-search {
   flex-shrink: 0;
@@ -661,4 +664,86 @@ html.theme-light .theme-icon-moon {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
+}
+
+/* ===== Nav links slider ===== */
+.nav-links-slider {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* arrows sit inline in the flex row */
+.nav-slider-arrow {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated, #21262d);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.35);
+}
+.nav-slider-arrow:hover:not(:disabled) {
+  background: #1197DE;
+  color: #fff;
+  border-color: #1197DE;
+}
+.nav-slider-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* nav-links fills space between arrows; overflow:hidden = arrow-only scrolling */
+.nav-links-slider .nav-links {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden !important;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* ===== Nav action button individual colors ===== */
+
+/* My Stack — purple */
+a[href="preferences.html"].nav-pref-link { color: #a78bfa; }
+a[href="preferences.html"].nav-pref-link:hover { color: #c4b5fd; background: rgba(167,139,250,0.12); }
+
+/* Webhooks — orange */
+a[href="webhooks.html"].nav-pref-link { color: #fb923c; }
+a[href="webhooks.html"].nav-pref-link:hover { color: #fdba74; background: rgba(251,146,60,0.12); }
+
+/* RSS Feed — sky blue */
+a[href="rss-config.html"].nav-pref-link { color: #38bdf8; }
+a[href="rss-config.html"].nav-pref-link:hover { color: #7dd3fc; background: rgba(56,189,248,0.12); }
+
+/* RSS dropdown button — amber */
+#rssTrigger { color: #fbbf24; }
+#rssTrigger:hover { color: #fde68a; background: rgba(251,191,36,0.12); }
+#rssTrigger .nav-rss-icon { color: #fbbf24; }
+
+/* Share — pink */
+#navShareBtn { color: #f472b6; }
+#navShareBtn:hover { color: #f9a8d4; background: rgba(244,114,182,0.12); }
+
+/* Subscribe (bell button) — emerald */
+.nav-subscribe-btn[aria-label="Subscribe"] { color: #34d399; }
+.nav-subscribe-btn[aria-label="Subscribe"]:hover { color: #6ee7b7; background: rgba(52,211,153,0.12); }
+
+/* User icon — blue */
+.nav-user-btn {
+  color: #60a5fa;
+  text-decoration: none;
+}
+.nav-user-btn:hover {
+  color: #93c5fd !important;
+  background: rgba(96, 165, 250, 0.12) !important;
 }
