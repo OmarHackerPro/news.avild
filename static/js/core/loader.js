@@ -80,6 +80,7 @@
         'components/search-tooltip.js',
         'components/filters.js',
         'features/category-filter.js',
+        'features/priority-filter.js',
         'features/news-grid.js',
         'features/news-modal.js',
         'features/share-modal.js',

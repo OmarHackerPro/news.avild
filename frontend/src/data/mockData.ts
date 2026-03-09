@@ -1,3 +1,4 @@
+
 import { Cluster, FeedItem } from "../types";
 
 export const mockFeedItems: FeedItem[] = [

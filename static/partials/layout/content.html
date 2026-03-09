@@ -33,36 +33,7 @@
         <input type="checkbox" class="toggle-input">
         <span class="toggle-slider"></span>
       </label>
-      <div class="filter-dropdown-wrap">
-        <button type="button" class="filter-btn filter-btn-time" id="timeTrigger" aria-expanded="false"><i class="far fa-clock"></i> <span class="filter-btn-label" data-i18n-key="filters.time.label">Last 24h</span></button>
-        <div class="filter-dropdown filter-dropdown-time" id="timeDropdown" role="listbox">
-          <div class="filter-dropdown-option" data-value="1h" role="option" data-i18n-key="filters.time.lastHour">Last hour</div>
-          <div class="filter-dropdown-option selected" data-value="24h" role="option" data-i18n-key="filters.time.last24h">Last 24h</div>
-          <div class="filter-dropdown-option" data-value="7d" role="option" data-i18n-key="filters.time.last7d">Last 7 days</div>
-          <div class="filter-dropdown-option" data-value="30d" role="option" data-i18n-key="filters.time.last30d">Last 30 days</div>
-          <div class="filter-dropdown-option" data-value="all" role="option" data-i18n-key="filters.time.all">All time</div>
-        </div>
-      </div>
-      <div class="filter-dropdown-wrap">
-        <button type="button" class="filter-btn filter-btn-type" id="typeTrigger" aria-expanded="false"><i class="fas fa-filter"></i> <span class="filter-btn-label" data-i18n-key="filters.type.label">News</span></button>
-        <div class="filter-dropdown filter-dropdown-type" id="typeDropdown" role="listbox">
-          <div class="filter-dropdown-option selected" data-value="news" role="option" data-i18n-key="filters.type.news">News</div>
-          <div class="filter-dropdown-option" data-value="analysis" role="option" data-i18n-key="filters.type.analysis">Analysis</div>
-          <div class="filter-dropdown-option" data-value="report" role="option" data-i18n-key="filters.type.report">Report</div>
-          <div class="filter-dropdown-option" data-value="advisory" role="option" data-i18n-key="filters.type.advisory">Advisory</div>
-        </div>
-      </div>
-      <div class="filter-dropdown-wrap">
-        <button type="button" class="filter-btn filter-btn-sources" id="sourcesTrigger" aria-expanded="false"><span class="filter-btn-label" data-i18n-key="filters.sources.label">Sources</span></button>
-        <div class="filter-dropdown filter-dropdown-sources" id="sourcesDropdown" role="listbox">
-          <div class="filter-dropdown-option selected" data-value="all" role="option" data-i18n-key="filters.sources.all">All Sources</div>
-          <div class="filter-dropdown-option" data-value="news" role="option" data-i18n-key="filters.sources.news">News</div>
-          <div class="filter-dropdown-option" data-value="analysis" role="option" data-i18n-key="filters.sources.analysis">Analysis</div>
-          <div class="filter-dropdown-option" data-value="report" role="option" data-i18n-key="filters.sources.report">Report</div>
-          <div class="filter-dropdown-option" data-value="advisory" role="option" data-i18n-key="filters.sources.advisory">Advisory</div>
-        </div>
-      </div>
-      <div class="filter-clear-wrapper">
+<div class="filter-clear-wrapper">
         <button type="button" class="filter-clear-btn" id="filterClearBtn" aria-label="Clear all filters" title="Clear all filters"><i class="fas fa-times"></i></button>
         <span class="filter-count" id="filterCount">0</span>
       </div>
@@ -70,6 +41,54 @@
   </section>
 
   <section id="malware" class="section news-section">
+    <div class="news-priority-bar">
+      <div class="priority-pills">
+        <button class="priority-pill active" data-priority="all">All</button>
+        <button class="priority-pill priority-critical" data-priority="critical"><i class="fas fa-circle"></i> Critical</button>
+        <button class="priority-pill priority-high" data-priority="high"><i class="fas fa-circle"></i> High</button>
+        <button class="priority-pill priority-medium" data-priority="medium"><i class="fas fa-circle"></i> Medium</button>
+        <button class="priority-pill priority-low" data-priority="low"><i class="fas fa-circle"></i> Low</button>
+      </div>
+      <div class="filter-main-wrap">
+        <button type="button" class="filter-main-btn" id="mainFilterTrigger" aria-expanded="false">
+          <i class="fas fa-sliders-h"></i> Filter
+          <span class="filter-main-count" id="mainFilterCount" hidden>0</span>
+        </button>
+        <div class="filter-main-dropdown" id="mainFilterDropdown" role="dialog" aria-label="Filter options">
+          <div class="fmd-group">
+            <div class="fmd-group-label"><i class="far fa-clock"></i> Time</div>
+            <div class="fmd-options">
+              <button class="fmd-opt active" data-fmd-filter="time" data-fmd-value="24h">Last 24h</button>
+              <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="1h">Last 1h</button>
+              <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="7d">Last 7 days</button>
+              <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="all">All time</button>
+            </div>
+          </div>
+          <div class="fmd-group">
+            <div class="fmd-group-label"><i class="fas fa-file-alt"></i> Content</div>
+            <div class="fmd-options">
+              <button class="fmd-opt active" data-fmd-filter="type" data-fmd-value="all">All</button>
+              <button class="fmd-opt" data-fmd-filter="type" data-fmd-value="news">News</button>
+              <button class="fmd-opt" data-fmd-filter="type" data-fmd-value="analysis">Analysis</button>
+              <button class="fmd-opt" data-fmd-filter="type" data-fmd-value="report">Report</button>
+              <button class="fmd-opt" data-fmd-filter="type" data-fmd-value="advisory">Advisory</button>
+            </div>
+          </div>
+          <div class="fmd-group">
+            <div class="fmd-group-label"><i class="fas fa-rss"></i> Sources</div>
+            <div class="fmd-options">
+              <button class="fmd-opt active" data-fmd-filter="source" data-fmd-value="all">All</button>
+              <button class="fmd-opt" data-fmd-filter="source" data-fmd-value="news">News</button>
+              <button class="fmd-opt" data-fmd-filter="source" data-fmd-value="analysis">Analysis</button>
+              <button class="fmd-opt" data-fmd-filter="source" data-fmd-value="report">Report</button>
+            </div>
+          </div>
+          <div class="fmd-footer">
+            <button type="button" class="fmd-reset" id="mainFilterReset">Reset all</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <h2 class="section-title" id="categoryTitle" data-i18n-key="sections.latestNews">Latest Security News</h2>
     <div class="news-grid" id="newsGrid"></div>
     <div class="load-indicator" id="loadIndicator">

@@ -1,0 +1,170 @@
+/* ===== Search Page ===== */
+
+.search-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+/* Hero */
+.search-hero {
+  margin-bottom: 2rem;
+}
+
+.search-form {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-form:focus-within {
+  border-color: #1197DE;
+  box-shadow: 0 0 0 3px rgba(17, 151, 222, 0.14);
+}
+
+.search-input-icon {
+  position: absolute;
+  left: 1rem;
+  color: var(--text-muted);
+  font-size: 1rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.search-form input[type="search"] {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0.9rem 1rem 0.9rem 2.8rem;
+  font-size: 1rem;
+  color: var(--text);
+  width: 100%;
+}
+
+.search-form input[type="search"]::placeholder {
+  color: var(--text-muted);
+}
+
+.search-form input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+.search-hint {
+  margin-top: 0.55rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* Results count */
+.search-results-heading {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+/* Cards */
+.search-result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.search-result-card {
+  display: block;
+  padding: 1rem 1.2rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+
+.search-result-card:hover {
+  border-color: #1197DE;
+  box-shadow: 0 2px 10px rgba(17, 151, 222, 0.1);
+  transform: translateY(-1px);
+}
+
+.result-name {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+
+.result-meta {
+  margin-bottom: 0.35rem;
+}
+
+.result-type {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.12rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(17, 151, 222, 0.1);
+  color: #1197DE;
+}
+
+.result-description {
+  font-size: 0.855rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* States */
+.search-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.search-state .spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid var(--border);
+  border-top-color: #1197DE;
+  border-radius: 50%;
+  animation: srch-spin 0.65s linear infinite;
+  margin-bottom: 0.5rem;
+}
+
+@keyframes srch-spin { to { transform: rotate(360deg); } }
+
+.state-icon {
+  font-size: 2rem;
+  color: var(--text-muted);
+  opacity: 0.4;
+  margin-bottom: 0.2rem;
+}
+
+.search-state.error .state-icon {
+  color: #e05151;
+  opacity: 1;
+}
+
+.state-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.state-message {
+  font-size: 0.855rem;
+  color: var(--text-muted);
+  max-width: 340px;
+}

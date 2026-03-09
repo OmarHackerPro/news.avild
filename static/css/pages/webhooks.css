@@ -1,0 +1,338 @@
+/* ===== Webhooks Page ===== */
+
+.webhooks-page {
+  max-width: 720px;
+  margin: 2rem auto;
+  padding: 0 1rem 4rem;
+}
+
+.webhooks-page > h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.webhooks-page > h1 i {
+  color: #fb923c;
+  font-size: 1.3rem;
+}
+
+/* Section cards */
+.webhook-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.webhook-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 1.25rem;
+}
+
+.webhook-section-title i {
+  color: #fb923c;
+  width: 1em;
+  text-align: center;
+}
+
+/* Form */
+.webhook-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-row label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.form-row .optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.form-row input[type="text"],
+.form-row input[type="url"] {
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.form-row input[type="text"]:focus,
+.form-row input[type="url"]:focus {
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251,146,60,0.15);
+}
+
+.form-row input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.form-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.form-error {
+  font-size: 0.8rem;
+  color: var(--accent-red);
+}
+
+/* Secret row */
+.webhook-secret-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.webhook-secret-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-family: monospace;
+  letter-spacing: 0.08em;
+  outline: none;
+}
+
+.btn-test {
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+  white-space: nowrap;
+}
+
+.btn-test:hover:not(:disabled) {
+  border-color: #fb923c;
+  color: #fb923c;
+}
+
+.btn-test:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Event types */
+.webhook-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.webhook-event-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  user-select: none;
+}
+
+.webhook-event-chip:hover {
+  color: var(--text);
+  border-color: #fb923c;
+}
+
+.webhook-event-chip.selected {
+  background: rgba(251,146,60,0.13);
+  border-color: #fb923c;
+  color: #fdba74;
+}
+
+.webhook-retry-note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: -0.25rem;
+}
+
+/* Primary button */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.5rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: #fb923c;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.12s ease, box-shadow 0.18s ease;
+  box-shadow: 0 2px 8px rgba(251,146,60,0.3);
+  align-self: flex-start;
+}
+
+.btn-primary:hover {
+  background: #fdba74;
+  box-shadow: 0 4px 16px rgba(251,146,60,0.4);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+/* Webhook list cards */
+.webhook-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.webhook-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  transition: border-color 0.18s ease;
+}
+
+.webhook-card:hover {
+  border-color: #fb923c;
+}
+
+.webhook-card-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+}
+
+.webhook-card-url {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+
+.webhook-card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+.webhook-card-status.active {
+  background: rgba(63,185,80,0.15);
+  color: #3fb950;
+}
+
+.webhook-card-status.inactive {
+  background: rgba(248,81,73,0.1);
+  color: #f85149;
+}
+
+.webhook-card-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.webhook-card-btn {
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+.webhook-card-btn:hover {
+  border-color: #fb923c;
+  color: #fb923c;
+}
+
+.webhook-card-btn.delete:hover {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+
+.webhook-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.webhook-empty i {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+  color: #fb923c;
+  opacity: 0.5;
+}
+
+@media (max-width: 600px) {
+  .webhook-secret-row {
+    flex-direction: column;
+  }
+  .webhook-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .webhook-card-url {
+    max-width: 100%;
+  }
+}
