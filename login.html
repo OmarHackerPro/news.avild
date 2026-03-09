@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en" translate="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — news.avild.com</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/main/main.css">
+  <link rel="stylesheet" href="/static/css/auth-profile-bg.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous"></noscript>
+  <style>
+    .auth-page { display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+    .auth-card { width: 100%; max-width: 380px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; box-shadow: var(--shadow); }
+    .auth-card h1 { font-size: 1.5rem; margin-bottom: 1.5rem; color: var(--text); }
+    .auth-form label { display: block; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.35rem; }
+    .auth-form input { width: 100%; padding: 0.6rem 0.75rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 1rem; margin-bottom: 1rem; box-sizing: border-box; }
+    .auth-form .password-wrap { position: relative; margin-bottom: 1rem; }
+    .auth-form .password-wrap input { margin-bottom: 0; padding-right: 2.5rem; }
+    .auth-form .password-toggle { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.35rem; border-radius: var(--radius-sm); }
+    .auth-form .password-toggle:hover { color: var(--text); }
+    .auth-form input:focus { outline: none; border-color: var(--accent-blue); }
+    .auth-form button[type="submit"] { width: 100%; padding: 0.7rem; background: var(--accent-green); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 0.5rem; }
+    .auth-form button[type="submit"]:hover { background: #2ea043; }
+    .auth-form .error { color: var(--accent-red); font-size: 0.9rem; margin-bottom: 0.75rem; }
+    .auth-forgot-wrap { margin: -0.5rem 0 1rem 0; }
+    .auth-forgot-link { color: var(--accent-blue); font-size: 0.9rem; text-decoration: none; }
+    .auth-forgot-link:hover { text-decoration: underline; }
+    .auth-footer { margin-top: 1.5rem; text-align: center; }
+    .auth-footer a { color: var(--accent-blue); text-decoration: none; }
+    .auth-footer a:hover { text-decoration: underline; }
+    .auth-back { display: inline-block; margin-bottom: 1rem; color: var(--accent-blue); text-decoration: none; font-size: 0.9rem; }
+    .auth-back:hover { text-decoration: underline; }
+  </style>
+  <script>
+    (function() {
+      try { if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('theme-light'); } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-bg-dots" aria-hidden="true"></div>
+    <div class="auth-card">
+      <a href="/" class="auth-back"><i class="fas fa-arrow-left"></i> Back to home</a>
+      <h1>Log in</h1>
+      <form class="auth-form" id="loginForm" method="post" action="#">
+        <div class="error" id="error" role="alert" hidden></div>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+        <label for="password">Password</label>
+        <div class="password-wrap">
+          <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password" maxlength="72">
+          <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password" title="Show password">
+            <i class="fas fa-eye" id="passwordToggleIcon" aria-hidden="true"></i>
+          </button>
+        </div>
+        <p class="auth-forgot-wrap">
+          <a href="/forgot-password.html" class="auth-forgot-link">Forgot password?</a>
+        </p>
+        <button type="submit">Log in</button>
+      </form>
+      <div class="auth-footer">
+        <a href="/signup.html">Don't have an account? Sign up</a>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      function hashStr(s) {
+        var h = 0;
+        for (var i = 0; i < s.length; i++) { h = Math.imul(31, h) + s.charCodeAt(i) | 0; }
+        return (h >>> 0).toString(16);
+      }
+
+      var pw = document.getElementById('password');
+      var toggle = document.getElementById('passwordToggle');
+      var icon = document.getElementById('passwordToggleIcon');
+      if (toggle && pw && icon) {
+        toggle.addEventListener('click', function() {
+          var isPassword = pw.type === 'password';
+          pw.type = isPassword ? 'text' : 'password';
+          icon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
+          toggle.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+          toggle.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
+        });
+      }
+
+      var form = document.getElementById('loginForm');
+      var errorEl = document.getElementById('error');
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        errorEl.hidden = true;
+        var email = document.getElementById('email').value.trim().toLowerCase();
+        var password = document.getElementById('password').value;
+        if (password.length > 72) password = password.slice(0, 72);
+
+        var users = [];
+        try { users = JSON.parse(localStorage.getItem('auth_users') || '[]'); } catch(err) {}
+
+        var user = null;
+        for (var i = 0; i < users.length; i++) {
+          if (users[i].email === email) { user = users[i]; break; }
+        }
+
+        if (!user) {
+          errorEl.textContent = 'No account found with this email.';
+          errorEl.hidden = false;
+          return;
+        }
+        if (user.passwordHash !== hashStr(password)) {
+          errorEl.textContent = 'Incorrect password.';
+          errorEl.hidden = false;
+          return;
+        }
+
+        var userData = { name: user.name, email: user.email, profile_picture: user.profile_picture || '', description: user.description || '' };
+        try {
+          localStorage.setItem('auth_token', email);
+          localStorage.setItem('auth_user', JSON.stringify(userData));
+        } catch(err) {}
+
+        if (window.opener) {
+          window.opener.postMessage({ type: 'auth', user: userData }, window.location.origin);
+          window.close();
+        } else {
+          var next = new URLSearchParams(window.location.search).get('next');
+          window.location.href = (next && next.startsWith('/')) ? next : '/';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

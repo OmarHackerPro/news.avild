@@ -58,12 +58,18 @@
         <button type="submit">Create account</button>
       </form>
       <div class="auth-footer">
-        <a href="/static/login.html">Already have an account? Log in</a>
+        <a href="/login.html">Already have an account? Log in</a>
       </div>
     </div>
   </div>
   <script>
     (function() {
+      function hashStr(s) {
+        var h = 0;
+        for (var i = 0; i < s.length; i++) { h = Math.imul(31, h) + s.charCodeAt(i) | 0; }
+        return (h >>> 0).toString(16);
+      }
+
       var pw = document.getElementById('password');
       var toggle = document.getElementById('passwordToggle');
       var icon = document.getElementById('passwordToggleIcon');
@@ -76,50 +82,51 @@
           toggle.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
         });
       }
+
       var form = document.getElementById('signupForm');
       var errorEl = document.getElementById('error');
       form.addEventListener('submit', function(e) {
         e.preventDefault();
         errorEl.hidden = true;
         var name = document.getElementById('name').value.trim();
-        var email = document.getElementById('email').value.trim();
+        var email = document.getElementById('email').value.trim().toLowerCase();
         var password = document.getElementById('password').value;
         if (password.length > 72) password = password.slice(0, 72);
-        fetch('/api/auth/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: name, email: email, password: password })
-        })
-          .then(function(r) { return r.text().then(function(text) { return { ok: r.ok, status: r.status, text: text }; }); })
-          .then(function(result) {
-            var data = null;
-            if (result.text) try { data = JSON.parse(result.text); } catch (e) {}
-            if (!result.ok) {
-              var msg = (data && data.detail) ? (typeof data.detail === 'string' ? data.detail : 'Sign up failed') : 'Sign up failed (' + result.status + ')';
-              throw new Error(msg);
-            }
-            if (!data || !data.access_token) throw new Error('Invalid response from server.');
-            return data;
-          })
-          .then(function(data) {
-            try {
-              localStorage.setItem('auth_token', data.access_token);
-              localStorage.setItem('auth_user', JSON.stringify(data.user));
-            } catch (err) {}
-            if (window.opener) {
-              window.opener.postMessage({ type: 'auth', user: data.user }, window.location.origin);
-              window.close();
-            } else {
-              var next = new URLSearchParams(window.location.search).get('next');
-              window.location.href = (next && next.startsWith('/')) ? next : '/';
-            }
-          })
-          .catch(function(err) {
-            var msg = err.message || 'Sign up failed';
-            if (msg === 'Failed to fetch' || err.name === 'TypeError') msg = 'Cannot reach server.';
-            errorEl.textContent = msg;
+
+        if (!name) {
+          errorEl.textContent = 'Name is required.';
+          errorEl.hidden = false;
+          return;
+        }
+
+        var users = [];
+        try { users = JSON.parse(localStorage.getItem('auth_users') || '[]'); } catch(err) {}
+
+        for (var i = 0; i < users.length; i++) {
+          if (users[i].email === email) {
+            errorEl.textContent = 'An account with this email already exists.';
             errorEl.hidden = false;
-          });
+            return;
+          }
+        }
+
+        var newUser = { name: name, email: email, passwordHash: hashStr(password), profile_picture: '', description: '' };
+        users.push(newUser);
+        try { localStorage.setItem('auth_users', JSON.stringify(users)); } catch(err) {}
+
+        var userData = { name: name, email: email, profile_picture: '', description: '' };
+        try {
+          localStorage.setItem('auth_token', email);
+          localStorage.setItem('auth_user', JSON.stringify(userData));
+        } catch(err) {}
+
+        if (window.opener) {
+          window.opener.postMessage({ type: 'auth', user: userData }, window.location.origin);
+          window.close();
+        } else {
+          var next = new URLSearchParams(window.location.search).get('next');
+          window.location.href = (next && next.startsWith('/')) ? next : '/';
+        }
       });
     })();
   </script>

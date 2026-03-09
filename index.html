@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="/static/css/layout/navbar.css">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
-  <style>
+  <style> 
     /* Critical: ensure navbar rows and actions always visible */
     .navbar { display: flex !important; flex-direction: column !important; }
     .nav-top { display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 44px !important; }
@@ -40,14 +40,6 @@
       <div class="lang-select-wrapper">
         <select id="langSelect" class="lang-select-native" aria-label="Language">
           <option value="en" selected>English</option>
-          <option value="es">Español</option>
-          <option value="fr">Français</option>
-          <option value="de">Deutsch</option>
-          <option value="ja">日本語</option>
-          <option value="zh">中文</option>
-          <option value="ru">Русский</option>
-          <option value="ar">العربية</option>
-          <option value="az">Azərbaycan</option>
         </select>
         <div class="lang-select-trigger" id="langTrigger" aria-expanded="false" aria-haspopup="listbox">
           <i class="fas fa-globe lang-icon"></i>
@@ -56,14 +48,6 @@
         </div>
         <div class="lang-dropdown" id="langDropdown" role="listbox">
           <div class="lang-option selected" data-lang="en" data-short="EN" role="option">English</div>
-          <div class="lang-option" data-lang="es" data-short="ES" role="option">Español</div>
-          <div class="lang-option" data-lang="fr" data-short="FR" role="option">Français</div>
-          <div class="lang-option" data-lang="de" data-short="DE" role="option">Deutsch</div>
-          <div class="lang-option" data-lang="ja" data-short="JA" role="option">日本語</div>
-          <div class="lang-option" data-lang="zh" data-short="ZH" role="option">中文</div>
-          <div class="lang-option" data-lang="ru" data-short="RU" role="option">Русский</div>
-          <div class="lang-option" data-lang="ar" data-short="AR" role="option">العربية</div>
-          <div class="lang-option" data-lang="az" data-short="AZ" role="option">Azərbaycan</div>
         </div>
       </div>
       <div class="nav-actions">
@@ -85,7 +69,7 @@
         <button type="button" class="nav-subscribe-btn" aria-label="Subscribe">
           <i class="fas fa-bell"></i> <span data-i18n-key="nav.subscribe">Subscribe</span>
         </button>
-        <a href="/static/login.html" class="nav-subscribe-btn nav-user-btn" id="navUserLink" aria-label="Log in or account">
+        <a href="/login.html" class="nav-subscribe-btn nav-user-btn" id="navUserLink" aria-label="Log in or account">
           <i class="fas fa-user-circle" id="navUserIcon"></i>
           <span id="navUserAvatar" hidden><img id="navUserAvatarImg" src="" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;"></span>
           <span id="navUserName" hidden style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>

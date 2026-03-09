@@ -37,8 +37,11 @@
     .profile-avatar-placeholder i { opacity: 0.7; }
     #avatarContainer { border: none; outline: none; }
     .profile-form label { display: block; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.35rem; }
-    .profile-form input { width: 100%; padding: 0.6rem 0.75rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 1rem; margin-bottom: 1rem; box-sizing: border-box; }
-    .profile-form input:focus { outline: none; border-color: var(--accent-blue); }
+    .profile-form input,
+    .profile-form textarea { width: 100%; padding: 0.6rem 0.75rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 1rem; margin-bottom: 1rem; box-sizing: border-box; }
+    .profile-form textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+    .profile-form input:focus,
+    .profile-form textarea:focus { outline: none; border-color: var(--accent-blue); }
     .profile-form input[readonly] { opacity: 0.85; }
     .profile-form .password-wrap { position: relative; margin-bottom: 1rem; }
     .profile-form .password-wrap input { margin-bottom: 0; padding-right: 2.5rem; }
@@ -52,6 +55,21 @@
     .profile-back { display: inline-block; margin-bottom: 1rem; color: var(--accent-blue); text-decoration: none; font-size: 0.9rem; }
     .profile-back:hover { text-decoration: underline; }
     .auth-hint { font-weight: normal; color: var(--text-muted); font-size: 0.85rem; }
+    .profile-avatar-actions { display: flex; flex-direction: column; gap: 0.5rem; }
+    .profile-avatar-upload-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.4rem 0.85rem; background: var(--bg-dark); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 0.85rem; cursor: pointer; transition: border-color 0.15s;
+    }
+    .profile-avatar-upload-btn:hover { border-color: var(--accent-blue); }
+    .profile-avatar-remove-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.4rem 0.85rem; background: none; color: var(--accent-red);
+      border: 1px solid var(--accent-red); border-radius: var(--radius-sm);
+      font-size: 0.85rem; cursor: pointer; transition: background 0.15s;
+    }
+    .profile-avatar-remove-btn:hover { background: rgba(197,48,48,0.1); }
     .profile-logout-wrap { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
     .profile-logout-btn {
       display: inline-flex; align-items: center; gap: 0.5rem;
@@ -76,28 +94,46 @@
       <h1>My profile</h1>
       <div id="profileLoading" class="profile-section">Loading…</div>
       <div id="profileContent" hidden>
+        <!-- Avatar -->
         <div class="profile-section profile-avatar-wrap">
           <div id="avatarContainer">
-            <img id="avatarImg" class="profile-avatar-img" src="" alt="" hidden>
-            <div id="avatarPlaceholder" class="profile-avatar-placeholder" hidden aria-hidden="true"><i class="fas fa-user"></i></div>
+            <img id="avatarImg" class="profile-avatar-img" src="" alt="">
+            <div id="avatarPlaceholder" class="profile-avatar-placeholder" aria-hidden="true"><i class="fas fa-user"></i></div>
           </div>
-          <div>
+          <div class="profile-avatar-actions">
             <label>Profile picture</label>
-            <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif,image/webp" style="margin-bottom:0.5rem;">
-            <p class="auth-hint">JPEG, PNG, GIF or WebP, max 2MB</p>
+            <label class="profile-avatar-upload-btn" for="avatarInput">
+              <i class="fas fa-upload"></i> Upload photo
+            </label>
+            <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;">
+            <button type="button" class="profile-avatar-remove-btn" id="avatarRemoveBtn">
+              <i class="fas fa-trash-alt"></i> Remove
+            </button>
+            <p class="auth-hint" style="margin:0;">JPEG, PNG, GIF or WebP, max 2MB</p>
           </div>
         </div>
+
+        <!-- Profile form -->
         <form id="profileForm" class="profile-form">
           <div class="error" id="error" role="alert" hidden></div>
           <div class="success" id="success" role="status" hidden></div>
+
           <div class="profile-section">
-            <label for="name">Username</label>
-            <input type="text" id="name" name="name" required autocomplete="name">
+            <label for="nameInput">Username</label>
+            <input type="text" id="nameInput" name="name" required autocomplete="name">
           </div>
+
+          <div class="profile-section">
+            <label for="descriptionInput">Bio / Description</label>
+            <textarea id="descriptionInput" name="description" placeholder="Tell others a bit about yourself…" maxlength="300"></textarea>
+            <p class="auth-hint" style="margin-top:-0.75rem;">Max 300 characters</p>
+          </div>
+
           <div class="profile-section">
             <label>Email</label>
-            <input type="text" id="email" readonly aria-readonly="true">
+            <input type="text" id="emailInput" readonly aria-readonly="true">
           </div>
+
           <div class="profile-section">
             <label for="newPassword">New password <span class="auth-hint">(leave blank to keep current)</span></label>
             <div class="password-wrap">
@@ -105,9 +141,11 @@
               <button type="button" class="password-toggle" id="pwToggle" aria-label="Show password"><i class="fas fa-eye" id="pwIcon"></i></button>
             </div>
           </div>
+
           <button type="submit">Save changes</button>
         </form>
-        <div class="profile-logout-wrap" id="profileLogoutWrap" hidden>
+
+        <div class="profile-logout-wrap">
           <button type="button" class="profile-logout-btn" id="profileLogoutBtn" aria-label="Log out">
             <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Log out
           </button>
@@ -117,54 +155,63 @@
   </div>
   <script>
     (function() {
+      function hashStr(s) {
+        var h = 0;
+        for (var i = 0; i < s.length; i++) { h = Math.imul(31, h) + s.charCodeAt(i) | 0; }
+        return (h >>> 0).toString(16);
+      }
+
       var token = '';
       try { token = localStorage.getItem('auth_token') || ''; } catch (e) {}
       if (!token) {
-        window.location.href = '/login?next=' + encodeURIComponent('/profile');
+        window.location.href = '/login.html?next=' + encodeURIComponent('/profile.html');
         return;
       }
-      function authHeaders() { return { 'Authorization': 'Bearer ' + token }; }
+
+      var currentUser = null;
+      try { currentUser = JSON.parse(localStorage.getItem('auth_user') || 'null'); } catch (e) {}
+      if (!currentUser) {
+        window.location.href = '/login.html?next=' + encodeURIComponent('/profile.html');
+        return;
+      }
 
       function setAvatar(url) {
         var img = document.getElementById('avatarImg');
-        var placeholder = document.getElementById('avatarPlaceholder');
         var container = document.getElementById('avatarContainer');
         if (url) {
-          img.src = url.startsWith('http') ? url : ('/static/' + url);
+          img.src = url;
           img.alt = 'Profile picture';
-          img.hidden = false;
-          placeholder.setAttribute('aria-hidden', 'true');
-          placeholder.hidden = true;
-          if (container) container.classList.add('has-image');
+          container.classList.add('has-image');
         } else {
-          img.hidden = true;
-          img.removeAttribute('src');
-          placeholder.hidden = false;
-          placeholder.setAttribute('aria-hidden', 'false');
-          if (container) container.classList.remove('has-image');
+          img.src = '';
+          img.alt = '';
+          container.classList.remove('has-image');
         }
       }
 
       function loadProfile() {
-        fetch('/api/auth/me', { headers: authHeaders() })
-          .then(function(r) {
-            if (r.status === 401) { window.location.href = '/login?next=' + encodeURIComponent('/profile'); return null; }
-            return r.json();
-          })
-          .then(function(user) {
-            if (!user) return;
-            document.getElementById('profileLoading').hidden = true;
-            document.getElementById('profileContent').hidden = false;
-            var logoutWrap = document.getElementById('profileLogoutWrap');
-            if (logoutWrap) logoutWrap.hidden = false;
-            document.getElementById('name').value = user.name || '';
-            document.getElementById('email').value = user.email || '';
-            setAvatar(user.profile_picture || null);
-            try { localStorage.setItem('auth_user', JSON.stringify(user)); } catch (e) {}
-          })
-          .catch(function() {
-            document.getElementById('profileLoading').textContent = 'Failed to load profile.';
-          });
+        document.getElementById('profileLoading').hidden = true;
+        document.getElementById('profileContent').hidden = false;
+        document.getElementById('nameInput').value = currentUser.name || '';
+        document.getElementById('emailInput').value = currentUser.email || '';
+        document.getElementById('descriptionInput').value = currentUser.description || '';
+        setAvatar(currentUser.profile_picture || '');
+      }
+
+      function saveUserToStorage(updated) {
+        try { localStorage.setItem('auth_user', JSON.stringify(updated)); } catch (e) {}
+        var users = [];
+        try { users = JSON.parse(localStorage.getItem('auth_users') || '[]'); } catch (e) {}
+        for (var i = 0; i < users.length; i++) {
+          if (users[i].email === updated.email) {
+            users[i].name = updated.name;
+            users[i].description = updated.description;
+            users[i].profile_picture = updated.profile_picture;
+            if (updated.passwordHash) users[i].passwordHash = updated.passwordHash;
+            break;
+          }
+        }
+        try { localStorage.setItem('auth_users', JSON.stringify(users)); } catch (e) {}
       }
 
       document.getElementById('avatarInput').addEventListener('change', function() {
@@ -175,26 +222,30 @@
           this.value = '';
           return;
         }
-        var fd = new FormData();
-        fd.append('file', file);
-        fetch('/api/auth/upload-avatar', { method: 'POST', headers: authHeaders(), body: fd })
-          .then(function(r) {
-            if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail || 'Upload failed'); });
-            return r.json();
-          })
-          .then(function(user) {
-            setAvatar(user.profile_picture || null);
-            try { localStorage.setItem('auth_user', JSON.stringify(user)); } catch (e) {}
-            var success = document.getElementById('success');
-            success.textContent = 'Profile picture updated.';
-            success.hidden = false;
-            setTimeout(function() { success.hidden = true; }, 3000);
-            if (window.opener) window.opener.postMessage({ type: 'auth', user: user }, window.location.origin);
-          })
-          .catch(function(err) {
-            alert(err.message || 'Upload failed');
-          });
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          var dataUrl = ev.target.result;
+          currentUser.profile_picture = dataUrl;
+          setAvatar(dataUrl);
+          saveUserToStorage(currentUser);
+          var success = document.getElementById('success');
+          success.textContent = 'Profile picture updated.';
+          success.hidden = false;
+          setTimeout(function() { success.hidden = true; }, 3000);
+          if (window.opener) window.opener.postMessage({ type: 'auth', user: currentUser }, window.location.origin);
+        };
+        reader.readAsDataURL(file);
         this.value = '';
+      });
+
+      document.getElementById('avatarRemoveBtn').addEventListener('click', function() {
+        currentUser.profile_picture = '';
+        setAvatar('');
+        saveUserToStorage(currentUser);
+        var success = document.getElementById('success');
+        success.textContent = 'Profile picture removed.';
+        success.hidden = false;
+        setTimeout(function() { success.hidden = true; }, 3000);
       });
 
       document.getElementById('profileForm').addEventListener('submit', function(e) {
@@ -203,30 +254,32 @@
         var successEl = document.getElementById('success');
         errEl.hidden = true;
         successEl.hidden = true;
-        var name = document.getElementById('name').value.trim();
+
+        var name = document.getElementById('nameInput').value.trim();
+        var description = document.getElementById('descriptionInput').value.trim();
         var newPassword = document.getElementById('newPassword').value;
-        var body = { name: name };
-        if (newPassword) body.new_password = newPassword;
-        fetch('/api/auth/profile', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify(body)
-        })
-          .then(function(r) {
-            if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail || 'Save failed'); });
-            return r.json();
-          })
-          .then(function(user) {
-            try { localStorage.setItem('auth_user', JSON.stringify(user)); } catch (e) {}
-            successEl.textContent = 'Profile saved.';
-            successEl.hidden = false;
-            if (window.opener) window.opener.postMessage({ type: 'auth', user: user }, window.location.origin);
-            document.getElementById('newPassword').value = '';
-          })
-          .catch(function(err) {
-            errEl.textContent = err.message || 'Save failed';
-            errEl.hidden = false;
-          });
+
+        if (!name) {
+          errEl.textContent = 'Name cannot be empty.';
+          errEl.hidden = false;
+          return;
+        }
+
+        currentUser.name = name;
+        currentUser.description = description;
+
+        if (newPassword) {
+          currentUser.passwordHash = hashStr(newPassword.slice(0, 72));
+        }
+
+        saveUserToStorage(currentUser);
+
+        successEl.textContent = 'Profile saved.';
+        successEl.hidden = false;
+        setTimeout(function() { successEl.hidden = true; }, 3000);
+        document.getElementById('newPassword').value = '';
+
+        if (window.opener) window.opener.postMessage({ type: 'auth', user: currentUser }, window.location.origin);
       });
 
       document.getElementById('profileLogoutBtn').addEventListener('click', function() {

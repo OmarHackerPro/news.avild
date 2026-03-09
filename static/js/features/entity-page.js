@@ -32,7 +32,7 @@
 
   function entityLink(entity) {
     if (!entity) return '#';
-    return 'entity.html?id=' + encodeURIComponent(entity.id);
+    return '/pages/entity.html?id=' + encodeURIComponent(entity.id);
   }
 
   function render(entity) {
@@ -90,7 +90,7 @@
       document.title = entity.name + ' - CyberNews';
     }
     container.innerHTML =
-      '<a href="search.html" class="entity-back"><i class="fas fa-arrow-left"></i> Back to Search</a>' +
+      '<a href="/pages/search.html" class="entity-back"><i class="fas fa-arrow-left"></i> Back to Search</a>' +
       '<header class="entity-header">' +
         '<h1 class="entity-title">' + escapeHtml(entity.name) + '</h1>' +
         '<span class="entity-type-badge">' + escapeHtml(typeLabel) + '</span>' +

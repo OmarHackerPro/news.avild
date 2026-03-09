@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="google" content="notranslate">
+  <title>My Stack & Digest - CyberNews</title>
+  <link rel="stylesheet" href="/static/css/main/main.css">
+  <link rel="stylesheet" href="/static/css/layout/navbar.css">
+  <link rel="stylesheet" href="/static/css/pages/preferences.css">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  <style>
+    .navbar { display: flex !important; flex-direction: column !important; }
+    .nav-bottom { display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 48px !important; }
+    .nav-links { display: flex !important; visibility: visible !important; }
+  </style>
+  <script>
+    (function() {
+      try {
+        if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('theme-light');
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-bottom">
+      <a href="/" class="nav-brand">
+        <span class="brand-logo-box"><i class="fas fa-shield-alt brand-icon"></i></span>
+        <span class="brand-text"><span class="brand-cyber">News.</span><span class="brand-news">avild</span></span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="/"><i class="fas fa-home nav-link-icon"></i> Home</a></li>
+        <li><a href="search.html"><i class="fas fa-search nav-link-icon"></i> Search</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="layout">
+    <div class="content-area pref-page">
+      <h1><i class="fas fa-layer-group"></i> <span data-i18n-key="pref.title">My Stack & Digest</span></h1>
+
+      <!-- A. Topics -->
+      <section class="pref-section" aria-labelledby="topics-title">
+        <h2 id="topics-title" class="pref-section-title"><i class="fas fa-tags"></i> <span data-i18n-key="pref.topics">Topics</span></h2>
+        <div id="prefTopicsGrid" class="pref-topics-grid"></div>
+        <p class="pref-chip-hint" id="prefTopicsHint" data-i18n-key="pref.topicsHint">Select up to 5 topics. Click to toggle.</p>
+      </section>
+
+      <!-- B. Sources -->
+      <section class="pref-section" aria-labelledby="sources-title">
+        <h2 id="sources-title" class="pref-section-title"><i class="fas fa-rss"></i> <span data-i18n-key="pref.sources">Sources</span></h2>
+        <p class="pref-chip-hint" style="margin-bottom: 0.5rem;" data-i18n-key="pref.sourcesHint">Choose which sources contribute to your feed.</p>
+        <div id="prefSourcesList" class="pref-toggles"></div>
+      </section>
+
+      <!-- C. Content Type -->
+      <section class="pref-section" aria-labelledby="content-type-title">
+        <h2 id="content-type-title" class="pref-section-title"><i class="fas fa-file-alt"></i> <span data-i18n-key="pref.contentType">Content Type</span></h2>
+        <div id="prefContentTypesList" class="pref-checkboxes"></div>
+      </section>
+
+      <!-- D. Signal Level -->
+      <section class="pref-section" aria-labelledby="signal-title">
+        <h2 id="signal-title" class="pref-section-title"><i class="fas fa-sliders-h"></i> <span data-i18n-key="pref.signalLevel">Signal Level</span></h2>
+        <div class="pref-slider-labels">
+          <span data-i18n-key="pref.signalLow">Low Noise</span>
+          <span data-i18n-key="pref.signalHigh">High Signal</span>
+        </div>
+        <div class="pref-slider-wrap">
+          <input type="range" id="prefSignalSlider" class="pref-slider" min="0" max="100" value="50" aria-label="Signal level">
+        </div>
+        <p class="pref-chip-hint" data-i18n-key="pref.signalHint">Trendy vs analytical · Surface-level vs deep · Popular vs niche.</p>
+      </section>
+
+      <!-- Digest Settings -->
+      <section class="pref-section" aria-labelledby="digest-title">
+        <h2 id="digest-title" class="pref-section-title"><i class="fas fa-envelope-open-text"></i> <span data-i18n-key="pref.digestSettings">Digest Settings</span></h2>
+
+        <p class="pref-section-title pref-label" style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;" data-i18n-key="pref.frequency">Frequency</p>
+        <div class="pref-frequency">
+          <button type="button" class="pref-frequency-btn" data-frequency="daily" data-i18n-key="pref.daily">Daily</button>
+          <button type="button" class="pref-frequency-btn active" data-frequency="weekly" data-i18n-key="pref.weekly">Weekly</button>
+          <button type="button" class="pref-frequency-btn" data-frequency="monthly" data-i18n-key="pref.monthly">Monthly</button>
+          <button type="button" class="pref-frequency-btn" data-frequency="off" data-i18n-key="pref.off">Off</button>
+        </div>
+
+        <div id="prefDigestDependent">
+          <p class="pref-section-title pref-label" style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;" data-i18n-key="pref.deliveryMethod">Delivery Method</p>
+          <div class="pref-delivery pref-checkboxes">
+            <label class="pref-checkbox-row"><input type="checkbox" id="prefDeliveryInApp"> <span data-i18n-key="pref.inApp">In-App</span></label>
+            <label class="pref-checkbox-row"><input type="checkbox" id="prefDeliveryEmail"> <span data-i18n-key="pref.email">Email</span></label>
+          </div>
+
+          <p class="pref-section-title pref-label" style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;" data-i18n-key="pref.sendAt">Send at</p>
+          <div class="pref-time-wrap">
+            <label for="prefDigestTime" data-i18n-key="pref.sendAt">Send at</label>
+            <input type="time" id="prefDigestTime" value="08:00">
+          </div>
+
+          <p class="pref-section-title pref-label" style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;" data-i18n-key="pref.digestDepth">Digest Depth</p>
+          <div class="pref-depth">
+            <div class="pref-depth-option" data-depth="quick" role="button" tabindex="0">
+              <span class="depth-name" data-i18n-key="pref.quickBrief">Quick Brief</span>
+              <span class="depth-desc" data-i18n-key="pref.quickBriefDesc">Short headlines and key takeaways only.</span>
+            </div>
+            <div class="pref-depth-option selected" data-depth="standard" role="button" tabindex="0">
+              <span class="depth-name" data-i18n-key="pref.standard">Standard</span>
+              <span class="depth-desc" data-i18n-key="pref.standardDesc">Summaries with context and one-line insights.</span>
+            </div>
+            <div class="pref-depth-option" data-depth="deep" role="button" tabindex="0">
+              <span class="depth-name" data-i18n-key="pref.deepDive">Deep Dive</span>
+              <span class="depth-desc" data-i18n-key="pref.deepDiveDesc">Longer analysis and linked sources.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="pref-actions">
+        <button type="button" id="prefSaveBtn" class="pref-save-btn" data-i18n-key="pref.saveBtn">Save preferences</button>
+        <span id="prefConfirm" class="pref-confirm" aria-live="polite"></span>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/js/data/translations.js"></script>
+  <script src="/static/js/components/nav.js"></script>
+  <script src="/static/js/components/language.js"></script>
+  <script src="/static/js/components/theme.js"></script>
+  <script src="/static/js/data/preferences.js"></script>
+  <script src="/static/js/features/preferences-page.js"></script>
+  <script src="/static/js/components/auth.js"></script>
+</body>
+</html>

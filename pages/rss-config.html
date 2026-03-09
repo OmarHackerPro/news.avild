@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="google" content="notranslate">
+  <title>RSS Feed - CyberNews</title>
+  <link rel="stylesheet" href="/static/css/main/main.css">
+  <link rel="stylesheet" href="/static/css/layout/navbar.css">
+  <link rel="stylesheet" href="/static/css/pages/rss-config.css">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  <style>
+    .navbar { display: flex !important; flex-direction: column !important; }
+    .nav-bottom { display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 48px !important; }
+    .nav-links { display: flex !important; visibility: visible !important; }
+  </style>
+  <script>
+    (function() {
+      try {
+        if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('theme-light');
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-bottom">
+      <a href="/" class="nav-brand">
+        <span class="brand-logo-box"><i class="fas fa-shield-alt brand-icon"></i></span>
+        <span class="brand-text"><span class="brand-cyber">News.</span><span class="brand-news">avild</span></span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="/"><i class="fas fa-home nav-link-icon"></i> Home</a></li>
+        <li><a href="search.html"><i class="fas fa-search nav-link-icon"></i> Search</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="layout">
+    <div class="content-area rss-config-page">
+      <h1 id="rss-page-title"><i class="fas fa-rss"></i> <span data-i18n-key="rss.title">RSS Feed configuration</span></h1>
+
+      <section class="rss-section" aria-labelledby="include-title">
+        <h2 id="include-title" class="rss-section-title"><i class="fas fa-th-list"></i> <span data-i18n-key="rss.includeLabel">What's included</span></h2>
+        <div id="rssInclude" class="rss-include-list">
+          <label><input type="checkbox" name="include" value="myStack" checked> <span data-i18n-key="rss.includeMyStack">My Stack</span></label>
+          <label><input type="checkbox" name="include" value="digest" checked> <span data-i18n-key="rss.includeDigest">Digest</span></label>
+          <label><input type="checkbox" name="include" value="saved" checked> <span data-i18n-key="rss.includeSaved">Saved Entities</span></label>
+        </div>
+      </section>
+
+      <section class="rss-section" aria-labelledby="filters-title">
+        <h2 id="filters-title" class="rss-section-title"><i class="fas fa-filter"></i> <span data-i18n-key="rss.filtersLabel">Filters</span></h2>
+        <div id="rssFilters" class="rss-filters">
+          <div class="rss-filter-group">
+            <label for="rssFilterTags"><span data-i18n-key="rss.tags">Tags</span></label>
+            <select id="rssFilterTags">
+              <option value="">All</option>
+              <option value="cve">CVE</option>
+              <option value="ransomware">Ransomware</option>
+              <option value="apt">APT</option>
+            </select>
+          </div>
+          <div class="rss-filter-group">
+            <label for="rssFilterSources"><span data-i18n-key="rss.sources">Sources</span></label>
+            <select id="rssFilterSources">
+              <option value="">All</option>
+              <option value="news">News</option>
+              <option value="analysis">Analysis</option>
+            </select>
+          </div>
+          <div class="rss-filter-group">
+            <label for="rssFilterFreq"><span data-i18n-key="rss.frequency">Frequency</span></label>
+            <select id="rssFilterFreq">
+              <option value="">Default</option>
+              <option value="realtime">Realtime</option>
+              <option value="hourly">Hourly</option>
+              <option value="daily">Daily</option>
+            </select>
+          </div>
+          <div class="rss-filter-group">
+            <label for="rssFilterLang"><span data-i18n-key="rss.language">Language</span></label>
+            <select id="rssFilterLang">
+              <option value="">All</option>
+              <option value="en">English</option>
+              <option value="es">Español</option>
+              <option value="de">Deutsch</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="rss-section" aria-labelledby="output-title">
+        <h2 id="output-title" class="rss-section-title"><i class="fas fa-link"></i> <span data-i18n-key="rss.feedUrl">Feed URL</span></h2>
+        <div class="rss-output">
+          <p class="rss-output-label" data-i18n-key="rss.feedUrl">Feed URL</p>
+          <div class="rss-url-row">
+            <input type="text" id="rssFeedUrl" readonly aria-label="RSS feed URL">
+            <button type="button" id="rssCopyUrl" class="btn-copy" data-i18n-key="rss.copyUrl">Copy URL</button>
+          </div>
+          <p class="rss-token-note" data-i18n-key="rss.tokenNote">Private feed token. Rotating invalidates the previous link.</p>
+          <div class="rss-regenerate-wrap">
+            <button type="button" id="rssRegenerateToken" class="btn-secondary" data-i18n-key="rss.regenerateToken">Regenerate token</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/static/js/data/translations.js"></script>
+  <script src="/static/js/components/nav.js"></script>
+  <script src="/static/js/components/language.js"></script>
+  <script src="/static/js/components/theme.js"></script>
+  <script src="/static/js/data/rss-config.js"></script>
+  <script src="/static/js/features/rss-config-page.js"></script>
+  <script src="/static/js/components/auth.js"></script>
+</body>
+</html>

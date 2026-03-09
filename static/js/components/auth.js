@@ -1,6 +1,6 @@
 /**
- * Auth: reads JWT from localStorage, calls /api/auth/me,
- * updates the navbar user link (icon → login page, or name → profile page).
+ * Auth: reads user from localStorage, updates the navbar user link.
+ * No backend required — all state is stored client-side.
  */
 (function () {
   'use strict';
@@ -21,15 +21,13 @@
     if (!link) return;
 
     if (user && user.name) {
-      link.href = '/profile';
+      link.href = '/pages/profile.html';
       link.setAttribute('aria-label', 'Account: ' + user.name);
       if (nameEl) { nameEl.textContent = user.name; nameEl.hidden = false; }
 
       var hasPic = typeof user.profile_picture === 'string' && user.profile_picture.trim().length > 0;
       if (hasPic && avatarWrap && avatarImg) {
-        avatarImg.src = user.profile_picture.indexOf('http') === 0
-          ? user.profile_picture
-          : ('/static/' + user.profile_picture);
+        avatarImg.src = user.profile_picture;
         avatarImg.alt   = user.name;
         avatarWrap.hidden = false;
         if (iconEl) iconEl.hidden = true;
@@ -38,7 +36,7 @@
         if (iconEl)     iconEl.hidden     = false;
       }
     } else {
-      link.href = '/static/login.html';
+      link.href = '/pages/login.html';
       link.setAttribute('aria-label', 'Log in or account');
       if (nameEl)     { nameEl.textContent = ''; nameEl.hidden = true; }
       if (avatarWrap) avatarWrap.hidden = true;
@@ -49,24 +47,9 @@
   function fetchMe() {
     var token = getToken();
     if (!token) { setUserState(null); return; }
-    fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
-      .then(function (r) {
-        if (!r.ok) {
-          try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); } catch (e) {}
-          setUserState(null);
-          return null;
-        }
-        return r.json();
-      })
-      .then(function (user) {
-        if (user && user.name) {
-          setUserState(user);
-          try { localStorage.setItem(USER_KEY, JSON.stringify(user)); } catch (e) {}
-        } else {
-          setUserState(null);
-        }
-      })
-      .catch(function () { setUserState(null); });
+    var user = null;
+    try { user = JSON.parse(localStorage.getItem(USER_KEY) || 'null'); } catch (e) {}
+    setUserState(user);
   }
 
   // Listen for postMessage from popup login/signup windows
@@ -74,6 +57,9 @@
     if (e.origin !== window.location.origin) return;
     if (e.data && e.data.type === 'auth' && e.data.user) {
       setUserState(e.data.user);
+    }
+    if (e.data && e.data.type === 'auth_logout') {
+      setUserState(null);
     }
   });
 
