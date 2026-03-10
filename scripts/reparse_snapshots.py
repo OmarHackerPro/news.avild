@@ -4,12 +4,11 @@
 Usage:
     python scripts/reparse_snapshots.py                              # all snapshots
     python scripts/reparse_snapshots.py --source "The Hacker News"   # one source
-    python scripts/reparse_snapshots.py --snapshot-id 42             # one snapshot
+    python scripts/reparse_snapshots.py --snapshot-id <content_hash> # one snapshot
     python scripts/reparse_snapshots.py --dry-run                    # preview only
 
-Articles are upserted with ON CONFLICT DO NOTHING by default (safe — only
-inserts missing articles). Pass --update to overwrite existing articles
-with freshly-normalized data instead.
+Articles are inserted with op_type="create" (DO NOTHING) by default.
+Pass --update to overwrite existing articles with freshly-normalized data.
 """
 import asyncio
 import argparse
@@ -24,13 +23,11 @@ load_dotenv()
 
 import feedparser
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.models.feed_source import FeedSource as FeedSourceModel
-from app.db.models.news import NewsArticle
-from app.db.models.raw_feed_snapshot import RawFeedSnapshot
+from app.db.opensearch import INDEX_SNAPSHOTS, get_os_client
 from app.db.session import AsyncSessionLocal
-from app.ingestion.ingester import upsert_article
+from app.ingestion.ingester import overwrite_article, upsert_article
 from app.ingestion.normalizer import NORMALIZER_REGISTRY
 
 logger = logging.getLogger(__name__)
@@ -44,37 +41,69 @@ async def _load_source_lookup() -> dict[str, dict]:
     return {s.name: s.to_source_dict() for s in sources}
 
 
-async def _upsert_or_update(session, article: dict) -> bool:
-    """INSERT ... ON CONFLICT (slug, published_at) DO UPDATE — overwrites all columns."""
-    index_elements = ["slug", "published_at"]
-    update_cols = {
-        k: v for k, v in article.items()
-        if k not in ("slug", "published_at", "id", "created_at")
-    }
-    stmt = (
-        pg_insert(NewsArticle)
-        .values(**article)
-        .on_conflict_do_update(index_elements=index_elements, set_=update_cols)
+async def _load_snapshots(
+    source: str | None,
+    snapshot_id: str | None,
+) -> list[dict]:
+    """Load snapshot documents from OpenSearch using scroll for large result sets."""
+    client = get_os_client()
+    filters = []
+    if source:
+        filters.append({"term": {"source_name": source}})
+    if snapshot_id:
+        filters.append({"ids": {"values": [snapshot_id]}})
+
+    query = {"bool": {"filter": filters}} if filters else {"match_all": {}}
+
+    results = []
+    resp = await client.search(
+        index=INDEX_SNAPSHOTS,
+        body={
+            "query": query,
+            "sort": [{"fetched_at": {"order": "asc"}}],
+            "size": 500,
+            "_source": True,
+        },
+        params={"scroll": "2m"},
     )
-    result = await session.execute(stmt)
-    return result.rowcount == 1
+    scroll_id = resp.get("_scroll_id")
+    hits = resp["hits"]["hits"]
+
+    while hits:
+        results.extend(hits)
+        if not scroll_id:
+            break
+        resp = await client.scroll(scroll_id=scroll_id, params={"scroll": "2m"})
+        scroll_id = resp.get("_scroll_id")
+        hits = resp["hits"]["hits"]
+
+    if scroll_id:
+        try:
+            await client.clear_scroll(scroll_id=scroll_id)
+        except Exception:
+            pass
+
+    return results
 
 
 async def reparse_snapshot(
-    snapshot: RawFeedSnapshot,
+    snap_hit: dict,
     source_by_name: dict[str, dict],
     *,
     dry_run: bool,
     update: bool,
 ) -> dict:
-    """Re-parse one snapshot. Returns stats dict."""
+    """Re-parse one snapshot hit. Returns stats dict."""
     stats = {"entries": 0, "upserted": 0, "skipped": 0, "errors": 0}
+    src = snap_hit["_source"]
+    snap_id = snap_hit["_id"]
+    source_name = src["source_name"]
 
-    source = source_by_name.get(snapshot.source_name)
+    source = source_by_name.get(source_name)
     if source is None:
         logger.warning(
-            "No source config for '%s' — skipping snapshot %d",
-            snapshot.source_name, snapshot.id,
+            "No source config for '%s' — skipping snapshot %s",
+            source_name, snap_id,
         )
         return stats
 
@@ -82,42 +111,37 @@ async def reparse_snapshot(
     if normalizer_fn is None:
         logger.warning(
             "No normalizer '%s' for source '%s'",
-            source["normalizer"], snapshot.source_name,
+            source["normalizer"], source_name,
         )
         return stats
 
-    feed = feedparser.parse(snapshot.raw_content)
+    feed = feedparser.parse(src["raw_content"])
     entries = feed.get("entries", [])
     stats["entries"] = len(entries)
 
     if dry_run:
         logger.info(
-            "[DRY RUN] Snapshot %d (%s): %d entries would be re-processed",
-            snapshot.id, snapshot.source_name, len(entries),
+            "[DRY RUN] Snapshot %s (%s): %d entries would be re-processed",
+            snap_id[:8], source_name, len(entries),
         )
         return stats
 
-    async with AsyncSessionLocal() as session:
-        async with session.begin():
-            for entry in entries:
-                try:
-                    article = normalizer_fn(entry, source)
-                    if article is None:
-                        stats["errors"] += 1
-                        continue
+    write_fn = overwrite_article if update else upsert_article
+    for entry in entries:
+        try:
+            article = normalizer_fn(entry, source)
+            if article is None:
+                stats["errors"] += 1
+                continue
 
-                    if update:
-                        wrote = await _upsert_or_update(session, article)
-                    else:
-                        wrote = await upsert_article(session, article)
-
-                    if wrote:
-                        stats["upserted"] += 1
-                    else:
-                        stats["skipped"] += 1
-                except Exception:
-                    logger.exception("Error re-parsing entry in snapshot %d", snapshot.id)
-                    stats["errors"] += 1
+            wrote = await write_fn(article)
+            if wrote:
+                stats["upserted"] += 1
+            else:
+                stats["skipped"] += 1
+        except Exception:
+            logger.exception("Error re-parsing entry in snapshot %s", snap_id[:8])
+            stats["errors"] += 1
 
     return stats
 
@@ -132,23 +156,19 @@ async def main(args: argparse.Namespace) -> None:
         logger.error("No feed sources found in DB. Run scripts/seed_sources.py first.")
         return
 
-    query = select(RawFeedSnapshot).order_by(RawFeedSnapshot.fetched_at.asc())
-    if args.source:
-        query = query.where(RawFeedSnapshot.source_name == args.source)
-    if args.snapshot_id:
-        query = query.where(RawFeedSnapshot.id == args.snapshot_id)
-
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(query)
-        snapshots = result.scalars().all()
+    snapshots = await _load_snapshots(
+        source=args.source,
+        snapshot_id=args.snapshot_id,
+    )
 
     logger.info("Found %d snapshot(s) to re-parse.", len(snapshots))
 
     totals = {"entries": 0, "upserted": 0, "skipped": 0, "errors": 0}
     for snap in snapshots:
+        src = snap["_source"]
         logger.info(
-            "Re-parsing snapshot %d (%s, fetched %s)...",
-            snap.id, snap.source_name, snap.fetched_at,
+            "Re-parsing snapshot %.8s (%s, fetched %s)...",
+            snap["_id"], src["source_name"], src.get("fetched_at", "?"),
         )
         stats = await reparse_snapshot(
             snap, source_by_name, dry_run=args.dry_run, update=args.update,
@@ -177,10 +197,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Re-parse stored RSS snapshots")
     parser.add_argument("--source", type=str, help="Filter by source name")
-    parser.add_argument("--snapshot-id", type=int, help="Re-parse a single snapshot")
+    parser.add_argument("--snapshot-id", type=str, help="Re-parse a single snapshot by content_hash")
     parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
     parser.add_argument(
         "--update", action="store_true",
-        help="Overwrite existing articles (ON CONFLICT DO UPDATE instead of DO NOTHING)",
+        help="Overwrite existing articles (unconditional upsert instead of create-only)",
     )
     asyncio.run(main(parser.parse_args()))

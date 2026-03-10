@@ -29,5 +29,10 @@ class Settings:
     # Base URL for password-reset email links
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:8000")
 
+    # OpenSearch
+    OPENSEARCH_URL: str = os.getenv("OPENSEARCH_URL", "")
+    OPENSEARCH_USER: str = os.getenv("OPENSEARCH_USER", "")
+    OPENSEARCH_PASSWORD: str = os.getenv("OPENSEARCH_PASSWORD", "")
+
 
 settings = Settings()

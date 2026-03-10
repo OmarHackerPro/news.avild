@@ -1,12 +1,11 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, Query
+from opensearchpy.exceptions import NotFoundError
 
-from app.db.models.news import NewsArticle as NewsArticleDB
-from app.db.session import get_db
+from app.db.opensearch import INDEX_NEWS, get_os_client
 from app.models.news import NewsItem, NewsListResponse
 
 router = APIRouter(prefix="/news", tags=["news"])
@@ -29,22 +28,24 @@ def _time_ago(dt: datetime) -> str:
     return f"{days}d"
 
 
-def _row_to_item(row: NewsArticleDB) -> NewsItem:
+def _hit_to_item(hit: dict) -> NewsItem:
+    src = hit["_source"]
+    published_at = datetime.fromisoformat(src["published_at"])
     return NewsItem(
-        id=str(row.id),
-        tags=row.tags or [],
-        title=row.title,
-        desc=row.desc,
-        keywords=row.keywords or [],
-        time=_time_ago(row.published_at),
-        severity=row.severity,
-        type=row.type,
-        category=row.category,
-        author=row.author,
-        source_name=row.source_name,
-        image_url=row.image_url,
-        cvss_score=row.cvss_score,
-        cve_ids=row.cve_ids or [],
+        id=hit["_id"],
+        tags=src.get("tags") or [],
+        title=src["title"],
+        desc=src.get("desc"),
+        keywords=src.get("keywords") or [],
+        time=_time_ago(published_at),
+        severity=src.get("severity"),
+        type=src["type"],
+        category=src["category"],
+        author=src.get("author"),
+        source_name=src.get("source_name"),
+        image_url=src.get("image_url"),
+        cvss_score=Decimal(str(src["cvss_score"])) if src.get("cvss_score") is not None else None,
+        cve_ids=src.get("cve_ids") or [],
     )
 
 
@@ -55,29 +56,37 @@ async def get_news(
     severity: Optional[str] = Query(None, description="Filter by severity"),
     limit: int = Query(12, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
 ):
-    q = select(NewsArticleDB).order_by(NewsArticleDB.published_at.desc())
-
+    filters = []
     if category:
-        q = q.where(NewsArticleDB.category == category)
+        filters.append({"term": {"category": category}})
     if type:
-        q = q.where(NewsArticleDB.type == type)
+        filters.append({"term": {"type": type}})
     if severity:
-        q = q.where(NewsArticleDB.severity == severity)
+        filters.append({"term": {"severity": severity}})
 
-    total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()
-    rows = (await db.execute(q.offset(offset).limit(limit))).scalars().all()
+    query_body = {
+        "query": {"bool": {"filter": filters}} if filters else {"match_all": {}},
+        "sort": [{"published_at": {"order": "desc"}}],
+        "from": offset,
+        "size": limit,
+        "_source": [
+            "slug", "title", "desc", "tags", "keywords", "published_at",
+            "severity", "type", "category", "author", "source_name",
+            "image_url", "cvss_score", "cve_ids",
+        ],
+    }
 
-    return NewsListResponse(items=[_row_to_item(r) for r in rows], total=total)
+    resp = await get_os_client().search(index=INDEX_NEWS, body=query_body)
+    total = resp["hits"]["total"]["value"]
+    items = [_hit_to_item(h) for h in resp["hits"]["hits"]]
+    return NewsListResponse(items=items, total=total)
 
 
-@router.get("/{news_id}", response_model=NewsItem)
-async def get_news_item(news_id: int, db: AsyncSession = Depends(get_db)):
-    row = (
-        await db.execute(select(NewsArticleDB).where(NewsArticleDB.id == news_id))
-    ).scalar_one_or_none()
-    if row is None:
-        from fastapi import HTTPException
+@router.get("/{slug}", response_model=NewsItem)
+async def get_news_item(slug: str):
+    try:
+        resp = await get_os_client().get(index=INDEX_NEWS, id=slug)
+        return _hit_to_item(resp)
+    except NotFoundError:
         raise HTTPException(status_code=404, detail="News item not found")
-    return _row_to_item(row)

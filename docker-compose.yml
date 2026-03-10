@@ -24,6 +24,9 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-noreply@kiber.info}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
+      OPENSEARCH_URL: ${OPENSEARCH_URL:-}
+      OPENSEARCH_USER: ${OPENSEARCH_USER:-}
+      OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
     volumes:
       - avatar_uploads:/app/static/uploads/avatars
     depends_on:
@@ -36,6 +39,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
       POSTGRES_DB: avild_news
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
