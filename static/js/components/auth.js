@@ -1,15 +1,18 @@
 /**
- * Auth: reads user from localStorage, updates the navbar user link.
- * No backend required — all state is stored client-side.
+ * Auth: navbar user widget.
+ * Fetches current user from API, updates nav link/avatar/name.
  */
 (function () {
   'use strict';
 
-  var TOKEN_KEY = 'auth_token';
-  var USER_KEY  = 'auth_user';
-
   function getToken() {
-    try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
+    try { return localStorage.getItem('auth_token') || ''; } catch (e) { return ''; }
+  }
+
+  function avatarUrl(pic) {
+    if (!pic) return '';
+    if (pic.startsWith('http') || pic.startsWith('/')) return pic;
+    return '/static/' + pic;
   }
 
   function setUserState(user) {
@@ -21,13 +24,13 @@
     if (!link) return;
 
     if (user && user.name) {
-      link.href = '/pages/profile.html';
+      link.href = '/profile';
       link.setAttribute('aria-label', 'Account: ' + user.name);
       if (nameEl) { nameEl.textContent = user.name; nameEl.hidden = false; }
 
       var hasPic = typeof user.profile_picture === 'string' && user.profile_picture.trim().length > 0;
       if (hasPic && avatarWrap && avatarImg) {
-        avatarImg.src = user.profile_picture;
+        avatarImg.src = avatarUrl(user.profile_picture);
         avatarImg.alt   = user.name;
         avatarWrap.hidden = false;
         if (iconEl) iconEl.hidden = true;
@@ -36,7 +39,7 @@
         if (iconEl)     iconEl.hidden     = false;
       }
     } else {
-      link.href = '/pages/login.html';
+      link.href = '/login';
       link.setAttribute('aria-label', 'Log in or account');
       if (nameEl)     { nameEl.textContent = ''; nameEl.hidden = true; }
       if (avatarWrap) avatarWrap.hidden = true;
@@ -47,9 +50,33 @@
   function fetchMe() {
     var token = getToken();
     if (!token) { setUserState(null); return; }
-    var user = null;
-    try { user = JSON.parse(localStorage.getItem(USER_KEY) || 'null'); } catch (e) {}
-    setUserState(user);
+
+    // Show cached user immediately
+    var cached = null;
+    try { cached = JSON.parse(localStorage.getItem('auth_user') || 'null'); } catch (e) {}
+    if (cached) setUserState(cached);
+
+    // Then verify with API
+    fetch('/api/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) {
+      if (res.status === 401) {
+        try { localStorage.removeItem('auth_token'); localStorage.removeItem('auth_user'); } catch(e) {}
+        setUserState(null);
+        return null;
+      }
+      return res.json();
+    })
+    .then(function(user) {
+      if (user) {
+        try { localStorage.setItem('auth_user', JSON.stringify(user)); } catch(e) {}
+        setUserState(user);
+      }
+    })
+    .catch(function() {
+      // Network error — keep cached state
+    });
   }
 
   // Listen for postMessage from popup login/signup windows

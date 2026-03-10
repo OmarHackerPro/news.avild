@@ -4,9 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="google" content="notranslate">
-  <title>news.avild.com — Security News & Threat Intel</title>
+  <meta name="description" content="Security entity and threat intelligence detail on CyberNews.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="/entity">
+  <title>Entity - CyberNews</title>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@graph":[
+    {"@type":"WebPage","@id":"https://news.avild.com/entity","name":"Entity - CyberNews","url":"https://news.avild.com/entity","description":"Security entity and threat intelligence detail.","breadcrumb":{"@id":"#breadcrumb"}},
+    {"@type":"BreadcrumbList","@id":"#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://news.avild.com/"},{"@type":"ListItem","position":2,"name":"Search","item":"https://news.avild.com/search"},{"@type":"ListItem","position":3,"name":"Entity","item":"https://news.avild.com/entity"}]},
+    {"@type":"Article","name":"Security Entity","description":"Threat intelligence and security entity details.","publisher":{"@type":"Organization","name":"news.avild.com"}}
+  ]}
+  </script>
   <link rel="stylesheet" href="/static/css/main/main.css">
   <link rel="stylesheet" href="/static/css/layout/navbar.css">
+  <link rel="stylesheet" href="/static/css/pages/entity.css">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
   <style>
@@ -30,14 +41,6 @@
       <div class="lang-select-wrapper">
         <select id="langSelect" class="lang-select-native" aria-label="Language">
           <option value="en" selected>English</option>
-          <option value="es">Español</option>
-          <option value="fr">Français</option>
-          <option value="de">Deutsch</option>
-          <option value="ja">日本語</option>
-          <option value="zh">中文</option>
-          <option value="ru">Русский</option>
-          <option value="ar">العربية</option>
-          <option value="az">Azərbaycan</option>
         </select>
         <div class="lang-select-trigger" id="langTrigger" aria-expanded="false" aria-haspopup="listbox">
           <i class="fas fa-globe lang-icon"></i>
@@ -46,14 +49,6 @@
         </div>
         <div class="lang-dropdown" id="langDropdown" role="listbox">
           <div class="lang-option selected" data-lang="en" data-short="EN" role="option">English</div>
-          <div class="lang-option" data-lang="es" data-short="ES" role="option">Español</div>
-          <div class="lang-option" data-lang="fr" data-short="FR" role="option">Français</div>
-          <div class="lang-option" data-lang="de" data-short="DE" role="option">Deutsch</div>
-          <div class="lang-option" data-lang="ja" data-short="JA" role="option">日本語</div>
-          <div class="lang-option" data-lang="zh" data-short="ZH" role="option">中文</div>
-          <div class="lang-option" data-lang="ru" data-short="RU" role="option">Русский</div>
-          <div class="lang-option" data-lang="ar" data-short="AR" role="option">العربية</div>
-          <div class="lang-option" data-lang="az" data-short="AZ" role="option">Azərbaycan</div>
         </div>
       </div>
       <div class="nav-actions">
@@ -89,7 +84,7 @@
     <div class="nav-bottom">
       <a href="/" class="nav-brand">
         <span class="brand-logo-box"><i class="fas fa-shield-alt brand-icon"></i></span>
-        <span class="brand-text"><span class="brand-avild">avild</span><span class="brand-news">.news</span></span>
+        <span class="brand-text"><span class="brand-cyber">Cyber</span><span class="brand-news">News</span></span>
       </a>
       <ul class="nav-links">
         <li><a href="/search"><i class="fas fa-search nav-link-icon"></i> <span data-i18n-key="nav.search">Search</span></a></li>
@@ -103,42 +98,81 @@
         <li class="nav-more-wrap">
           <button type="button" class="nav-more-btn" id="moreTrigger" aria-expanded="false" aria-haspopup="true"><span class="nav-more-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg></span> <span data-i18n-key="nav.more">More</span> <span class="nav-chevron" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span></button>
           <div class="more-dropdown-card" id="moreDropdown" role="menu">
-            <a href="/category?category=deep-dives" class="more-card-option" role="menuitem"><i class="fas fa-book-open"></i> <span data-i18n-key="more.deepDives">Deep Dives</span></a>
-            <a href="/category?category=beginner" class="more-card-option" role="menuitem"><i class="fas fa-graduation-cap"></i> <span data-i18n-key="more.beginner">Beginner</span></a>
-            <a href="/category?category=research" class="more-card-option" role="menuitem"><i class="fas fa-microscope"></i> <span data-i18n-key="more.research">Research</span></a>
-            <a href="/category?category=dark-web" class="more-card-option" role="menuitem"><i class="fas fa-eye-slash"></i> <span data-i18n-key="more.darkWeb">Dark Web</span></a>
+            <button type="button" class="more-card-option" data-category="deep-dives" role="menuitem"><i class="fas fa-book-open"></i> <span data-i18n-key="more.deepDives">Deep Dives</span></button>
+            <button type="button" class="more-card-option" data-category="beginner" role="menuitem"><i class="fas fa-graduation-cap"></i> <span data-i18n-key="more.beginner">Beginner</span></button>
+            <button type="button" class="more-card-option" data-category="research" role="menuitem"><i class="fas fa-microscope"></i> <span data-i18n-key="more.research">Research</span></button>
+            <button type="button" class="more-card-option" data-category="dark-web" role="menuitem"><i class="fas fa-eye-slash"></i> <span data-i18n-key="more.darkWeb">Dark Web</span></button>
           </div>
         </li>
       </ul>
       <div class="search-box nav-bottom-search">
         <i class="fas fa-search search-icon"></i>
-        <input type="text" id="navSearchInput" placeholder="Search news, IOCs, actors" autocomplete="off">
+        <input type="text" placeholder="Search news, IOCs, actors" autocomplete="off">
         <span class="search-help-wrap" id="searchHelpWrap" aria-describedby="search-help-tooltip-popup">
           <i class="fas fa-question-circle search-help" aria-hidden="true"></i>
           <span class="search-help-tooltip search-help-tooltip-inline" id="search-help-tooltip" role="tooltip" aria-hidden="true">
             <span class="search-help-tooltip-title">Search help</span>
-            <span class="search-help-tooltip-line">Breaking news, threat intel, malware</span>
-            <span class="search-help-tooltip-line">IOCs, threat actors, APT reports</span>
+            <span class="search-help-tooltip-line">Go to Search page for entities</span>
           </span>
         </span>
       </div>
     </div>
   </nav>
-  <script src="/static/js/core/loader.js"></script>
-  <script src="/static/js/components/auth.js"></script>
+
+  <main class="layout">
+    <div class="content-area entity-page">
+      <div id="entityPageContent" hidden></div>
+      <div id="entityNotFound" class="entity-not-found" hidden></div>
+    </div>
+  </main>
+
+  <script src="/static/js/data/translations.js"></script>
+  <script src="/static/js/components/nav.js"></script>
+  <script src="/static/js/components/language.js"></script>
+  <script src="/static/js/components/theme.js"></script>
+  <script src="/static/js/data/mock-entities.js"></script>
+  <script src="/static/js/features/entity-page.js"></script>
+  <div class="share-modal" id="shareModal" aria-hidden="true" role="dialog" aria-labelledby="shareModalTitle" aria-modal="true">
+    <div class="share-modal__backdrop" data-share-close="true"></div>
+    <div class="share-modal__dialog">
+      <button type="button" class="share-modal__close" aria-label="Close" data-share-close="true"><i class="fas fa-times"></i></button>
+      <h2 id="shareModalTitle" class="share-modal__title" data-i18n-key="share.title">Share Insight</h2>
+      <div class="share-modal__body">
+        <p class="share-modal__label" data-i18n-key="share.access">Access</p>
+        <div class="share-modal__access" role="radiogroup" aria-label="Access level">
+          <label class="share-access-option"><input type="radio" name="shareAccess" value="private" checked> <span class="access-badge private"><i class="fas fa-lock"></i> <span data-i18n-key="share.private">Private</span></span></label>
+          <label class="share-access-option"><input type="radio" name="shareAccess" value="link"> <span class="access-badge link"><i class="fas fa-link"></i> <span data-i18n-key="share.anyoneWithLink">Anyone with link</span></span></label>
+          <label class="share-access-option"><input type="radio" name="shareAccess" value="public"> <span class="access-badge public"><i class="fas fa-globe"></i> <span data-i18n-key="share.public">Public</span></span></label>
+        </div>
+        <div class="share-modal__actions">
+          <button type="button" id="shareGenerateBtn" class="share-modal__btn share-modal__btn--primary" data-i18n-key="share.generateLink">Generate Link</button>
+        </div>
+        <div class="share-modal__generated" id="shareGenerated" hidden>
+          <p class="share-modal__label" data-i18n-key="share.shareableLink">Shareable link</p>
+          <div class="share-modal__link-row">
+            <input type="text" id="shareLinkInput" class="share-modal__input" readonly>
+            <button type="button" id="shareCopyBtn" class="share-modal__btn share-modal__btn--secondary" data-i18n-key="share.copy">Copy</button>
+            <button type="button" id="shareRevokeBtn" class="share-modal__btn share-modal__btn--danger" data-i18n-key="share.revoke">Revoke</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="/static/js/features/share-modal.js"></script>
   <script>
     (function() {
-      document.addEventListener('DOMContentLoaded', function() {
-        var input = document.getElementById('navSearchInput');
-        if (input) input.addEventListener('keydown', function(e) {
+      var navInput = document.querySelector('.nav-bottom-search input');
+      if (navInput) {
+        navInput.addEventListener('keydown', function(e) {
           if (e.key === 'Enter') {
             e.preventDefault();
-            var q = input.value.trim();
-            window.location.href = q ? '/search?q=' + encodeURIComponent(q) : '/search';
+            var val = navInput.value.trim();
+            window.location.href = val ? '/search?q=' + encodeURIComponent(val) : '/search';
           }
         });
-      });
+      }
     })();
   </script>
+  <script src="/static/js/components/auth.js"></script>
 </body>
 </html>
