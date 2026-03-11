@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import logging
 from datetime import datetime, timezone
@@ -12,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.feed_source import FeedSource as FeedSourceModel
 from app.db.opensearch import INDEX_NEWS, INDEX_SNAPSHOTS, get_os_client
 from app.db.session import AsyncSessionLocal
+from app.ingestion.entity_extractor import extract_entities
+from app.ingestion.entity_store import store_article_entities
 from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle
 from app.ingestion.sources import FeedSource
 
@@ -22,28 +25,42 @@ logger = logging.getLogger(__name__)
 # Feed fetching
 # ---------------------------------------------------------------------------
 
-async def fetch_feed_content(url: str, client: httpx.AsyncClient) -> Optional[str]:
-    """Fetch RSS feed via httpx and return the response body as a string.
+FETCH_RETRIES = 3
+FETCH_BACKOFF_BASE = 2  # seconds: 2, 4, 8
 
-    Returns None on any network or HTTP error so callers can skip the source.
-    Feedparser receives a pre-fetched string instead of a URL so the HTTP
-    layer stays fully async (feedparser's built-in fetch is synchronous urllib).
+
+async def fetch_feed_content(url: str, client: httpx.AsyncClient) -> Optional[str]:
+    """Fetch RSS feed via httpx with retry + exponential backoff.
+
+    Returns None on persistent failure so callers can skip the source.
+    Retries on timeouts, 5xx errors, and connection errors.
+    Does NOT retry on 4xx (client errors are permanent).
     """
-    try:
-        response = await client.get(
-            url,
-            timeout=30.0,
-            follow_redirects=True,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; RSSBot/1.0)"},
-        )
-        response.raise_for_status()
-        return response.text
-    except httpx.TimeoutException:
-        logger.error("Timeout fetching feed: %s", url)
-    except httpx.HTTPStatusError as e:
-        logger.error("HTTP %s fetching feed %s", e.response.status_code, url)
-    except httpx.RequestError as e:
-        logger.error("Request error fetching %s: %s", url, e)
+    for attempt in range(1, FETCH_RETRIES + 1):
+        try:
+            response = await client.get(
+                url,
+                timeout=30.0,
+                follow_redirects=True,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; RSSBot/1.0)"},
+            )
+            response.raise_for_status()
+            return response.text
+        except httpx.TimeoutException:
+            logger.warning("Timeout fetching %s (attempt %d/%d)", url, attempt, FETCH_RETRIES)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code < 500:
+                logger.error("HTTP %s fetching %s — not retrying", e.response.status_code, url)
+                return None
+            logger.warning("HTTP %s fetching %s (attempt %d/%d)", e.response.status_code, url, attempt, FETCH_RETRIES)
+        except httpx.RequestError as e:
+            logger.warning("Request error fetching %s: %s (attempt %d/%d)", url, e, attempt, FETCH_RETRIES)
+
+        if attempt < FETCH_RETRIES:
+            delay = FETCH_BACKOFF_BASE ** attempt
+            await asyncio.sleep(delay)
+
+    logger.error("Failed to fetch %s after %d attempts", url, FETCH_RETRIES)
     return None
 
 
@@ -250,6 +267,19 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient) -> dict:
             inserted = await upsert_article(article)
             if inserted:
                 stats["inserted"] += 1
+                try:
+                    entities = extract_entities(article)
+                    if entities and AsyncSessionLocal is not None:
+                        async with AsyncSessionLocal() as session:
+                            async with session.begin():
+                                await store_article_entities(
+                                    article["slug"], entities, session,
+                                )
+                except Exception:
+                    logger.exception(
+                        "[%s] Entity extraction failed for '%s'",
+                        name, article.get("slug"),
+                    )
             else:
                 stats["skipped"] += 1
 
@@ -267,13 +297,39 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient) -> dict:
 # Top-level runner
 # ---------------------------------------------------------------------------
 
+CONCURRENCY = 20  # max feeds fetched in parallel per batch
+
+
+async def _ingest_one(src, client: httpx.AsyncClient) -> None:
+    """Ingest a single source and update its operational state."""
+    source_dict = src.to_source_dict()
+    try:
+        stats = await ingest_source(source_dict, client)
+        logger.info(
+            "[%s] Done - fetched=%d inserted=%d skipped=%d errors=%d",
+            src.name,
+            stats["fetched"], stats["inserted"],
+            stats["skipped"], stats["errors"],
+        )
+        async with AsyncSessionLocal() as session:
+            async with session.begin():
+                await mark_source_success(session, src.id)
+    except Exception:
+        logger.exception("Fatal error ingesting '%s'", src.name)
+        try:
+            async with AsyncSessionLocal() as session:
+                async with session.begin():
+                    await mark_source_failure(session, src.id)
+        except Exception:
+            logger.exception("Failed to record failure for '%s'", src.name)
+
+
 async def ingest_all_feeds() -> None:
     """Run ingestion for every active source from the feed_sources DB table.
 
+    Processes feeds concurrently in batches of CONCURRENCY (default 20).
     A single httpx.AsyncClient is shared across all sources for connection reuse.
     Source-level exceptions are caught so one broken source never blocks others.
-    Operational state (last_fetched_at, consecutive_failures) is updated after
-    each source.
     """
     if AsyncSessionLocal is None:
         logger.error("Database not configured (DATABASE_URL missing).")
@@ -286,28 +342,10 @@ async def ingest_all_feeds() -> None:
         logger.warning("No active feed sources found in DB. Run scripts/seed_sources.py first.")
         return
 
-    logger.info("Found %d active feed source(s).", len(sources))
+    logger.info("Found %d active feed source(s). Processing in batches of %d.", len(sources), CONCURRENCY)
 
     async with httpx.AsyncClient() as client:
-        for src in sources:
-            source_dict = src.to_source_dict()
-            logger.info("=== Ingesting: %s ===", src.name)
-            try:
-                stats = await ingest_source(source_dict, client)
-                logger.info(
-                    "[%s] Done - fetched=%d inserted=%d skipped=%d errors=%d",
-                    src.name,
-                    stats["fetched"], stats["inserted"],
-                    stats["skipped"], stats["errors"],
-                )
-                async with AsyncSessionLocal() as session:
-                    async with session.begin():
-                        await mark_source_success(session, src.id)
-            except Exception:
-                logger.exception("Fatal error ingesting '%s'", src.name)
-                try:
-                    async with AsyncSessionLocal() as session:
-                        async with session.begin():
-                            await mark_source_failure(session, src.id)
-                except Exception:
-                    logger.exception("Failed to record failure for '%s'", src.name)
+        for i in range(0, len(sources), CONCURRENCY):
+            batch = sources[i : i + CONCURRENCY]
+            logger.info("=== Batch %d/%d (%d sources) ===", i // CONCURRENCY + 1, -(-len(sources) // CONCURRENCY), len(batch))
+            await asyncio.gather(*[_ingest_one(src, client) for src in batch])
