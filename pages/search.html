@@ -40,6 +40,10 @@
       <div class="lang-select-wrapper">
         <select id="langSelect" class="lang-select-native" aria-label="Language">
           <option value="en" selected>English</option>
+          <option value="az">Azərbaycan</option>
+          <option value="ru">Русский</option>
+          <option value="es">Español</option>
+          <option value="tr">Türkçe</option>
         </select>
         <div class="lang-select-trigger" id="langTrigger" aria-expanded="false" aria-haspopup="listbox">
           <i class="fas fa-globe lang-icon"></i>
@@ -48,6 +52,10 @@
         </div>
         <div class="lang-dropdown" id="langDropdown" role="listbox">
           <div class="lang-option selected" data-lang="en" data-short="EN" role="option">English</div>
+          <div class="lang-option" data-lang="az" data-short="AZ" role="option">Azərbaycan</div>
+          <div class="lang-option" data-lang="ru" data-short="RU" role="option">Русский</div>
+          <div class="lang-option" data-lang="es" data-short="ES" role="option">Español</div>
+          <div class="lang-option" data-lang="tr" data-short="TR" role="option">Türkçe</div>
         </div>
       </div>
       <div class="nav-actions">
@@ -83,7 +91,7 @@
     <div class="nav-bottom">
       <a href="/" class="nav-brand">
         <span class="brand-logo-box"><i class="fas fa-shield-alt brand-icon"></i></span>
-        <span class="brand-text"><span class="brand-cyber">Cyber</span><span class="brand-news">News</span></span>
+        <span class="brand-text"><span class="brand-cyber">News.</span><span class="brand-news">avild</span></span>
       </a>
       <ul class="nav-links">
         <li><a href="search.html" class="active"><i class="fas fa-search nav-link-icon"></i> <span data-i18n-key="nav.search">Search</span></a></li>
@@ -110,9 +118,9 @@
         <span class="search-help-wrap" id="searchHelpWrap" aria-describedby="search-help-tooltip-popup">
           <i class="fas fa-question-circle search-help" aria-hidden="true"></i>
           <span class="search-help-tooltip search-help-tooltip-inline" id="search-help-tooltip" role="tooltip" aria-hidden="true">
-            <span class="search-help-tooltip-title">Search help</span>
-            <span class="search-help-tooltip-line">Threat actors, CVEs, malware, IOCs</span>
-            <span class="search-help-tooltip-line">Go to Search page for full results</span>
+            <span class="search-help-tooltip-title" data-i18n-key="search.helpTitle">Search help</span>
+            <span class="search-help-tooltip-line" data-i18n-key="search.helpLine1">Threat actors, CVEs, malware, IOCs</span>
+            <span class="search-help-tooltip-line" data-i18n-key="search.helpLine2">Go to Search page for full results</span>
           </span>
         </span>
       </div>
@@ -124,15 +132,15 @@
       <div class="search-hero">
         <form id="searchForm" class="search-form" role="search" aria-label="Search entities">
           <i class="fas fa-search search-input-icon" aria-hidden="true"></i>
-          <input type="search" id="searchInput" name="q" placeholder="Search threat actors, CVEs, malware, IOCs…" autocomplete="off" autofocus>
+          <input type="search" id="searchInput" name="q" placeholder="Search threat actors, CVEs, malware, IOCs…" data-i18n-placeholder="search.inputPlaceholder" autocomplete="off" autofocus>
         </form>
-        <p class="search-hint">Search by name or description. Results link to entity pages.</p>
+        <p class="search-hint" data-i18n-key="search.hint">Search by name or description. Results link to entity pages.</p>
       </div>
       <div id="searchResultsContainer" class="search-results">
         <div id="searchState" class="search-state empty" aria-live="polite">
           <div class="state-icon"><i class="fas fa-search"></i></div>
-          <div class="state-title">Enter a search term</div>
-          <div class="state-message">Search for threat actors, CVEs, malware, or other entities.</div>
+          <div class="state-title" data-i18n-key="search.emptyTitle">Enter a search term</div>
+          <div class="state-message" data-i18n-key="search.emptyMsg">Search for threat actors, CVEs, malware, or other entities.</div>
         </div>
         <p id="searchResultsHeading" class="search-results-heading" hidden></p>
         <div id="searchResultsList" class="search-result-list"></div>

@@ -1,6 +1,10 @@
 (function () {
   'use strict';
 
+  function t(key) {
+    return window.CyberNews && window.CyberNews.t ? window.CyberNews.t(key) : key;
+  }
+
   window.selectedTypes = [];
 
   function setupFilterDropdown(triggerId, dropdownId, optionClass, labelSelector, useGreenSelected, allowMultiSelect) {
@@ -42,11 +46,11 @@
             if (window.selectedTypes.indexOf(value) === -1) window.selectedTypes.push(value);
           }
           if (labelEl) {
-            if (window.selectedTypes.length === 0) labelEl.textContent = 'News';
+            if (window.selectedTypes.length === 0) labelEl.textContent = t('filters.type.label');
             else if (window.selectedTypes.length === 1) {
               const selectedOption = dropdown.querySelector('.filter-dropdown-option.selected');
-              labelEl.textContent = selectedOption ? selectedOption.textContent.trim() : 'News';
-            } else labelEl.textContent = window.selectedTypes.length + ' selected';
+              labelEl.textContent = selectedOption ? selectedOption.textContent.trim() : t('filters.type.label');
+            } else labelEl.textContent = t('filter.selected').replace('{n}', window.selectedTypes.length);
           }
           updateFilterCount();
         } else {
@@ -86,7 +90,7 @@
     window.selectedTypes = [];
     document.querySelectorAll('#typeDropdown .filter-dropdown-option').forEach(function (opt) { opt.classList.remove('selected'); });
     const typeLabel = document.querySelector('#typeTrigger .filter-btn-label');
-    if (typeLabel) typeLabel.textContent = 'News';
+    if (typeLabel) typeLabel.textContent = t('filters.type.label');
     const defaultOption = document.querySelector('#typeDropdown .filter-dropdown-option[data-value="news"]');
     if (defaultOption) defaultOption.classList.add('selected');
     const typeDropdown = document.getElementById('typeDropdown');
