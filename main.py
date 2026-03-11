@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import auth, news
+from app.api.routes import auth, entities, news
 from app.core.config import settings
 from app.db.opensearch import close_os_client, ensure_indexes
 from app.db.session import engine
@@ -31,3 +31,4 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(news.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
+app.include_router(entities.router, prefix="/api")

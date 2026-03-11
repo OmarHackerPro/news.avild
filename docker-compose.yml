@@ -32,6 +32,26 @@ services:
     depends_on:
       - db
 
+  ingestion:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${DB_PASSWORD:-password}@db:5432/avild_news
+      OPENSEARCH_URL: ${OPENSEARCH_URL:-}
+      OPENSEARCH_USER: ${OPENSEARCH_USER:-}
+      OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
+    depends_on:
+      - db
+    command: >
+      sh -c 'while true; do
+        echo "=== Starting feed ingestion: $$(date -Iseconds) ===";
+        python scripts/ingest_feeds.py;
+        echo "=== Sleeping 1 hour ===";
+        sleep 3600;
+      done'
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped
