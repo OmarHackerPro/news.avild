@@ -1,99 +1,32 @@
-import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import secrets
 
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Depends,
-    File,
-    HTTPException,
-    UploadFile,
-    status,
-)
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.deps import get_current_user
 from app.core.email import send_password_reset_email
-from app.core.security import (
-    create_access_token,
-    decode_access_token,
-    hash_password,
-    verify_password,
-)
+from app.core.security import create_access_token, hash_password, verify_password
 from app.db.models.user import User
 from app.db.session import get_db
+from app.schemas.auth import (
+    AuthResponse,
+    ForgotPasswordRequest,
+    LoginRequest,
+    ProfileUpdateRequest,
+    ResetPasswordRequest,
+    SignupRequest,
+    UserResponse,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-bearer = HTTPBearer(auto_error=False)
 
 UPLOAD_DIR = Path("static/uploads/avatars")
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 MAX_AVATAR_BYTES = 2 * 1024 * 1024  # 2 MB
-
-
-# -- Schemas --
-
-
-class SignupRequest(BaseModel):
-    email: EmailStr
-    password: str
-    name: str
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
-
-
-class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str
-
-
-class ProfileUpdateRequest(BaseModel):
-    name: str | None = None
-    new_password: str | None = None
-
-
-class UserResponse(BaseModel):
-    id: int
-    email: str
-    name: str
-    profile_picture: str | None
-
-
-class AuthResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user: UserResponse
-
-
-# -- Dependencies --
-
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    if not credentials:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
-    user_id = decode_access_token(credentials.credentials)
-    if not user_id:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token")
-    user = (
-        await db.execute(select(User).where(User.id == int(user_id)))
-    ).scalar_one_or_none()
-    if not user:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
-    return user
 
 
 def _user_response(user: User) -> UserResponse:
@@ -103,9 +36,6 @@ def _user_response(user: User) -> UserResponse:
         name=user.name,
         profile_picture=user.profile_picture,
     )
-
-
-# -- Endpoints --
 
 
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
@@ -201,7 +131,6 @@ async def forgot_password(
         await db.execute(select(User).where(User.email == body.email))
     ).scalar_one_or_none()
     if not user:
-        # Don't reveal whether email exists
         return {"detail": "If that email is registered, a reset link has been sent."}
     token = secrets.token_urlsafe(32)
     user.password_reset_token = token
@@ -225,8 +154,6 @@ async def reset_password(
         and user.password_reset_expires < datetime.now(timezone.utc)
     ):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired reset token")
-    if len(body.new_password) < 8:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Password must be at least 8 characters")
     user.hashed_password = hash_password(body.new_password)
     user.password_reset_token = None
     user.password_reset_expires = None

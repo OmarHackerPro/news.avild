@@ -54,6 +54,7 @@ async def get_news(
     category: Optional[str] = Query(None, description="Filter by category"),
     type: Optional[str] = Query(None, description="Filter by type (news|analysis|report|advisory)"),
     severity: Optional[str] = Query(None, description="Filter by severity"),
+    q: Optional[str] = Query(None, description="Full-text search across title, desc, tags"),
     limit: int = Query(12, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):

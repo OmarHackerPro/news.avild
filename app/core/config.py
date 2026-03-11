@@ -14,6 +14,16 @@ class Settings:
     # Format: postgresql+asyncpg://user:password@host:port/dbname
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
 
+    # CORS — comma-separated allowed origins
+    CORS_ORIGINS: list[str] = [
+        o.strip()
+        for o in os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost,http://localhost:8000,http://127.0.0.1,http://127.0.0.1:8000",
+        ).split(",")
+        if o.strip()
+    ]
+
     # Auth / JWT
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-change-in-production")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
@@ -28,6 +38,9 @@ class Settings:
 
     # Base URL for password-reset email links
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:8000")
+
+    # Admin secret — required for /api/admin/* endpoints
+    ADMIN_SECRET: str = os.getenv("ADMIN_SECRET", "")
 
     # OpenSearch
     OPENSEARCH_URL: str = os.getenv("OPENSEARCH_URL", "")

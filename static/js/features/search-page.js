@@ -12,7 +12,17 @@
 
   if (!form || !input || !resultsContainer) return;
 
-  function showState(type, title, message) {
+  function t(key) {
+    return window.CyberNews && window.CyberNews.t ? window.CyberNews.t(key) : key;
+  }
+
+  var lastState = null;
+  var lastQuery = null;
+
+  function showState(type, titleKey, msgKey, err) {
+    lastState = { type: type, titleKey: titleKey, msgKey: msgKey, err: err };
+    var title = titleKey ? t(titleKey) : '';
+    var message = msgKey ? (err || t(msgKey)) : '';
     stateEl.className = 'search-state ' + type;
     stateEl.innerHTML =
       (type === 'loading'
@@ -28,21 +38,24 @@
   }
 
   function showResults(results, query) {
+    lastState = null;
     stateEl.hidden = true;
     if (!results.length) {
-      showState('empty', 'No results', 'Try a different search term (e.g. APT29, CVE, ransomware).');
+      showState('empty', 'search.noResultsTitle', 'search.noResultsMsg');
       return;
     }
     if (resultsHeading) {
-      resultsHeading.textContent = results.length === 1 ? '1 result' : results.length + ' results';
+      resultsHeading.textContent = results.length === 1
+        ? t('search.results.singular')
+        : t('search.results.plural').replace('{n}', results.length);
       resultsHeading.hidden = false;
     }
     var mock = window.CyberNews && window.CyberNews.mockEntities;
-    var getTypeLabel = mock ? mock.getEntityTypeLabel.bind(mock) : function(t) { return t || 'Entity'; };
+    var getTypeLabel = mock ? mock.getEntityTypeLabel.bind(mock) : function(tp) { return tp || 'Entity'; };
     resultsList.innerHTML = results.map(function(e) {
       var typeLabel = getTypeLabel(e.type);
       var desc = (e.description || '').slice(0, 160);
-      if (e.description && e.description.length > 160) desc += '…';
+      if (e.description && e.description.length > 160) desc += '\u2026';
       var href = 'entity.html?id=' + encodeURIComponent(e.id);
       return (
         '<a href="' + href + '" class="search-result-card">' +
@@ -62,12 +75,13 @@
   }
 
   function runSearch(query) {
+    lastQuery = query;
     var q = (query || '').trim();
     if (!q) {
-      showState('empty', 'Enter a search term', 'Search for threat actors, CVEs, malware, or other entities.');
+      showState('empty', 'search.emptyTitle', 'search.emptyMsg');
       return;
     }
-    showState('loading', 'Searching…', '');
+    showState('loading', null, null);
     var mock = window.CyberNews && window.CyberNews.mockEntities;
     if (!mock || !mock.searchEntities) {
       showResults([]);
@@ -78,7 +92,7 @@
         showResults(data.results || [], data.query);
       })
       .catch(function(err) {
-        showState('error', 'Search failed', err && err.message ? err.message : 'Please try again later.');
+        showState('error', 'search.failedTitle', 'search.failedMsg', err && err.message ? err.message : null);
       });
   }
 
@@ -94,9 +108,23 @@
 
   input.addEventListener('input', function() {
     if (!input.value.trim()) {
-      showState('empty', 'Enter a search term', 'Search for threat actors, CVEs, malware, or other entities.');
+      showState('empty', 'search.emptyTitle', 'search.emptyMsg');
       if (resultsList) resultsList.innerHTML = '';
       if (resultsHeading) resultsHeading.hidden = true;
+    }
+  });
+
+  // Re-render current state when language changes
+  window.addEventListener('cybernews:languageChange', function() {
+    if (lastState) {
+      showState(lastState.type, lastState.titleKey, lastState.msgKey, lastState.err);
+    } else if (resultsHeading && !resultsHeading.hidden && resultsList) {
+      var count = resultsList.querySelectorAll('.search-result-card').length;
+      if (count > 0) {
+        resultsHeading.textContent = count === 1
+          ? t('search.results.singular')
+          : t('search.results.plural').replace('{n}', count);
+      }
     }
   });
 
@@ -107,7 +135,7 @@
       input.value = q;
       runSearch(q);
     } else {
-      showState('empty', 'Enter a search term', 'Search for threat actors, CVEs, malware, or other entities.');
+      showState('empty', 'search.emptyTitle', 'search.emptyMsg');
     }
   }
 
