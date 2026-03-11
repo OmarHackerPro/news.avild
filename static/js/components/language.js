@@ -33,6 +33,21 @@
     langDropdown.classList.add('open');
   }
 
+  // Sync UI to saved language on page load
+  (function() {
+    var saved = null;
+    try { saved = localStorage.getItem('lang'); } catch(e) {}
+    if (saved && saved !== 'en') {
+      var matchOpt = document.querySelector('.lang-option[data-lang="' + saved + '"]');
+      if (matchOpt) {
+        langOptions.forEach(function(o) { o.classList.remove('selected'); });
+        matchOpt.classList.add('selected');
+        if (langCurrent) langCurrent.textContent = matchOpt.getAttribute('data-short') || saved.toUpperCase();
+        if (langSelectNative) langSelectNative.value = saved;
+      }
+    }
+  })();
+
   if (langTrigger && langDropdown) {
     langTrigger.addEventListener('click', function(e) {
       e.stopPropagation();
@@ -63,6 +78,7 @@
         var chosenLang = this.getAttribute('data-lang');
         if (langSelectNative) langSelectNative.value = chosenLang;
         if (window.CyberNews && window.CyberNews.applyLanguage) window.CyberNews.applyLanguage(chosenLang || 'en');
+        try { localStorage.setItem('lang', chosenLang || 'en'); } catch(e) {}
         if (langCurrent) {
           langCurrent.style.transform = 'scale(1.15)';
           setTimeout(function() { langCurrent.style.transform = 'scale(1)'; }, 200);

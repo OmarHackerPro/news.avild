@@ -43,48 +43,48 @@
   <section id="malware" class="section news-section">
     <div class="news-priority-bar">
       <div class="priority-pills">
-        <button class="priority-pill active" data-priority="all">All</button>
-        <button class="priority-pill priority-critical" data-priority="critical"><i class="fas fa-circle"></i> Critical</button>
-        <button class="priority-pill priority-high" data-priority="high"><i class="fas fa-circle"></i> High</button>
-        <button class="priority-pill priority-medium" data-priority="medium"><i class="fas fa-circle"></i> Medium</button>
-        <button class="priority-pill priority-low" data-priority="low"><i class="fas fa-circle"></i> Low</button>
+        <button class="priority-pill active" data-priority="all" data-i18n-key="priority.all">All</button>
+        <button class="priority-pill priority-critical" data-priority="critical"><i class="fas fa-circle"></i> <span data-i18n-key="priority.critical">Critical</span></button>
+        <button class="priority-pill priority-high" data-priority="high"><i class="fas fa-circle"></i> <span data-i18n-key="priority.high">High</span></button>
+        <button class="priority-pill priority-medium" data-priority="medium"><i class="fas fa-circle"></i> <span data-i18n-key="priority.medium">Medium</span></button>
+        <button class="priority-pill priority-low" data-priority="low"><i class="fas fa-circle"></i> <span data-i18n-key="priority.low">Low</span></button>
       </div>
       <div class="filter-main-wrap">
         <button type="button" class="filter-main-btn" id="mainFilterTrigger" aria-expanded="false">
-          <i class="fas fa-sliders-h"></i> Filter
+          <i class="fas fa-sliders-h"></i> <span data-i18n-key="filter.btn">Filter</span>
           <span class="filter-main-count" id="mainFilterCount" hidden>0</span>
         </button>
         <div class="filter-main-dropdown" id="mainFilterDropdown" role="dialog" aria-label="Filter options">
           <div class="fmd-group">
-            <div class="fmd-group-label"><i class="far fa-clock"></i> Time</div>
+            <div class="fmd-group-label"><i class="far fa-clock"></i> <span data-i18n-key="filter.time.group">Time</span></div>
             <div class="fmd-options">
-              <button class="fmd-opt active" data-fmd-filter="time" data-fmd-value="24h">Last 24h</button>
-              <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="1h">Last 1h</button>
-              <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="7d">Last 7 days</button>
-              <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="all">All time</button>
+              <button class="fmd-opt active" data-fmd-filter="time" data-fmd-value="24h" data-i18n-key="filters.time.last24h">Last 24h</button>
+              <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="1h" data-i18n-key="filters.time.lastHour">Last 1h</button>
+              <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="7d" data-i18n-key="filters.time.last7d">Last 7 days</button>
+              <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="all" data-i18n-key="filters.time.all">All time</button>
             </div>
           </div>
           <div class="fmd-group">
-            <div class="fmd-group-label"><i class="fas fa-file-alt"></i> Content</div>
+            <div class="fmd-group-label"><i class="fas fa-file-alt"></i> <span data-i18n-key="filter.content.group">Content</span></div>
             <div class="fmd-options">
-              <button class="fmd-opt active" data-fmd-filter="type" data-fmd-value="all">All</button>
-              <button class="fmd-opt" data-fmd-filter="type" data-fmd-value="news">News</button>
-              <button class="fmd-opt" data-fmd-filter="type" data-fmd-value="analysis">Analysis</button>
-              <button class="fmd-opt" data-fmd-filter="type" data-fmd-value="report">Report</button>
-              <button class="fmd-opt" data-fmd-filter="type" data-fmd-value="advisory">Advisory</button>
+              <button class="fmd-opt active" data-fmd-filter="type" data-fmd-value="all" data-i18n-key="filter.all">All</button>
+              <button class="fmd-opt" data-fmd-filter="type" data-fmd-value="news" data-i18n-key="filters.type.news">News</button>
+              <button class="fmd-opt" data-fmd-filter="type" data-fmd-value="analysis" data-i18n-key="filters.type.analysis">Analysis</button>
+              <button class="fmd-opt" data-fmd-filter="type" data-fmd-value="report" data-i18n-key="filters.type.report">Report</button>
+              <button class="fmd-opt" data-fmd-filter="type" data-fmd-value="advisory" data-i18n-key="filters.type.advisory">Advisory</button>
             </div>
           </div>
           <div class="fmd-group">
-            <div class="fmd-group-label"><i class="fas fa-rss"></i> Sources</div>
+            <div class="fmd-group-label"><i class="fas fa-rss"></i> <span data-i18n-key="filters.sources.label">Sources</span></div>
             <div class="fmd-options">
-              <button class="fmd-opt active" data-fmd-filter="source" data-fmd-value="all">All</button>
-              <button class="fmd-opt" data-fmd-filter="source" data-fmd-value="news">News</button>
-              <button class="fmd-opt" data-fmd-filter="source" data-fmd-value="analysis">Analysis</button>
-              <button class="fmd-opt" data-fmd-filter="source" data-fmd-value="report">Report</button>
+              <button class="fmd-opt active" data-fmd-filter="source" data-fmd-value="all" data-i18n-key="filter.all">All</button>
+              <button class="fmd-opt" data-fmd-filter="source" data-fmd-value="news" data-i18n-key="filter.sources.news">News</button>
+              <button class="fmd-opt" data-fmd-filter="source" data-fmd-value="analysis" data-i18n-key="filter.sources.analysis">Analysis</button>
+              <button class="fmd-opt" data-fmd-filter="source" data-fmd-value="report" data-i18n-key="filter.sources.report">Report</button>
             </div>
           </div>
           <div class="fmd-footer">
-            <button type="button" class="fmd-reset" id="mainFilterReset">Reset all</button>
+            <button type="button" class="fmd-reset" id="mainFilterReset" data-i18n-key="filter.reset">Reset all</button>
           </div>
         </div>
       </div>
