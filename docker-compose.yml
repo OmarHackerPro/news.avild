@@ -24,10 +24,33 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-noreply@kiber.info}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
+      OPENSEARCH_URL: ${OPENSEARCH_URL:-}
+      OPENSEARCH_USER: ${OPENSEARCH_USER:-}
+      OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
     volumes:
       - avatar_uploads:/app/static/uploads/avatars
     depends_on:
       - db
+
+  ingestion:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${DB_PASSWORD:-password}@db:5432/avild_news
+      OPENSEARCH_URL: ${OPENSEARCH_URL:-}
+      OPENSEARCH_USER: ${OPENSEARCH_USER:-}
+      OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
+    depends_on:
+      - db
+    command: >
+      sh -c 'while true; do
+        echo "=== Starting feed ingestion: $$(date -Iseconds) ===";
+        python scripts/ingest_feeds.py;
+        echo "=== Sleeping 1 hour ===";
+        sleep 3600;
+      done'
 
   db:
     image: postgres:16-alpine
@@ -36,6 +59,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
       POSTGRES_DB: avild_news
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

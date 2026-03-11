@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" translate="no">
 <head>
   <meta charset="UTF-8">
@@ -6,13 +6,13 @@
   <meta name="google" content="notranslate">
   <meta name="description" content="Security entity and threat intelligence detail on CyberNews.">
   <meta name="robots" content="index, follow">
-  <link rel="canonical" href="entity.html">
-  <title>Entity - News.avild</title>
+  <link rel="canonical" href="/entity">
+  <title>Entity - CyberNews</title>
   <script type="application/ld+json">
   {"@context":"https://schema.org","@graph":[
-    {"@type":"WebPage","@id":"https://cybernews.example.com/pages/entity.html","name":"Entity - CyberNews","url":"https://cybernews.example.com/pages/entity.html","description":"Security entity and threat intelligence detail.","breadcrumb":{"@id":"#breadcrumb"}},
-    {"@type":"BreadcrumbList","@id":"#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://cybernews.example.com/"},{"@type":"ListItem","position":2,"name":"Search","item":"https://cybernews.example.com/pages/search.html"},{"@type":"ListItem","position":3,"name":"Entity","item":"https://cybernews.example.com/pages/entity.html"}]},
-    {"@type":"Article","name":"Security Entity","description":"Threat intelligence and security entity details.","publisher":{"@type":"Organization","name":"CyberNews"}}
+    {"@type":"WebPage","@id":"https://news.avild.com/entity","name":"Entity - CyberNews","url":"https://news.avild.com/entity","description":"Security entity and threat intelligence detail.","breadcrumb":{"@id":"#breadcrumb"}},
+    {"@type":"BreadcrumbList","@id":"#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://news.avild.com/"},{"@type":"ListItem","position":2,"name":"Search","item":"https://news.avild.com/search"},{"@type":"ListItem","position":3,"name":"Entity","item":"https://news.avild.com/entity"}]},
+    {"@type":"Article","name":"Security Entity","description":"Threat intelligence and security entity details.","publisher":{"@type":"Organization","name":"news.avild.com"}}
   ]}
   </script>
   <link rel="stylesheet" href="/static/css/main/main.css">
@@ -60,7 +60,7 @@
         </div>
       </div>
       <div class="nav-actions">
-        <a href="preferences.html" class="nav-subscribe-btn nav-pref-link"><i class="fas fa-layer-group"></i> <span data-i18n-key="nav.myStack">My Stack</span></a>
+        <a href="/preferences" class="nav-subscribe-btn nav-pref-link"><i class="fas fa-layer-group"></i> <span data-i18n-key="nav.myStack">My Stack</span></a>
         <div class="nav-rss-wrap">
           <button type="button" class="nav-rss-btn" id="rssTrigger" aria-expanded="false" aria-haspopup="true">
             <i class="fas fa-rss nav-rss-icon"></i> RSS <i class="fas fa-chevron-down"></i>
@@ -76,7 +76,7 @@
         <button type="button" class="nav-subscribe-btn" aria-label="Subscribe">
           <i class="fas fa-bell"></i> <span data-i18n-key="nav.subscribe">Subscribe</span>
         </button>
-        <a href="/pages/login.html" class="nav-subscribe-btn" id="navUserLink" aria-label="Log in or account">
+        <a href="/login" class="nav-subscribe-btn" id="navUserLink" aria-label="Log in or account">
           <i class="fas fa-user-circle" id="navUserIcon"></i>
           <span id="navUserAvatar" hidden><img id="navUserAvatarImg" src="" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;"></span>
           <span id="navUserName" hidden style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
@@ -95,14 +95,14 @@
         <span class="brand-text"><span class="brand-cyber">Cyber</span><span class="brand-news">News</span></span>
       </a>
       <ul class="nav-links">
-        <li><a href="search.html"><i class="fas fa-search nav-link-icon"></i> <span data-i18n-key="nav.search">Search</span></a></li>
-        <li><a href="category.html?category=breaking"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span> <span data-i18n-key="nav.breaking">Breaking</span></a></li>
-        <li><a href="category.html?category=threat-intel"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L4 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg></span> <span data-i18n-key="nav.threatIntel">Threat Intel</span></a></li>
-        <li><a href="category.html?category=malware"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5c-2.2 0-4 1.8-4 4 0 1.2.5 2.3 1.3 3.1-.9 1.1-2 2-3.3 2.5v2c1.5-.5 3.2-1.1 4.5-2.5 1.3 1.4 3 2 4.5 2.5v-2c-1.3-.5-2.4-1.4-3.3-2.5.8-.8 1.3-1.9 1.3-3.1 0-2.2-1.8-4-4-4z"/><circle cx="9" cy="15" r="1.2"/><circle cx="15" cy="15" r="1.2"/><path d="M7 10l-2 1.5"/><path d="M17 10l2 1.5"/></svg></span> <span data-i18n-key="nav.malware">Malware</span></a></li>
-        <li><a href="category.html?category=apt"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span> <span data-i18n-key="nav.apt">APT</span></a></li>
-        <li><a href="category.html?category=breaches"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></span> <span data-i18n-key="nav.breaches">Breaches</span></a></li>
-        <li><a href="category.html?category=pentest"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span> <span data-i18n-key="nav.pentest">Pentest</span></a></li>
-        <li><a href="category.html?category=bug-bounty"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5c-2.2 0-4 1.8-4 4 0 1.2.5 2.3 1.3 3.1-.9 1.1-2 2-3.3 2.5v2c1.5-.5 3.2-1.1 4.5-2.5 1.3 1.4 3 2 4.5 2.5v-2c-1.3-.5-2.4-1.4-3.3-2.5.8-.8 1.3-1.9 1.3-3.1 0-2.2-1.8-4-4-4z"/><circle cx="9" cy="15" r="1.2"/><circle cx="15" cy="15" r="1.2"/><path d="M7 10l-2 1.5"/><path d="M17 10l2 1.5"/></svg></span> <span data-i18n-key="nav.bugBounty">Bounty</span></a></li>
+        <li><a href="/search"><i class="fas fa-search nav-link-icon"></i> <span data-i18n-key="nav.search">Search</span></a></li>
+        <li><a href="/category?category=breaking"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span> <span data-i18n-key="nav.breaking">Breaking</span></a></li>
+        <li><a href="/category?category=threat-intel"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L4 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg></span> <span data-i18n-key="nav.threatIntel">Threat Intel</span></a></li>
+        <li><a href="/category?category=malware"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5c-2.2 0-4 1.8-4 4 0 1.2.5 2.3 1.3 3.1-.9 1.1-2 2-3.3 2.5v2c1.5-.5 3.2-1.1 4.5-2.5 1.3 1.4 3 2 4.5 2.5v-2c-1.3-.5-2.4-1.4-3.3-2.5.8-.8 1.3-1.9 1.3-3.1 0-2.2-1.8-4-4-4z"/><circle cx="9" cy="15" r="1.2"/><circle cx="15" cy="15" r="1.2"/><path d="M7 10l-2 1.5"/><path d="M17 10l2 1.5"/></svg></span> <span data-i18n-key="nav.malware">Malware</span></a></li>
+        <li><a href="/category?category=apt"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span> <span data-i18n-key="nav.apt">APT</span></a></li>
+        <li><a href="/category?category=breaches"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></span> <span data-i18n-key="nav.breaches">Breaches</span></a></li>
+        <li><a href="/category?category=pentest"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span> <span data-i18n-key="nav.pentest">Pentest</span></a></li>
+        <li><a href="/category?category=bug-bounty"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5c-2.2 0-4 1.8-4 4 0 1.2.5 2.3 1.3 3.1-.9 1.1-2 2-3.3 2.5v2c1.5-.5 3.2-1.1 4.5-2.5 1.3 1.4 3 2 4.5 2.5v-2c-1.3-.5-2.4-1.4-3.3-2.5.8-.8 1.3-1.9 1.3-3.1 0-2.2-1.8-4-4-4z"/><circle cx="9" cy="15" r="1.2"/><circle cx="15" cy="15" r="1.2"/><path d="M7 10l-2 1.5"/><path d="M17 10l2 1.5"/></svg></span> <span data-i18n-key="nav.bugBounty">Bounty</span></a></li>
         <li class="nav-more-wrap">
           <button type="button" class="nav-more-btn" id="moreTrigger" aria-expanded="false" aria-haspopup="true"><span class="nav-more-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg></span> <span data-i18n-key="nav.more">More</span> <span class="nav-chevron" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span></button>
           <div class="more-dropdown-card" id="moreDropdown" role="menu">
@@ -175,7 +175,7 @@
           if (e.key === 'Enter') {
             e.preventDefault();
             var val = navInput.value.trim();
-            window.location.href = val ? '/pages/search.html?q=' + encodeURIComponent(val) : '/pages/search.html';
+            window.location.href = val ? '/search?q=' + encodeURIComponent(val) : '/search';
           }
         });
       }

@@ -38,8 +38,15 @@ class Settings:
     # Base URL used in password-reset email links
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:8000")
 
+<<<<<<< HEAD
     # Admin secret — required for /api/admin/* endpoints
     ADMIN_SECRET: str = os.getenv("ADMIN_SECRET", "")
+=======
+    # OpenSearch
+    OPENSEARCH_URL: str = os.getenv("OPENSEARCH_URL", "")
+    OPENSEARCH_USER: str = os.getenv("OPENSEARCH_USER", "")
+    OPENSEARCH_PASSWORD: str = os.getenv("OPENSEARCH_PASSWORD", "")
+>>>>>>> b96dbdc4518bac7fdd85d95f9139ab771fff9fe4
 
 
 settings = Settings()

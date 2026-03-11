@@ -1,18 +1,10 @@
 FROM nginx:alpine
 
-# Copy static assets
+# Copy static assets (CSS, JS, images, partials)
 COPY static/ /usr/share/nginx/html/static/
 
-# Copy HTML pages (served as static files — no Jinja2 rendering needed)
-COPY templates/index.html /usr/share/nginx/html/index.html
-COPY templates/category.html /usr/share/nginx/html/category.html
-
-# Auth pages
-COPY static/login.html /usr/share/nginx/html/login.html
-COPY static/signup.html /usr/share/nginx/html/signup.html
-COPY static/forgot-password.html /usr/share/nginx/html/forgot-password.html
-COPY static/reset-password.html /usr/share/nginx/html/reset-password.html
-COPY static/profile.html /usr/share/nginx/html/profile.html
+# Copy all HTML pages from templates/
+COPY templates/*.html /usr/share/nginx/html/
 
 # Nginx config
 COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
