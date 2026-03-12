@@ -196,7 +196,7 @@ async def mark_source_failure(session: AsyncSession, source_id: int) -> None:
 # Per-source ingestion
 # ---------------------------------------------------------------------------
 
-async def ingest_source(source: FeedSource, client: httpx.AsyncClient) -> dict:
+async def ingest_source(source: FeedSource, client: httpx.AsyncClient, *, update: bool = False) -> dict:
     """Fetch, parse, normalize, and store all entries for one FeedSource.
 
     Returns stats: {"fetched": int, "inserted": int, "skipped": int, "errors": int}
@@ -264,7 +264,7 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient) -> dict:
                 stats["errors"] += 1
                 continue
 
-            inserted = await upsert_article(article)
+            inserted = await (overwrite_article if update else upsert_article)(article)
             if inserted:
                 stats["inserted"] += 1
                 try:
@@ -300,11 +300,11 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient) -> dict:
 CONCURRENCY = 20  # max feeds fetched in parallel per batch
 
 
-async def _ingest_one(src, client: httpx.AsyncClient) -> None:
+async def _ingest_one(src, client: httpx.AsyncClient, *, update: bool = False) -> None:
     """Ingest a single source and update its operational state."""
     source_dict = src.to_source_dict()
     try:
-        stats = await ingest_source(source_dict, client)
+        stats = await ingest_source(source_dict, client, update=update)
         logger.info(
             "[%s] Done - fetched=%d inserted=%d skipped=%d errors=%d",
             src.name,
@@ -324,12 +324,14 @@ async def _ingest_one(src, client: httpx.AsyncClient) -> None:
             logger.exception("Failed to record failure for '%s'", src.name)
 
 
-async def ingest_all_feeds() -> None:
+async def ingest_all_feeds(*, update: bool = False) -> None:
     """Run ingestion for every active source from the feed_sources DB table.
 
     Processes feeds concurrently in batches of CONCURRENCY (default 20).
     A single httpx.AsyncClient is shared across all sources for connection reuse.
     Source-level exceptions are caught so one broken source never blocks others.
+
+    When update=True, existing documents are overwritten (reparse mode).
     """
     if AsyncSessionLocal is None:
         logger.error("Database not configured (DATABASE_URL missing).")
@@ -348,4 +350,4 @@ async def ingest_all_feeds() -> None:
         for i in range(0, len(sources), CONCURRENCY):
             batch = sources[i : i + CONCURRENCY]
             logger.info("=== Batch %d/%d (%d sources) ===", i // CONCURRENCY + 1, -(-len(sources) // CONCURRENCY), len(batch))
-            await asyncio.gather(*[_ingest_one(src, client) for src in batch])
+            await asyncio.gather(*[_ingest_one(src, client, update=update) for src in batch])

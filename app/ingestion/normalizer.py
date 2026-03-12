@@ -410,6 +410,12 @@ def normalize_krebs(
     # First image extracted from article body
     image_url = _extract_first_image(content_html) if content_html else None
 
+    # CVE IDs from <category> tags (Krebs tags CVEs directly) + article body
+    tags = _extract_tags(entry)
+    tag_text = " ".join(tags)
+    body_text = content_html or ""
+    cve_ids = _extract_cve_ids(f"{tag_text} {body_text}")
+
     # Comment metadata
     raw_metadata: dict = {}
     comment_count = entry.get("slash_comments")
@@ -434,13 +440,14 @@ def normalize_krebs(
         desc=desc,
         content_html=content_html,
         image_url=image_url[:2048] if image_url else None,
-        tags=_extract_tags(entry),
+        tags=tags,
         keywords=[],
         published_at=_parse_date(entry),
         severity=source["default_severity"],
         type=source["default_type"],
         category=source["default_category"],
         source_url=link[:2048],
+        cve_ids=cve_ids if cve_ids else None,
         raw_metadata=raw_metadata or None,
     )
 
