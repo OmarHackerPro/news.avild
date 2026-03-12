@@ -7,6 +7,7 @@ Fetches all configured RSS feeds, normalizes entries, and upserts them
 into the news_articles table. Safe to re-run: duplicate slugs are silently
 skipped via ON CONFLICT DO NOTHING.
 """
+import argparse
 import asyncio
 import logging
 import sys
@@ -34,8 +35,16 @@ def _configure_logging() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="RSS feed ingestion")
+    parser.add_argument(
+        "--update", action="store_true",
+        help="Overwrite existing articles (reparse mode) instead of skipping duplicates",
+    )
+    args = parser.parse_args()
+
     _configure_logging()
     log = logging.getLogger(__name__)
-    log.info("RSS ingestion starting.")
-    asyncio.run(ingest_all_feeds())
+    mode = "update/reparse" if args.update else "normal"
+    log.info("RSS ingestion starting (mode=%s).", mode)
+    asyncio.run(ingest_all_feeds(update=args.update))
     log.info("RSS ingestion complete.")
