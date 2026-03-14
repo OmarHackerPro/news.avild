@@ -6,9 +6,16 @@ from fastapi import APIRouter, HTTPException, Query
 from opensearchpy.exceptions import NotFoundError
 
 from app.db.opensearch import INDEX_NEWS, get_os_client
-from app.models.news import NewsItem, NewsListResponse
+from app.models.news import NewsDetail, NewsItem, NewsListResponse
 
 router = APIRouter(prefix="/news", tags=["news"])
+
+# Fields returned for list endpoints (lightweight)
+_LIST_SOURCE_FIELDS = [
+    "slug", "title", "desc", "tags", "keywords", "published_at",
+    "severity", "type", "category", "author", "source_name",
+    "source_url", "image_url", "cvss_score", "cve_ids",
+]
 
 
 def _time_ago(dt: datetime) -> str:
@@ -33,6 +40,7 @@ def _hit_to_item(hit: dict) -> NewsItem:
     published_at = datetime.fromisoformat(src["published_at"])
     return NewsItem(
         id=hit["_id"],
+        slug=src.get("slug") or hit["_id"],
         tags=src.get("tags") or [],
         title=src["title"],
         desc=src.get("desc"),
@@ -43,10 +51,86 @@ def _hit_to_item(hit: dict) -> NewsItem:
         category=src["category"],
         author=src.get("author"),
         source_name=src.get("source_name"),
+        source_url=src.get("source_url"),
         image_url=src.get("image_url"),
         cvss_score=Decimal(str(src["cvss_score"])) if src.get("cvss_score") is not None else None,
         cve_ids=src.get("cve_ids") or [],
+        published_at=src["published_at"],
     )
+
+
+def _hit_to_detail(hit: dict) -> NewsDetail:
+    src = hit["_source"]
+    published_at = datetime.fromisoformat(src["published_at"])
+    return NewsDetail(
+        id=hit["_id"],
+        slug=src.get("slug") or hit["_id"],
+        tags=src.get("tags") or [],
+        title=src["title"],
+        desc=src.get("desc"),
+        keywords=src.get("keywords") or [],
+        time=_time_ago(published_at),
+        severity=src.get("severity"),
+        type=src["type"],
+        category=src["category"],
+        author=src.get("author"),
+        source_name=src.get("source_name"),
+        source_url=src.get("source_url"),
+        image_url=src.get("image_url"),
+        cvss_score=Decimal(str(src["cvss_score"])) if src.get("cvss_score") is not None else None,
+        cve_ids=src.get("cve_ids") or [],
+        published_at=src["published_at"],
+        content_html=src.get("content_html"),
+        raw_metadata=src.get("raw_metadata"),
+    )
+
+
+def _build_filters(
+    *,
+    category: Optional[str] = None,
+    type: Optional[str] = None,
+    severity: Optional[str] = None,
+    source_name: Optional[str] = None,
+    tag: Optional[str] = None,
+    cve: Optional[str] = None,
+    min_cvss: Optional[float] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+) -> List[dict]:
+    """Build OpenSearch bool filter clauses from query parameters."""
+    filters: List[dict] = []
+    if category:
+        filters.append({"term": {"category": category}})
+    if type:
+        filters.append({"term": {"type": type}})
+    if severity:
+        filters.append({"term": {"severity": severity}})
+    if source_name:
+        filters.append({"term": {"source_name": source_name}})
+    if tag:
+        filters.append({"term": {"tags": tag}})
+    if cve:
+        filters.append({"term": {"cve_ids": cve}})
+    if min_cvss is not None:
+        filters.append({"range": {"cvss_score": {"gte": min_cvss}}})
+    date_range: dict = {}
+    if date_from:
+        date_range["gte"] = date_from
+    if date_to:
+        date_range["lte"] = date_to
+    if date_range:
+        filters.append({"range": {"published_at": date_range}})
+    return filters
+
+
+def _build_sort(sort: str) -> List[dict]:
+    """Build OpenSearch sort clause."""
+    if sort == "oldest":
+        return [{"published_at": {"order": "asc"}}]
+    if sort == "cvss":
+        return [{"cvss_score": {"order": "desc", "missing": "_last"}}, {"published_at": {"order": "desc"}}]
+    # default: newest
+    return [{"published_at": {"order": "desc"}}]
 
 
 @router.get("/", response_model=NewsListResponse)
@@ -54,28 +138,36 @@ async def get_news(
     category: Optional[str] = Query(None, description="Filter by category"),
     type: Optional[str] = Query(None, description="Filter by type (news|analysis|report|advisory)"),
     severity: Optional[str] = Query(None, description="Filter by severity"),
+    source_name: Optional[str] = Query(None, description="Filter by source name"),
+    tag: Optional[str] = Query(None, description="Filter by tag"),
+    cve: Optional[str] = Query(None, description="Filter by CVE ID"),
+    min_cvss: Optional[float] = Query(None, ge=0, le=10, description="Minimum CVSS score"),
+    date_from: Optional[str] = Query(None, description="Start date (ISO-8601)"),
+    date_to: Optional[str] = Query(None, description="End date (ISO-8601)"),
+    sort: str = Query("newest", description="Sort order: newest|oldest|cvss"),
     q: Optional[str] = Query(None, description="Full-text search across title, desc, tags"),
     limit: int = Query(12, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
-    filters = []
-    if category:
-        filters.append({"term": {"category": category}})
-    if type:
-        filters.append({"term": {"type": type}})
-    if severity:
-        filters.append({"term": {"severity": severity}})
+    filters = _build_filters(
+        category=category, type=type, severity=severity,
+        source_name=source_name, tag=tag, cve=cve,
+        min_cvss=min_cvss, date_from=date_from, date_to=date_to,
+    )
+
+    if q:
+        must = [{"multi_match": {"query": q, "fields": ["title^3", "desc", "tags^2", "keywords"]}}]
+    else:
+        must = []
+
+    query_clause = {"bool": {"must": must, "filter": filters}} if (must or filters) else {"match_all": {}}
 
     query_body = {
-        "query": {"bool": {"filter": filters}} if filters else {"match_all": {}},
-        "sort": [{"published_at": {"order": "desc"}}],
+        "query": query_clause,
+        "sort": _build_sort(sort),
         "from": offset,
         "size": limit,
-        "_source": [
-            "slug", "title", "desc", "tags", "keywords", "published_at",
-            "severity", "type", "category", "author", "source_name",
-            "image_url", "cvss_score", "cve_ids",
-        ],
+        "_source": _LIST_SOURCE_FIELDS,
     }
 
     resp = await get_os_client().search(index=INDEX_NEWS, body=query_body)
@@ -84,10 +176,10 @@ async def get_news(
     return NewsListResponse(items=items, total=total)
 
 
-@router.get("/{slug}", response_model=NewsItem)
+@router.get("/{slug}", response_model=NewsDetail)
 async def get_news_item(slug: str):
     try:
         resp = await get_os_client().get(index=INDEX_NEWS, id=slug)
-        return _hit_to_item(resp)
+        return _hit_to_detail(resp)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="News item not found")
