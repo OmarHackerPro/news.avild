@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
@@ -19,6 +17,7 @@ router = APIRouter(prefix="/entities", tags=["entities"])
 @router.get("/", response_model=EntityListResponse)
 async def list_entities(
     type: Optional[str] = Query(None, description="Filter by entity type (cve|vendor|product|actor|malware|tool)"),
+    q: Optional[str] = Query(None, description="Prefix search on entity name"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -43,11 +42,15 @@ async def list_entities(
 
     if type:
         query = query.where(Entity.type == type)
+    if q:
+        query = query.where(Entity.name.ilike(f"{q}%"))
 
     # Total count
     count_query = select(func.count()).select_from(Entity)
     if type:
         count_query = count_query.where(Entity.type == type)
+    if q:
+        count_query = count_query.where(Entity.name.ilike(f"{q}%"))
     total = (await db.execute(count_query)).scalar() or 0
 
     # Paginated results
@@ -113,7 +116,7 @@ async def get_entity(
                 "_source": [
                     "slug", "title", "desc", "tags", "keywords", "published_at",
                     "severity", "type", "category", "author", "source_name",
-                    "image_url", "cvss_score", "cve_ids",
+                    "source_url", "image_url", "cvss_score", "cve_ids",
                 ],
             },
         )
@@ -124,6 +127,8 @@ async def get_entity(
         type=entity.type,
         name=entity.name,
         normalized_key=entity.normalized_key,
+        aliases=entity.aliases or [],
+        description=entity.description,
         cvss_score=entity.cvss_score,
         first_seen=entity.first_seen,
         last_seen=entity.last_seen,

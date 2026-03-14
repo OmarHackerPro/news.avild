@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import List
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, func
+from sqlalchemy import ARRAY, DateTime, Enum, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,6 +29,10 @@ class Entity(Base):
     normalized_key: Mapped[str] = mapped_column(
         String(500), unique=True, nullable=False, index=True
     )
+    aliases: Mapped[List[str]] = mapped_column(
+        ARRAY(String), server_default="{}", nullable=False
+    )
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     cvss_score: Mapped[Decimal | None] = mapped_column(
         Numeric(4, 1), nullable=True
     )

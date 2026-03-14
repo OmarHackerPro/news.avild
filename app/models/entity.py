@@ -19,7 +19,9 @@ class EntityItem(BaseModel):
 
 
 class EntityDetail(EntityItem):
-    articles: List[NewsItem]
+    aliases: List[str] = []
+    description: Optional[str] = None
+    articles: List[NewsItem] = []
 
 
 class EntityListResponse(BaseModel):

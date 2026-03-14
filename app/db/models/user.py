@@ -1,6 +1,8 @@
 from datetime import datetime
+from typing import Any, Dict
 
 from sqlalchemy import DateTime, Integer, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -21,6 +23,9 @@ class User(Base):
     )
     password_reset_expires: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    preferences: Mapped[Dict[str, Any]] = mapped_column(
+        JSONB, server_default="{}", nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
