@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from opensearchpy.exceptions import NotFoundError
 
 from app.db.opensearch import INDEX_NEWS, get_os_client
+from app.models.errors import ErrorResponse
 from app.models.news import NewsDetail, NewsItem, NewsListResponse
 
 router = APIRouter(prefix="/news", tags=["news"])
@@ -133,7 +134,12 @@ def _build_sort(sort: str) -> List[dict]:
     return [{"published_at": {"order": "desc"}}]
 
 
-@router.get("/", response_model=NewsListResponse)
+@router.get(
+    "/",
+    response_model=NewsListResponse,
+    summary="List news articles",
+    description="Returns a paginated list of news articles with optional filters for category, type, severity, source, tags, CVE IDs, CVSS score range, date range, and full-text search.",
+)
 async def get_news(
     category: Optional[str] = Query(None, description="Filter by category"),
     type: Optional[str] = Query(None, description="Filter by type (news|analysis|report|advisory)"),
@@ -176,7 +182,13 @@ async def get_news(
     return NewsListResponse(items=items, total=total)
 
 
-@router.get("/{slug}", response_model=NewsDetail)
+@router.get(
+    "/{slug}",
+    response_model=NewsDetail,
+    summary="Get article detail",
+    description="Returns full article details including HTML content and raw metadata.",
+    responses={404: {"model": ErrorResponse, "description": "Article not found"}},
+)
 async def get_news_item(slug: str):
     try:
         resp = await get_os_client().get(index=INDEX_NEWS, id=slug)

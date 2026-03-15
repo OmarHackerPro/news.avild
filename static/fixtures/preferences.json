@@ -1,0 +1,8 @@
+{
+  "followed_categories": ["breaking", "research"],
+  "muted_sources": ["example-blog"],
+  "severity_filter": "critical",
+  "email_digest": "daily",
+  "language": "en",
+  "theme": "dark"
+}

@@ -18,13 +18,17 @@ def _to_rfc2822(iso_str: str) -> str:
     return format_datetime(dt, usegmt=True)
 
 
-@router.get("/rss", response_class=Response)
+@router.get(
+    "/rss",
+    response_class=Response,
+    summary="RSS 2.0 feed",
+    description="Returns an RSS 2.0 XML feed of the latest articles, optionally filtered by category and severity.",
+)
 async def rss_feed(
-    category: Optional[str] = Query(None),
-    severity: Optional[str] = Query(None),
-    limit: int = Query(20, ge=1, le=100),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    severity: Optional[str] = Query(None, description="Filter by severity"),
+    limit: int = Query(20, ge=1, le=100, description="Number of items"),
 ):
-    """RSS 2.0 feed of latest articles."""
     filters = []
     if category:
         filters.append({"term": {"category": category}})

@@ -9,21 +9,25 @@ from app.models.search import FacetBucket, SearchResponse
 router = APIRouter(prefix="/search", tags=["search"])
 
 
-@router.get("/", response_model=SearchResponse)
+@router.get(
+    "/",
+    response_model=SearchResponse,
+    summary="Search articles",
+    description="Full-text search across articles with fuzzy matching, optional filters, and faceted results for categories, sources, and severity.",
+)
 async def search_articles(
     q: str = Query(..., min_length=1, description="Search query (required)"),
-    category: Optional[str] = Query(None),
-    type: Optional[str] = Query(None),
-    severity: Optional[str] = Query(None),
-    source_name: Optional[str] = Query(None),
-    tag: Optional[str] = Query(None),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    type: Optional[str] = Query(None, description="Filter by type"),
+    severity: Optional[str] = Query(None, description="Filter by severity"),
+    source_name: Optional[str] = Query(None, description="Filter by source name"),
+    tag: Optional[str] = Query(None, description="Filter by tag"),
     date_from: Optional[str] = Query(None, description="Start date (ISO-8601)"),
     date_to: Optional[str] = Query(None, description="End date (ISO-8601)"),
     sort: str = Query("relevance", description="Sort: relevance|newest"),
     limit: int = Query(12, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
-    """Full-text search across articles with faceted results."""
     filters = _build_filters(
         category=category, type=type, severity=severity,
         source_name=source_name, tag=tag, date_from=date_from, date_to=date_to,

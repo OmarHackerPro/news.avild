@@ -1,0 +1,74 @@
+{
+  "period_hours": 24,
+  "tags": [
+    {"tag": "fortinet", "count": 15, "delta": "+200%"},
+    {"tag": "ransomware", "count": 12, "delta": "+40%"},
+    {"tag": "zero-day", "count": 8, "delta": "+60%"},
+    {"tag": "vulnerability", "count": 7, "delta": null},
+    {"tag": "phishing", "count": 5, "delta": "-10%"}
+  ],
+  "sources": [
+    {"name": "BleepingComputer", "article_count": 23},
+    {"name": "The Hacker News", "article_count": 18},
+    {"name": "CISA Advisories", "article_count": 12}
+  ],
+  "top_articles": [
+    {
+      "id": "cisa-warns-fortinet-rce-cve-2026-12345",
+      "slug": "cisa-warns-fortinet-rce-cve-2026-12345",
+      "tags": ["vulnerability", "zero-day", "fortinet"],
+      "title": "CISA Warns of Critical Fortinet FortiOS RCE Vulnerability",
+      "desc": "CISA has added CVE-2026-12345 to its KEV catalog.",
+      "keywords": ["fortinet", "cve-2026-12345"],
+      "time": "3h",
+      "severity": "critical",
+      "type": "advisory",
+      "category": "breaking",
+      "author": "CISA",
+      "source_name": "CISA Advisories",
+      "source_url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+      "image_url": null,
+      "cvss_score": "9.8",
+      "cve_ids": ["CVE-2026-12345"],
+      "published_at": "2026-03-15T08:30:00Z"
+    },
+    {
+      "id": "lockbit-ransomware-targets-healthcare-sector",
+      "slug": "lockbit-ransomware-targets-healthcare-sector",
+      "tags": ["ransomware", "lockbit", "healthcare"],
+      "title": "LockBit Ransomware Gang Targets Healthcare Sector in New Campaign",
+      "desc": "New LockBit 3.0 campaign targeting hospitals and healthcare providers.",
+      "keywords": ["lockbit", "ransomware", "healthcare"],
+      "time": "5h",
+      "severity": "high",
+      "type": "news",
+      "category": "breaking",
+      "author": "Lawrence Abrams",
+      "source_name": "BleepingComputer",
+      "source_url": "https://www.bleepingcomputer.com/news/security/lockbit-healthcare",
+      "image_url": null,
+      "cvss_score": null,
+      "cve_ids": [],
+      "published_at": "2026-03-15T06:15:00Z"
+    },
+    {
+      "id": "apt29-cozy-bear-phishing-european-diplomats",
+      "slug": "apt29-cozy-bear-phishing-european-diplomats",
+      "tags": ["apt29", "cozy-bear", "phishing"],
+      "title": "APT29 Launches Sophisticated Phishing Campaign Against European Diplomats",
+      "desc": "Russian state-sponsored group APT29 using novel phishing techniques.",
+      "keywords": ["apt29", "cozy-bear", "phishing"],
+      "time": "1d",
+      "severity": "high",
+      "type": "analysis",
+      "category": "research",
+      "author": "Mandiant Research",
+      "source_name": "The Hacker News",
+      "source_url": "https://thehackernews.com/2026/03/apt29-phishing-european-diplomats",
+      "image_url": null,
+      "cvss_score": null,
+      "cve_ids": [],
+      "published_at": "2026-03-14T14:30:00Z"
+    }
+  ]
+}

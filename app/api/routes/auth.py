@@ -12,6 +12,7 @@ from app.core.email import send_password_reset_email
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.models.user import User
 from app.db.session import get_db
+from app.models.errors import ErrorResponse
 from app.schemas.auth import (
     AuthResponse,
     ForgotPasswordRequest,
@@ -38,7 +39,14 @@ def _user_response(user: User) -> UserResponse:
     )
 
 
-@router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/signup",
+    response_model=AuthResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new user",
+    description="Creates a new user account and returns a JWT access token.",
+    responses={409: {"model": ErrorResponse, "description": "Email already registered"}},
+)
 async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     existing = (
         await db.execute(select(User).where(User.email == body.email))
@@ -59,7 +67,13 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post(
+    "/login",
+    response_model=AuthResponse,
+    summary="Log in",
+    description="Authenticates a user and returns a JWT access token.",
+    responses={401: {"model": ErrorResponse, "description": "Invalid credentials"}},
+)
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     user = (
         await db.execute(select(User).where(User.email == body.email))
@@ -72,12 +86,24 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    summary="Get current user",
+    description="Returns the profile of the currently authenticated user. Requires a valid JWT Bearer token.",
+    responses={401: {"model": ErrorResponse, "description": "Not authenticated"}},
+)
 async def get_me(current_user: User = Depends(get_current_user)):
     return _user_response(current_user)
 
 
-@router.patch("/profile", response_model=UserResponse)
+@router.patch(
+    "/profile",
+    response_model=UserResponse,
+    summary="Update profile",
+    description="Updates the current user's name and/or password. Requires JWT Bearer token.",
+    responses={401: {"model": ErrorResponse, "description": "Not authenticated"}},
+)
 async def update_profile(
     body: ProfileUpdateRequest,
     current_user: User = Depends(get_current_user),
@@ -92,7 +118,16 @@ async def update_profile(
     return _user_response(current_user)
 
 
-@router.post("/upload-avatar", response_model=UserResponse)
+@router.post(
+    "/upload-avatar",
+    response_model=UserResponse,
+    summary="Upload avatar",
+    description="Uploads a profile picture (JPEG, PNG, GIF, or WebP; max 2 MB). Requires JWT Bearer token.",
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid image type or size"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+    },
+)
 async def upload_avatar(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
@@ -121,7 +156,11 @@ async def upload_avatar(
     return _user_response(current_user)
 
 
-@router.post("/forgot-password")
+@router.post(
+    "/forgot-password",
+    summary="Request password reset",
+    description="Sends a password reset email if the address is registered. Always returns 200 to prevent email enumeration.",
+)
 async def forgot_password(
     body: ForgotPasswordRequest,
     background_tasks: BackgroundTasks,
@@ -140,7 +179,12 @@ async def forgot_password(
     return {"detail": "If that email is registered, a reset link has been sent."}
 
 
-@router.post("/reset-password")
+@router.post(
+    "/reset-password",
+    summary="Reset password",
+    description="Resets a user's password using a valid reset token. Token expires after 1 hour.",
+    responses={400: {"model": ErrorResponse, "description": "Invalid or expired reset token"}},
+)
 async def reset_password(
     body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)
 ):

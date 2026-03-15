@@ -1,0 +1,85 @@
+{
+  "items": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "cve",
+      "name": "CVE-2026-12345",
+      "normalized_key": "cve-2026-12345",
+      "cvss_score": "9.8",
+      "first_seen": "2026-03-14T09:00:00Z",
+      "last_seen": "2026-03-15T14:22:00Z",
+      "article_count": 12
+    },
+    {
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "type": "cve",
+      "name": "CVE-2026-11111",
+      "normalized_key": "cve-2026-11111",
+      "cvss_score": "9.1",
+      "first_seen": "2026-03-12T10:00:00Z",
+      "last_seen": "2026-03-13T10:00:00Z",
+      "article_count": 5
+    },
+    {
+      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "type": "vendor",
+      "name": "Fortinet",
+      "normalized_key": "fortinet",
+      "cvss_score": null,
+      "first_seen": "2026-01-15T00:00:00Z",
+      "last_seen": "2026-03-15T14:22:00Z",
+      "article_count": 34
+    },
+    {
+      "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+      "type": "vendor",
+      "name": "Citrix",
+      "normalized_key": "citrix",
+      "cvss_score": null,
+      "first_seen": "2026-01-20T00:00:00Z",
+      "last_seen": "2026-03-13T10:00:00Z",
+      "article_count": 18
+    },
+    {
+      "id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+      "type": "actor",
+      "name": "APT29",
+      "normalized_key": "apt29",
+      "cvss_score": null,
+      "first_seen": "2026-02-01T00:00:00Z",
+      "last_seen": "2026-03-14T14:30:00Z",
+      "article_count": 9
+    },
+    {
+      "id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+      "type": "actor",
+      "name": "Lazarus Group",
+      "normalized_key": "lazarus-group",
+      "cvss_score": null,
+      "first_seen": "2026-01-10T00:00:00Z",
+      "last_seen": "2026-03-10T08:00:00Z",
+      "article_count": 7
+    },
+    {
+      "id": "a7b8c9d0-e1f2-3456-abcd-567890123456",
+      "type": "malware",
+      "name": "LockBit 3.0",
+      "normalized_key": "lockbit-3.0",
+      "cvss_score": null,
+      "first_seen": "2026-01-05T00:00:00Z",
+      "last_seen": "2026-03-15T06:15:00Z",
+      "article_count": 22
+    },
+    {
+      "id": "b8c9d0e1-f2a3-4567-bcde-678901234567",
+      "type": "tool",
+      "name": "Mimikatz",
+      "normalized_key": "mimikatz",
+      "cvss_score": null,
+      "first_seen": "2026-02-10T00:00:00Z",
+      "last_seen": "2026-03-12T12:00:00Z",
+      "article_count": 4
+    }
+  ],
+  "total": 56
+}

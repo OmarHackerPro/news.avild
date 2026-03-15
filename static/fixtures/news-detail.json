@@ -1,0 +1,26 @@
+{
+  "id": "cisa-warns-fortinet-rce-cve-2026-12345",
+  "slug": "cisa-warns-fortinet-rce-cve-2026-12345",
+  "tags": ["vulnerability", "zero-day", "fortinet", "kev"],
+  "title": "CISA Warns of Critical Fortinet FortiOS RCE Vulnerability",
+  "desc": "CISA has added CVE-2026-12345 to its Known Exploited Vulnerabilities catalog after active exploitation was confirmed in the wild.",
+  "keywords": ["fortinet", "cve-2026-12345", "rce", "fortios"],
+  "time": "3h",
+  "severity": "critical",
+  "type": "advisory",
+  "category": "breaking",
+  "author": "CISA",
+  "source_name": "CISA Advisories",
+  "source_url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+  "image_url": null,
+  "cvss_score": "9.8",
+  "cve_ids": ["CVE-2026-12345"],
+  "published_at": "2026-03-15T08:30:00Z",
+  "content_html": "<h2>Overview</h2><p>CISA has added <strong>CVE-2026-12345</strong> to its Known Exploited Vulnerabilities (KEV) catalog. This critical vulnerability affects Fortinet FortiOS versions 7.2.x through 7.4.x and allows unauthenticated remote code execution.</p><h2>Impact</h2><p>An unauthenticated attacker can execute arbitrary code on affected FortiGate devices by sending crafted HTTP requests to the SSL-VPN interface. This could lead to full device compromise, network lateral movement, and data exfiltration.</p><h2>Mitigation</h2><ul><li>Update to FortiOS 7.4.5 or later immediately</li><li>If patching is not possible, disable SSL-VPN functionality</li><li>Monitor logs for indicators of compromise</li><li>Apply network segmentation to limit exposure</li></ul><h2>References</h2><p>See <a href=\"https://www.fortiguard.com/psirt/FG-IR-26-001\">FortiGuard advisory FG-IR-26-001</a> for full details.</p>",
+  "raw_metadata": {
+    "advisory_id": "AA26-074A",
+    "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+    "affected_products": ["FortiOS 7.2.0-7.4.4"],
+    "fixed_versions": ["FortiOS 7.4.5"]
+  }
+}

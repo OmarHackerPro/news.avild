@@ -1,17 +1,17 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, HttpUrl, field_validator
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 
 class FeedSourceCreate(BaseModel):
-    name: str
-    url: str
-    default_type: str = "news"
-    default_category: str = "breaking"
-    default_severity: Optional[str] = None
-    normalizer_key: str = "generic"
-    fetch_interval_minutes: int = 60
+    name: str = Field(json_schema_extra={"example": "CISA Advisories"})
+    url: str = Field(json_schema_extra={"example": "https://www.cisa.gov/cybersecurity-advisories/all.xml"})
+    default_type: str = Field("news", json_schema_extra={"example": "advisory"})
+    default_category: str = Field("breaking", json_schema_extra={"example": "breaking"})
+    default_severity: Optional[str] = Field(None, json_schema_extra={"example": "critical"})
+    normalizer_key: str = Field("generic", json_schema_extra={"example": "cisa"})
+    fetch_interval_minutes: int = Field(60, json_schema_extra={"example": 30})
 
     @field_validator("default_type")
     @classmethod
@@ -31,28 +31,28 @@ class FeedSourceCreate(BaseModel):
 
 
 class FeedSourceUpdate(BaseModel):
-    name: Optional[str] = None
-    url: Optional[str] = None
-    default_type: Optional[str] = None
-    default_category: Optional[str] = None
-    default_severity: Optional[str] = None
-    normalizer_key: Optional[str] = None
-    is_active: Optional[bool] = None
-    fetch_interval_minutes: Optional[int] = None
+    name: Optional[str] = Field(None, json_schema_extra={"example": "CISA Advisories (Updated)"})
+    url: Optional[str] = Field(None, json_schema_extra={"example": "https://www.cisa.gov/cybersecurity-advisories/all.xml"})
+    default_type: Optional[str] = Field(None, json_schema_extra={"example": "advisory"})
+    default_category: Optional[str] = Field(None, json_schema_extra={"example": "breaking"})
+    default_severity: Optional[str] = Field(None, json_schema_extra={"example": "high"})
+    normalizer_key: Optional[str] = Field(None, json_schema_extra={"example": "cisa"})
+    is_active: Optional[bool] = Field(None, json_schema_extra={"example": True})
+    fetch_interval_minutes: Optional[int] = Field(None, json_schema_extra={"example": 15})
 
 
 class FeedSourceResponse(BaseModel):
-    id: int
-    name: str
-    url: str
-    default_type: str
-    default_category: str
-    default_severity: Optional[str] = None
-    normalizer_key: str
-    is_active: bool
-    last_fetched_at: Optional[datetime] = None
-    fetch_interval_minutes: int
-    consecutive_failures: int
-    created_at: datetime
+    id: int = Field(json_schema_extra={"example": 1})
+    name: str = Field(json_schema_extra={"example": "CISA Advisories"})
+    url: str = Field(json_schema_extra={"example": "https://www.cisa.gov/cybersecurity-advisories/all.xml"})
+    default_type: str = Field(json_schema_extra={"example": "advisory"})
+    default_category: str = Field(json_schema_extra={"example": "breaking"})
+    default_severity: Optional[str] = Field(None, json_schema_extra={"example": "critical"})
+    normalizer_key: str = Field(json_schema_extra={"example": "cisa"})
+    is_active: bool = Field(json_schema_extra={"example": True})
+    last_fetched_at: Optional[datetime] = Field(None, json_schema_extra={"example": "2026-03-15T12:00:00Z"})
+    fetch_interval_minutes: int = Field(json_schema_extra={"example": 30})
+    consecutive_failures: int = Field(json_schema_extra={"example": 0})
+    created_at: datetime = Field(json_schema_extra={"example": "2026-03-01T00:00:00Z"})
 
     model_config = {"from_attributes": True}

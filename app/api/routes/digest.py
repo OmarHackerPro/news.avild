@@ -68,9 +68,13 @@ async def _digest_for_range(gte: str, lte: str) -> dict:
     }
 
 
-@router.get("/daily", response_model=DailyDigest)
+@router.get(
+    "/daily",
+    response_model=DailyDigest,
+    summary="Get daily digest",
+    description="Returns today's articles grouped by category with top CVEs and trending tags.",
+)
 async def daily_digest():
-    """Today's top articles grouped by category."""
     today = datetime.now(timezone.utc).date()
     gte = f"{today}T00:00:00Z"
     lte = f"{today}T23:59:59Z"
@@ -78,11 +82,15 @@ async def daily_digest():
     return DailyDigest(date=today.isoformat(), **data)
 
 
-@router.get("/weekly", response_model=WeeklyDigest)
+@router.get(
+    "/weekly",
+    response_model=WeeklyDigest,
+    summary="Get weekly digest",
+    description="Returns articles for a given ISO week grouped by category. Defaults to the current week.",
+)
 async def weekly_digest(
     week: str = Query(None, description="ISO week e.g. 2026-W11 (default: current)"),
 ):
-    """This week's summary."""
     now = datetime.now(timezone.utc)
     if week:
         # Parse ISO week string like "2026-W11"
@@ -98,11 +106,15 @@ async def weekly_digest(
     return WeeklyDigest(week=week, **data)
 
 
-@router.get("/trending", response_model=TrendingResponse)
+@router.get(
+    "/trending",
+    response_model=TrendingResponse,
+    summary="Get trending topics",
+    description="Returns trending tags, active sources, and top articles for a configurable look-back period (1-168 hours).",
+)
 async def trending(
     hours: int = Query(24, ge=1, le=168, description="Look-back period in hours"),
 ):
-    """Trending tags/topics in the given period."""
     now = datetime.now(timezone.utc)
     since = (now - timedelta(hours=hours)).isoformat()
 

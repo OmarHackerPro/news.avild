@@ -56,7 +56,11 @@ async def _fetch_articles(
     return resp["hits"]["hits"]
 
 
-@router.get("/csv")
+@router.get(
+    "/csv",
+    summary="Export articles as CSV",
+    description="Downloads a CSV file of articles matching the given filters. Optionally specify which columns to include.",
+)
 async def export_csv(
     category: Optional[str] = Query(None),
     type: Optional[str] = Query(None),
@@ -108,7 +112,11 @@ async def export_csv(
     )
 
 
-@router.get("/json")
+@router.get(
+    "/json",
+    summary="Export articles as JSON",
+    description="Downloads a JSON file containing an array of articles matching the given filters.",
+)
 async def export_json(
     category: Optional[str] = Query(None),
     type: Optional[str] = Query(None),
@@ -159,7 +167,11 @@ async def export_json(
     )
 
 
-@router.get("/stix")
+@router.get(
+    "/stix",
+    summary="Export entities as STIX 2.1",
+    description="Downloads a STIX 2.1 bundle containing CVEs, threat actors, malware, and tools as structured threat intelligence objects.",
+)
 async def export_stix(
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),

@@ -6,12 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.feed_source import FeedSource
 from app.db.session import get_db
+from app.models.errors import ErrorResponse
 from app.schemas.feed import FeedSourceCreate, FeedSourceResponse, FeedSourceUpdate
 
 router = APIRouter(prefix="/feeds", tags=["feeds"])
 
 
-@router.get("/", response_model=List[FeedSourceResponse])
+@router.get(
+    "/",
+    response_model=List[FeedSourceResponse],
+    summary="List feed sources",
+    description="Returns all configured RSS/advisory feed sources.",
+)
 async def list_feeds(db: AsyncSession = Depends(get_db)):
     rows = (
         await db.execute(select(FeedSource).order_by(FeedSource.id))
@@ -19,7 +25,13 @@ async def list_feeds(db: AsyncSession = Depends(get_db)):
     return rows
 
 
-@router.get("/{feed_id}", response_model=FeedSourceResponse)
+@router.get(
+    "/{feed_id}",
+    response_model=FeedSourceResponse,
+    summary="Get feed source",
+    description="Returns details for a specific feed source by ID.",
+    responses={404: {"model": ErrorResponse, "description": "Feed source not found"}},
+)
 async def get_feed(feed_id: int, db: AsyncSession = Depends(get_db)):
     row = (
         await db.execute(select(FeedSource).where(FeedSource.id == feed_id))
@@ -29,7 +41,14 @@ async def get_feed(feed_id: int, db: AsyncSession = Depends(get_db)):
     return row
 
 
-@router.post("/", response_model=FeedSourceResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=FeedSourceResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create feed source",
+    description="Registers a new RSS/advisory feed source for ingestion.",
+    responses={409: {"model": ErrorResponse, "description": "Feed URL already exists"}},
+)
 async def create_feed(body: FeedSourceCreate, db: AsyncSession = Depends(get_db)):
     existing = (
         await db.execute(select(FeedSource).where(FeedSource.url == body.url))
@@ -51,7 +70,13 @@ async def create_feed(body: FeedSourceCreate, db: AsyncSession = Depends(get_db)
     return feed
 
 
-@router.patch("/{feed_id}", response_model=FeedSourceResponse)
+@router.patch(
+    "/{feed_id}",
+    response_model=FeedSourceResponse,
+    summary="Update feed source",
+    description="Partially updates a feed source's configuration.",
+    responses={404: {"model": ErrorResponse, "description": "Feed source not found"}},
+)
 async def update_feed(
     feed_id: int, body: FeedSourceUpdate, db: AsyncSession = Depends(get_db)
 ):
@@ -67,7 +92,13 @@ async def update_feed(
     return feed
 
 
-@router.delete("/{feed_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{feed_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete feed source",
+    description="Permanently removes a feed source. Existing articles from this source are not affected.",
+    responses={404: {"model": ErrorResponse, "description": "Feed source not found"}},
+)
 async def delete_feed(feed_id: int, db: AsyncSession = Depends(get_db)):
     feed = (
         await db.execute(select(FeedSource).where(FeedSource.id == feed_id))
