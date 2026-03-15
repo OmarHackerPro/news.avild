@@ -1,14 +1,13 @@
+from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, Query
+from opensearchpy import NotFoundError
 
 from app.api.routes.news import _hit_to_item
-from app.db.models.cluster import Cluster, ClusterArticle
-from app.db.opensearch import INDEX_NEWS, get_os_client
-from app.db.session import get_db
+from app.db.opensearch import INDEX_CLUSTERS, INDEX_NEWS, get_os_client
 from app.models.cluster import ClusterDetail, ClusterListResponse, ClusterSummary
+from app.models.errors import ErrorResponse
 
 router = APIRouter(prefix="/clusters", tags=["clusters"])
 
@@ -33,130 +32,106 @@ async def _fetch_articles_for_slugs(slugs: list[str]) -> list[dict]:
     return resp["hits"]["hits"]
 
 
-@router.get("/", response_model=ClusterListResponse)
+@router.get(
+    "/",
+    response_model=ClusterListResponse,
+    summary="List clusters",
+    description="Returns a paginated list of deduplicated article clusters, optionally filtered by category and date range. Each cluster includes its top article.",
+)
 async def list_clusters(
-    category: Optional[str] = Query(None),
-    date_from: Optional[str] = Query(None),
-    date_to: Optional[str] = Query(None),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    date_from: Optional[str] = Query(None, description="Start date (ISO-8601)"),
+    date_to: Optional[str] = Query(None, description="End date (ISO-8601)"),
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
 ):
-    """List article clusters."""
-    # Count articles per cluster
-    count_sub = (
-        select(
-            ClusterArticle.cluster_id,
-            func.count(ClusterArticle.article_id).label("article_count"),
-        )
-        .group_by(ClusterArticle.cluster_id)
-        .subquery()
-    )
+    filters: list[dict] = []
+    if category:
+        filters.append({"term": {"categories": category}})
+    if date_from or date_to:
+        range_clause: dict = {}
+        if date_from:
+            range_clause["gte"] = date_from
+        if date_to:
+            range_clause["lte"] = date_to
+        filters.append({"range": {"created_at": range_clause}})
 
-    query = (
-        select(
-            Cluster,
-            func.coalesce(count_sub.c.article_count, 0).label("article_count"),
-        )
-        .outerjoin(count_sub, Cluster.id == count_sub.c.cluster_id)
-    )
+    body: dict = {
+        "query": {"bool": {"filter": filters}} if filters else {"match_all": {}},
+        "sort": [{"created_at": {"order": "desc"}}],
+        "from": offset,
+        "size": limit,
+    }
 
-    if date_from:
-        query = query.where(Cluster.created_at >= date_from)
-    if date_to:
-        query = query.where(Cluster.created_at <= date_to)
+    resp = await get_os_client().search(index=INDEX_CLUSTERS, body=body)
+    total = resp["hits"]["total"]["value"]
+    hits = resp["hits"]["hits"]
 
-    # Total
-    count_q = select(func.count()).select_from(Cluster)
-    if date_from:
-        count_q = count_q.where(Cluster.created_at >= date_from)
-    if date_to:
-        count_q = count_q.where(Cluster.created_at <= date_to)
-    total = (await db.execute(count_q)).scalar() or 0
+    # Batch-fetch top articles (first article_id from each cluster)
+    top_slugs = []
+    for h in hits:
+        ids = h["_source"].get("article_ids", [])
+        top_slugs.append(ids[0] if ids else None)
 
-    query = query.order_by(Cluster.created_at.desc()).limit(limit).offset(offset)
-    rows = (await db.execute(query)).all()
+    unique_slugs = [s for s in top_slugs if s]
+    article_hits = await _fetch_articles_for_slugs(unique_slugs)
+    slug_to_article = {h["_id"]: _hit_to_item(h) for h in article_hits}
 
     items = []
-    for row in rows:
-        cluster = row.Cluster
-        article_count = row.article_count
-
-        # Get first article slug for top_article
-        first_slug_q = (
-            select(ClusterArticle.article_id)
-            .where(ClusterArticle.cluster_id == cluster.id)
-            .limit(1)
-        )
-        first_slug_result = await db.execute(first_slug_q)
-        first_slug = first_slug_result.scalar_one_or_none()
-
-        if first_slug:
-            hits = await _fetch_articles_for_slugs([first_slug])
-            top_article = _hit_to_item(hits[0]) if hits else None
-        else:
-            top_article = None
-
-        if top_article is None:
+    for h, top_slug in zip(hits, top_slugs):
+        if top_slug is None or top_slug not in slug_to_article:
             continue
-
+        src = h["_source"]
+        top_article = slug_to_article[top_slug]
         items.append(
             ClusterSummary(
-                id=str(cluster.id),
-                label=cluster.label,
-                state=cluster.state,
-                article_count=article_count,
+                id=h["_id"],
+                label=src["label"],
+                state=src.get("state", "new"),
+                article_count=src.get("article_count", 0),
                 top_article=top_article,
-                categories=[top_article.category],
-                score=cluster.score,
-                confidence=cluster.confidence,
-                latest_at=top_article.published_at,
+                categories=src.get("categories", []),
+                score=Decimal(str(src["score"])) if src.get("score") is not None else None,
+                confidence=src.get("confidence"),
+                latest_at=src.get("latest_at", ""),
             )
         )
 
     return ClusterListResponse(items=items, total=total)
 
 
-@router.get("/{cluster_id}", response_model=ClusterDetail)
-async def get_cluster(
-    cluster_id: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """Get cluster with all member articles."""
-    from uuid import UUID
-
+@router.get(
+    "/{cluster_id}",
+    response_model=ClusterDetail,
+    summary="Get cluster detail",
+    description="Returns full cluster details including TL;DR summary, why-it-matters, score, confidence, and all member articles.",
+    responses={404: {"model": ErrorResponse, "description": "Cluster not found"}},
+)
+async def get_cluster(cluster_id: str):
     try:
-        uid = UUID(cluster_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid cluster ID")
-
-    result = await db.execute(select(Cluster).where(Cluster.id == uid))
-    cluster = result.scalar_one_or_none()
-    if cluster is None:
+        resp = await get_os_client().get(index=INDEX_CLUSTERS, id=cluster_id)
+    except NotFoundError:
         raise HTTPException(status_code=404, detail="Cluster not found")
 
-    slug_result = await db.execute(
-        select(ClusterArticle.article_id).where(ClusterArticle.cluster_id == uid)
-    )
-    slugs = [row[0] for row in slug_result.all()]
+    src = resp["_source"]
+    article_ids = src.get("article_ids", [])
 
-    hits = await _fetch_articles_for_slugs(slugs)
+    hits = await _fetch_articles_for_slugs(article_ids)
     articles = [_hit_to_item(h) for h in hits]
 
-    categories = list({a.category for a in articles})
     tags = list({t for a in articles for t in a.tags})
     dates = [a.published_at for a in articles if a.published_at]
 
     return ClusterDetail(
-        id=str(cluster.id),
-        label=cluster.label,
-        state=cluster.state,
-        summary=cluster.summary,
-        why_it_matters=cluster.why_it_matters,
-        score=cluster.score,
-        confidence=cluster.confidence,
+        id=resp["_id"],
+        label=src["label"],
+        state=src.get("state", "new"),
+        summary=src.get("summary"),
+        why_it_matters=src.get("why_it_matters"),
+        score=Decimal(str(src["score"])) if src.get("score") is not None else None,
+        confidence=src.get("confidence"),
         articles=articles,
-        categories=categories,
+        categories=src.get("categories", []),
         tags=tags,
         earliest_at=min(dates) if dates else "",
         latest_at=max(dates) if dates else "",

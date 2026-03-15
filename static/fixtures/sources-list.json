@@ -1,0 +1,7 @@
+[
+  {"id": 1, "name": "BleepingComputer", "default_category": "breaking", "default_type": "news"},
+  {"id": 2, "name": "CISA Advisories", "default_category": "breaking", "default_type": "advisory"},
+  {"id": 3, "name": "Krebs on Security", "default_category": "breaking", "default_type": "news"},
+  {"id": 4, "name": "The Hacker News", "default_category": "research", "default_type": "news"},
+  {"id": 5, "name": "The Record", "default_category": "research", "default_type": "news"}
+]

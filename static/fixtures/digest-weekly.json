@@ -1,0 +1,86 @@
+{
+  "week": "2026-W11",
+  "total_articles": 312,
+  "by_category": {
+    "breaking": {
+      "count": 98,
+      "top": [
+        {
+          "id": "cisa-warns-fortinet-rce-cve-2026-12345",
+          "slug": "cisa-warns-fortinet-rce-cve-2026-12345",
+          "tags": ["vulnerability", "zero-day", "fortinet"],
+          "title": "CISA Warns of Critical Fortinet FortiOS RCE Vulnerability",
+          "desc": "CISA has added CVE-2026-12345 to its KEV catalog.",
+          "keywords": ["fortinet", "cve-2026-12345"],
+          "time": "3h",
+          "severity": "critical",
+          "type": "advisory",
+          "category": "breaking",
+          "author": "CISA",
+          "source_name": "CISA Advisories",
+          "source_url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+          "image_url": null,
+          "cvss_score": "9.8",
+          "cve_ids": ["CVE-2026-12345"],
+          "published_at": "2026-03-15T08:30:00Z"
+        }
+      ]
+    },
+    "research": {
+      "count": 112,
+      "top": [
+        {
+          "id": "microsoft-patch-tuesday-march-2026",
+          "slug": "microsoft-patch-tuesday-march-2026",
+          "tags": ["patch-tuesday", "microsoft", "windows"],
+          "title": "Microsoft March 2026 Patch Tuesday Fixes 73 Vulnerabilities Including 2 Zero-Days",
+          "desc": "Microsoft's March 2026 security update addresses 73 vulnerabilities.",
+          "keywords": ["microsoft", "patch-tuesday", "windows"],
+          "time": "1d",
+          "severity": "high",
+          "type": "report",
+          "category": "research",
+          "author": "Catalin Cimpanu",
+          "source_name": "The Record",
+          "source_url": "https://therecord.media/microsoft-patch-tuesday-march-2026",
+          "image_url": null,
+          "cvss_score": null,
+          "cve_ids": ["CVE-2026-21001", "CVE-2026-21002"],
+          "published_at": "2026-03-14T18:00:00Z"
+        }
+      ]
+    },
+    "deep-dives": {
+      "count": 102,
+      "top": [
+        {
+          "id": "kubernetes-rbac-misconfiguration-guide",
+          "slug": "kubernetes-rbac-misconfiguration-guide",
+          "tags": ["kubernetes", "rbac", "cloud-security"],
+          "title": "Understanding Kubernetes RBAC Misconfigurations: A Practical Guide",
+          "desc": "A comprehensive guide to identifying and fixing common Kubernetes RBAC misconfigurations.",
+          "keywords": ["kubernetes", "rbac", "cloud-security"],
+          "time": "3d",
+          "severity": null,
+          "type": "analysis",
+          "category": "deep-dives",
+          "author": "Aqua Security",
+          "source_name": "Aqua Blog",
+          "source_url": "https://blog.aquasec.com/kubernetes-rbac-misconfigurations",
+          "image_url": null,
+          "cvss_score": null,
+          "cve_ids": [],
+          "published_at": "2026-03-12T12:00:00Z"
+        }
+      ]
+    }
+  },
+  "top_cves": ["CVE-2026-12345", "CVE-2026-11111", "CVE-2026-21001", "CVE-2026-21002", "CVE-2026-22222"],
+  "top_tags": [
+    {"tag": "vulnerability", "count": 67},
+    {"tag": "ransomware", "count": 45},
+    {"tag": "zero-day", "count": 28},
+    {"tag": "microsoft", "count": 24},
+    {"tag": "fortinet", "count": 19}
+  ]
+}

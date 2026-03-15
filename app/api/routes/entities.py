@@ -10,11 +10,17 @@ from app.db.models.entity import ArticleEntity, Entity
 from app.db.opensearch import INDEX_NEWS, get_os_client
 from app.db.session import get_db
 from app.models.entity import EntityDetail, EntityItem, EntityListResponse
+from app.models.errors import ErrorResponse
 
 router = APIRouter(prefix="/entities", tags=["entities"])
 
 
-@router.get("/", response_model=EntityListResponse)
+@router.get(
+    "/",
+    response_model=EntityListResponse,
+    summary="List entities",
+    description="Returns a paginated list of entities (CVEs, vendors, products, actors, malware, tools) with optional type filter and name prefix search.",
+)
 async def list_entities(
     type: Optional[str] = Query(None, description="Filter by entity type (cve|vendor|product|actor|malware|tool)"),
     q: Optional[str] = Query(None, description="Prefix search on entity name"),
@@ -74,7 +80,16 @@ async def list_entities(
     return EntityListResponse(items=items, total=total)
 
 
-@router.get("/{entity_id}", response_model=EntityDetail)
+@router.get(
+    "/{entity_id}",
+    response_model=EntityDetail,
+    summary="Get entity detail",
+    description="Returns full entity details including aliases, description, and linked articles.",
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid entity ID format"},
+        404: {"model": ErrorResponse, "description": "Entity not found"},
+    },
+)
 async def get_entity(
     entity_id: str,
     db: AsyncSession = Depends(get_db),

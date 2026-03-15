@@ -4,6 +4,7 @@ from app.core.config import settings
 
 INDEX_NEWS = "news_articles"
 INDEX_SNAPSHOTS = "raw_feed_snapshots"
+INDEX_CLUSTERS = "clusters"
 
 _client: AsyncOpenSearch | None = None
 
@@ -86,6 +87,46 @@ _SNAPSHOTS_MAPPING = {
 }
 
 
+_CLUSTERS_MAPPING = {
+    "settings": {
+        "number_of_shards": 1,
+        "number_of_replicas": 0,
+        "refresh_interval": "10s",
+    },
+    "mappings": {
+        "dynamic": "strict",
+        "properties": {
+            "label": {
+                "type": "text",
+                "analyzer": "english",
+                "fields": {"raw": {"type": "keyword", "ignore_above": 512}},
+            },
+            "state":          {"type": "keyword"},
+            "summary":        {"type": "text", "analyzer": "english"},
+            "why_it_matters": {"type": "text", "analyzer": "english"},
+            "score":          {"type": "half_float"},
+            "confidence":     {"type": "keyword"},
+            "article_ids":    {"type": "keyword"},
+            "categories":     {"type": "keyword"},
+            "tags":           {"type": "keyword"},
+            "article_count":  {"type": "integer"},
+            "latest_at": {
+                "type": "date",
+                "format": "strict_date_time||strict_date_time_no_millis",
+            },
+            "created_at": {
+                "type": "date",
+                "format": "strict_date_time||strict_date_time_no_millis",
+            },
+            "updated_at": {
+                "type": "date",
+                "format": "strict_date_time||strict_date_time_no_millis",
+            },
+        },
+    },
+}
+
+
 def get_os_client() -> AsyncOpenSearch:
     global _client
     if _client is None:
@@ -111,10 +152,22 @@ async def close_os_client() -> None:
 
 async def ensure_indexes() -> None:
     """Create OpenSearch indexes if they don't exist. Safe to call on every startup."""
+    import logging
+
+    log = logging.getLogger(__name__)
     client = get_os_client()
     for index, mapping in [
         (INDEX_NEWS, _NEWS_MAPPING),
         (INDEX_SNAPSHOTS, _SNAPSHOTS_MAPPING),
+        (INDEX_CLUSTERS, _CLUSTERS_MAPPING),
     ]:
-        if not await client.indices.exists(index=index):
-            await client.indices.create(index=index, body=mapping)
+        try:
+            if not await client.indices.exists(index=index):
+                await client.indices.create(index=index, body=mapping)
+                log.info("Created OpenSearch index: %s", index)
+        except Exception as exc:
+            log.warning(
+                "Could not ensure index '%s' (create it manually if needed): %s",
+                index,
+                exc,
+            )

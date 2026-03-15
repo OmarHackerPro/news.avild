@@ -1,0 +1,121 @@
+{
+  "items": [
+    {
+      "id": "cisa-warns-fortinet-rce-cve-2026-12345",
+      "slug": "cisa-warns-fortinet-rce-cve-2026-12345",
+      "tags": ["vulnerability", "zero-day", "fortinet", "kev"],
+      "title": "CISA Warns of Critical Fortinet FortiOS RCE Vulnerability",
+      "desc": "CISA has added CVE-2026-12345 to its Known Exploited Vulnerabilities catalog.",
+      "keywords": ["fortinet", "cve-2026-12345", "rce"],
+      "time": "3h",
+      "severity": "critical",
+      "type": "advisory",
+      "category": "breaking",
+      "author": "CISA",
+      "source_name": "CISA Advisories",
+      "source_url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+      "image_url": null,
+      "cvss_score": "9.8",
+      "cve_ids": ["CVE-2026-12345"],
+      "published_at": "2026-03-15T08:30:00Z"
+    },
+    {
+      "id": "fortinet-fortios-rce-exploitation-confirmed",
+      "slug": "fortinet-fortios-rce-exploitation-confirmed",
+      "tags": ["fortinet", "vulnerability", "exploitation"],
+      "title": "Active Exploitation of Fortinet FortiOS RCE Confirmed by Multiple Sources",
+      "desc": "Multiple threat intelligence firms confirm active exploitation of CVE-2026-12345.",
+      "keywords": ["fortinet", "cve-2026-12345", "exploitation"],
+      "time": "6h",
+      "severity": "critical",
+      "type": "news",
+      "category": "breaking",
+      "author": "Sergiu Gatlan",
+      "source_name": "BleepingComputer",
+      "source_url": "https://www.bleepingcomputer.com/news/security/fortinet-rce-exploit",
+      "image_url": null,
+      "cvss_score": "9.8",
+      "cve_ids": ["CVE-2026-12345"],
+      "published_at": "2026-03-15T05:45:00Z"
+    },
+    {
+      "id": "fortinet-releases-emergency-patch-cve-2026-12345",
+      "slug": "fortinet-releases-emergency-patch-cve-2026-12345",
+      "tags": ["fortinet", "patch", "vulnerability"],
+      "title": "Fortinet Releases Emergency Patch for Critical FortiOS Vulnerability",
+      "desc": "Fortinet has issued FortiOS 7.4.5 to address the critical RCE vulnerability.",
+      "keywords": ["fortinet", "patch", "fortios"],
+      "time": "1d",
+      "severity": "critical",
+      "type": "advisory",
+      "category": "breaking",
+      "author": "FortiGuard Labs",
+      "source_name": "Fortinet PSIRT",
+      "source_url": "https://www.fortiguard.com/psirt/FG-IR-26-001",
+      "image_url": null,
+      "cvss_score": "9.8",
+      "cve_ids": ["CVE-2026-12345"],
+      "published_at": "2026-03-14T16:00:00Z"
+    },
+    {
+      "id": "fortios-rce-technical-analysis",
+      "slug": "fortios-rce-technical-analysis",
+      "tags": ["fortinet", "vulnerability", "research", "rce"],
+      "title": "Technical Analysis: Fortinet FortiOS SSL-VPN RCE (CVE-2026-12345)",
+      "desc": "Deep dive into the root cause, exploitation mechanics, and detection strategies.",
+      "keywords": ["fortinet", "cve-2026-12345", "ssl-vpn"],
+      "time": "1d",
+      "severity": "critical",
+      "type": "analysis",
+      "category": "research",
+      "author": "Rapid7 Research",
+      "source_name": "Rapid7 Blog",
+      "source_url": "https://www.rapid7.com/blog/post/2026/03/14/fortios-rce-analysis",
+      "image_url": null,
+      "cvss_score": "9.8",
+      "cve_ids": ["CVE-2026-12345"],
+      "published_at": "2026-03-14T09:00:00Z"
+    },
+    {
+      "id": "fortinet-ssl-vpn-attack-surface",
+      "slug": "fortinet-ssl-vpn-attack-surface",
+      "tags": ["fortinet", "ssl-vpn", "attack-surface"],
+      "title": "Fortinet SSL-VPN: Understanding the Attack Surface and Risk Exposure",
+      "desc": "Analysis of the growing attack surface presented by Fortinet SSL-VPN deployments.",
+      "keywords": ["fortinet", "ssl-vpn", "attack-surface"],
+      "time": "2d",
+      "severity": "high",
+      "type": "analysis",
+      "category": "deep-dives",
+      "author": "Shodan Research",
+      "source_name": "Shodan Blog",
+      "source_url": "https://blog.shodan.io/fortinet-ssl-vpn-exposure",
+      "image_url": null,
+      "cvss_score": null,
+      "cve_ids": [],
+      "published_at": "2026-03-13T11:00:00Z"
+    }
+  ],
+  "total": 37,
+  "query": "fortinet vulnerability",
+  "facets": {
+    "categories": [
+      {"name": "breaking", "count": 15},
+      {"name": "research", "count": 12},
+      {"name": "deep-dives", "count": 7},
+      {"name": "beginner", "count": 3}
+    ],
+    "sources": [
+      {"name": "BleepingComputer", "count": 8},
+      {"name": "The Hacker News", "count": 6},
+      {"name": "CISA Advisories", "count": 5},
+      {"name": "Krebs on Security", "count": 4}
+    ],
+    "severity": [
+      {"name": "critical", "count": 18},
+      {"name": "high", "count": 12},
+      {"name": "medium", "count": 5},
+      {"name": "low", "count": 2}
+    ]
+  }
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1,
+    "name": "CISA Advisories",
+    "url": "https://www.cisa.gov/cybersecurity-advisories/all.xml",
+    "default_type": "advisory",
+    "default_category": "breaking",
+    "default_severity": "critical",
+    "normalizer_key": "cisa",
+    "is_active": true,
+    "last_fetched_at": "2026-03-15T12:00:00Z",
+    "fetch_interval_minutes": 30,
+    "consecutive_failures": 0,
+    "created_at": "2026-03-01T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "BleepingComputer",
+    "url": "https://www.bleepingcomputer.com/feed/",
+    "default_type": "news",
+    "default_category": "breaking",
+    "default_severity": null,
+    "normalizer_key": "generic",
+    "is_active": true,
+    "last_fetched_at": "2026-03-15T11:45:00Z",
+    "fetch_interval_minutes": 60,
+    "consecutive_failures": 0,
+    "created_at": "2026-03-01T00:00:00Z"
+  },
+  {
+    "id": 3,
+    "name": "Krebs on Security",
+    "url": "https://krebsonsecurity.com/feed/",
+    "default_type": "news",
+    "default_category": "breaking",
+    "default_severity": null,
+    "normalizer_key": "krebs",
+    "is_active": true,
+    "last_fetched_at": "2026-03-15T11:30:00Z",
+    "fetch_interval_minutes": 60,
+    "consecutive_failures": 0,
+    "created_at": "2026-03-01T00:00:00Z"
+  },
+  {
+    "id": 4,
+    "name": "The Hacker News",
+    "url": "https://feeds.feedburner.com/TheHackersNews",
+    "default_type": "news",
+    "default_category": "research",
+    "default_severity": null,
+    "normalizer_key": "generic",
+    "is_active": true,
+    "last_fetched_at": "2026-03-15T11:00:00Z",
+    "fetch_interval_minutes": 60,
+    "consecutive_failures": 0,
+    "created_at": "2026-03-01T00:00:00Z"
+  }
+]

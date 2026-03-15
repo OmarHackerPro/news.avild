@@ -1,10 +1,10 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class SignupRequest(BaseModel):
-    email: EmailStr
-    password: str
-    name: str
+    email: EmailStr = Field(json_schema_extra={"example": "analyst@example.com"})
+    password: str = Field(json_schema_extra={"example": "S3cur3P@ss!"})
+    name: str = Field(json_schema_extra={"example": "Jane Doe"})
 
     @field_validator("password")
     @classmethod
@@ -22,17 +22,17 @@ class SignupRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
+    email: EmailStr = Field(json_schema_extra={"example": "analyst@example.com"})
+    password: str = Field(json_schema_extra={"example": "S3cur3P@ss!"})
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    email: EmailStr = Field(json_schema_extra={"example": "analyst@example.com"})
 
 
 class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str
+    token: str = Field(json_schema_extra={"example": "abc123def456..."})
+    new_password: str = Field(json_schema_extra={"example": "N3wS3cur3P@ss!"})
 
     @field_validator("new_password")
     @classmethod
@@ -43,8 +43,8 @@ class ResetPasswordRequest(BaseModel):
 
 
 class ProfileUpdateRequest(BaseModel):
-    name: str | None = None
-    new_password: str | None = None
+    name: str | None = Field(None, json_schema_extra={"example": "Jane Smith"})
+    new_password: str | None = Field(None, json_schema_extra={"example": "Upd@t3dP@ss!"})
 
     @field_validator("new_password")
     @classmethod
@@ -55,15 +55,15 @@ class ProfileUpdateRequest(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: int
-    email: str
-    name: str
-    profile_picture: str | None = None
+    id: int = Field(json_schema_extra={"example": 1})
+    email: str = Field(json_schema_extra={"example": "analyst@example.com"})
+    name: str = Field(json_schema_extra={"example": "Jane Doe"})
+    profile_picture: str | None = Field(None, json_schema_extra={"example": "uploads/avatars/user_1_a3b4c5d6.jpg"})
 
     model_config = {"from_attributes": True}
 
 
 class AuthResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+    access_token: str = Field(json_schema_extra={"example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."})
+    token_type: str = Field("bearer", json_schema_extra={"example": "bearer"})
     user: UserResponse

@@ -1,0 +1,105 @@
+{
+  "date": "2026-03-15",
+  "total_articles": 47,
+  "by_category": {
+    "breaking": {
+      "count": 18,
+      "top": [
+        {
+          "id": "cisa-warns-fortinet-rce-cve-2026-12345",
+          "slug": "cisa-warns-fortinet-rce-cve-2026-12345",
+          "tags": ["vulnerability", "zero-day", "fortinet"],
+          "title": "CISA Warns of Critical Fortinet FortiOS RCE Vulnerability",
+          "desc": "CISA has added CVE-2026-12345 to its KEV catalog.",
+          "keywords": ["fortinet", "cve-2026-12345"],
+          "time": "3h",
+          "severity": "critical",
+          "type": "advisory",
+          "category": "breaking",
+          "author": "CISA",
+          "source_name": "CISA Advisories",
+          "source_url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+          "image_url": null,
+          "cvss_score": "9.8",
+          "cve_ids": ["CVE-2026-12345"],
+          "published_at": "2026-03-15T08:30:00Z"
+        },
+        {
+          "id": "lockbit-ransomware-targets-healthcare-sector",
+          "slug": "lockbit-ransomware-targets-healthcare-sector",
+          "tags": ["ransomware", "lockbit", "healthcare"],
+          "title": "LockBit Ransomware Gang Targets Healthcare Sector in New Campaign",
+          "desc": "New LockBit 3.0 campaign targeting hospitals and healthcare providers.",
+          "keywords": ["lockbit", "ransomware", "healthcare"],
+          "time": "5h",
+          "severity": "high",
+          "type": "news",
+          "category": "breaking",
+          "author": "Lawrence Abrams",
+          "source_name": "BleepingComputer",
+          "source_url": "https://www.bleepingcomputer.com/news/security/lockbit-healthcare",
+          "image_url": null,
+          "cvss_score": null,
+          "cve_ids": [],
+          "published_at": "2026-03-15T06:15:00Z"
+        }
+      ]
+    },
+    "research": {
+      "count": 15,
+      "top": [
+        {
+          "id": "apt29-cozy-bear-phishing-european-diplomats",
+          "slug": "apt29-cozy-bear-phishing-european-diplomats",
+          "tags": ["apt29", "cozy-bear", "phishing"],
+          "title": "APT29 Launches Sophisticated Phishing Campaign Against European Diplomats",
+          "desc": "Russian state-sponsored group APT29 using novel phishing techniques.",
+          "keywords": ["apt29", "cozy-bear", "phishing"],
+          "time": "8h",
+          "severity": "high",
+          "type": "analysis",
+          "category": "research",
+          "author": "Mandiant Research",
+          "source_name": "The Hacker News",
+          "source_url": "https://thehackernews.com/2026/03/apt29-phishing-european-diplomats",
+          "image_url": null,
+          "cvss_score": null,
+          "cve_ids": [],
+          "published_at": "2026-03-15T03:30:00Z"
+        }
+      ]
+    },
+    "dark-web": {
+      "count": 14,
+      "top": [
+        {
+          "id": "dark-web-marketplace-selling-stolen-credentials",
+          "slug": "dark-web-marketplace-selling-stolen-credentials",
+          "tags": ["dark-web", "credentials", "data-breach"],
+          "title": "New Dark Web Marketplace Selling 10M+ Stolen Corporate Credentials",
+          "desc": "Newly discovered dark web marketplace offering stolen corporate credentials.",
+          "keywords": ["dark-web", "credentials", "data-breach"],
+          "time": "10h",
+          "severity": "medium",
+          "type": "news",
+          "category": "dark-web",
+          "author": "Brian Krebs",
+          "source_name": "Krebs on Security",
+          "source_url": "https://krebsonsecurity.com/2026/03/dark-web-credentials",
+          "image_url": null,
+          "cvss_score": null,
+          "cve_ids": [],
+          "published_at": "2026-03-15T01:45:00Z"
+        }
+      ]
+    }
+  },
+  "top_cves": ["CVE-2026-12345", "CVE-2026-11111", "CVE-2026-22222"],
+  "top_tags": [
+    {"tag": "vulnerability", "count": 14},
+    {"tag": "ransomware", "count": 12},
+    {"tag": "zero-day", "count": 8},
+    {"tag": "fortinet", "count": 7},
+    {"tag": "phishing", "count": 5}
+  ]
+}

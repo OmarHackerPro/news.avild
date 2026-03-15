@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, 
 
 from app.core.config import settings
 from app.ingestion.ingester import ingest_all_feeds
+from app.models.errors import ErrorResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -34,18 +35,31 @@ async def _run_ingestion():
         _ingestion_state["running"] = False
 
 
-@router.post("/ingest", dependencies=[Depends(_require_admin)])
+@router.post(
+    "/ingest",
+    dependencies=[Depends(_require_admin)],
+    summary="Trigger ingestion",
+    description="Starts a background RSS ingestion run across all active feed sources. Requires X-Admin-Secret header.",
+    responses={
+        403: {"model": ErrorResponse, "description": "Invalid or missing admin secret"},
+        409: {"model": ErrorResponse, "description": "Ingestion already running"},
+    },
+)
 async def trigger_ingestion(background_tasks: BackgroundTasks):
-    """Trigger a full RSS ingestion run in the background."""
     if _ingestion_state["running"]:
         raise HTTPException(status.HTTP_409_CONFLICT, "Ingestion is already running")
     background_tasks.add_task(_run_ingestion)
     return {"detail": "Ingestion started"}
 
 
-@router.get("/ingest/status", dependencies=[Depends(_require_admin)])
+@router.get(
+    "/ingest/status",
+    dependencies=[Depends(_require_admin)],
+    summary="Get ingestion status",
+    description="Returns the current ingestion state including whether it's running and the result of the last run. Requires X-Admin-Secret header.",
+    responses={403: {"model": ErrorResponse, "description": "Invalid or missing admin secret"}},
+)
 async def ingestion_status():
-    """Return the current ingestion state."""
     return {
         "running": _ingestion_state["running"],
         "last_result": _ingestion_state["last_result"],
