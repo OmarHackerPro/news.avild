@@ -5,6 +5,7 @@ from app.core.config import settings
 INDEX_NEWS = "news_articles"
 INDEX_SNAPSHOTS = "raw_feed_snapshots"
 INDEX_CLUSTERS = "clusters"
+INDEX_ENTITIES = "entities"
 
 _client: AsyncOpenSearch | None = None
 
@@ -127,6 +128,40 @@ _CLUSTERS_MAPPING = {
 }
 
 
+_ENTITIES_MAPPING = {
+    "settings": {
+        "number_of_shards": 1,
+        "number_of_replicas": 0,
+        "refresh_interval": "10s",
+    },
+    "mappings": {
+        "dynamic": "strict",
+        "properties": {
+            "type":           {"type": "keyword"},
+            "name": {
+                "type": "text",
+                "analyzer": "english",
+                "fields": {"raw": {"type": "keyword", "ignore_above": 512}},
+            },
+            "normalized_key": {"type": "keyword"},
+            "aliases":        {"type": "keyword"},
+            "description":    {"type": "text", "analyzer": "english"},
+            "cvss_score":     {"type": "half_float"},
+            "article_ids":    {"type": "keyword"},
+            "article_count":  {"type": "integer"},
+            "first_seen": {
+                "type": "date",
+                "format": "strict_date_time||strict_date_time_no_millis",
+            },
+            "last_seen": {
+                "type": "date",
+                "format": "strict_date_time||strict_date_time_no_millis",
+            },
+        },
+    },
+}
+
+
 def get_os_client() -> AsyncOpenSearch:
     global _client
     if _client is None:
@@ -160,6 +195,7 @@ async def ensure_indexes() -> None:
         (INDEX_NEWS, _NEWS_MAPPING),
         (INDEX_SNAPSHOTS, _SNAPSHOTS_MAPPING),
         (INDEX_CLUSTERS, _CLUSTERS_MAPPING),
+        (INDEX_ENTITIES, _ENTITIES_MAPPING),
     ]:
         try:
             if not await client.indices.exists(index=index):

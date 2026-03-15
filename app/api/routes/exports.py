@@ -5,15 +5,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routes.news import _build_filters
-from app.db.models.entity import Entity
-from app.db.opensearch import INDEX_NEWS, get_os_client
-from app.db.session import get_db
+from app.db.opensearch import INDEX_ENTITIES, INDEX_NEWS, get_os_client
 
 router = APIRouter(prefix="/exports", tags=["exports"])
 
@@ -176,64 +172,48 @@ async def export_stix(
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db),
 ):
     """Export IOCs as STIX 2.1 bundle."""
-    # Fetch entities (CVEs and actors) from PostgreSQL
-    query = select(Entity)
+    filters: list[dict] = []
     if date_from:
-        query = query.where(Entity.last_seen >= date_from)
+        filters.append({"range": {"last_seen": {"gte": date_from}}})
     if date_to:
-        query = query.where(Entity.first_seen <= date_to)
+        filters.append({"range": {"first_seen": {"lte": date_to}}})
 
-    result = await db.execute(query.order_by(Entity.last_seen.desc()).limit(500))
-    entities = result.scalars().all()
+    body: dict = {
+        "query": {"bool": {"filter": filters}} if filters else {"match_all": {}},
+        "sort": [{"last_seen": {"order": "desc"}}],
+        "size": 500,
+    }
+
+    resp = await get_os_client().search(index=INDEX_ENTITIES, body=body)
+
+    _TYPE_MAP = {
+        "cve": ("vulnerability", lambda n: {"external_references": [{"source_name": "cve", "external_id": n}]}),
+        "actor": ("threat-actor", lambda n: {"threat_actor_types": ["unknown"]}),
+        "malware": ("malware", lambda n: {"is_family": True}),
+        "tool": ("tool", lambda n: {}),
+    }
 
     objects = []
     now = datetime.now(timezone.utc).isoformat()
 
-    for ent in entities:
-        if ent.type == "cve":
-            objects.append({
-                "type": "vulnerability",
-                "spec_version": "2.1",
-                "id": f"vulnerability--{ent.id}",
-                "created": now,
-                "modified": now,
-                "name": ent.name,
-                "external_references": [
-                    {"source_name": "cve", "external_id": ent.name}
-                ],
-            })
-        elif ent.type in ("actor",):
-            objects.append({
-                "type": "threat-actor",
-                "spec_version": "2.1",
-                "id": f"threat-actor--{ent.id}",
-                "created": now,
-                "modified": now,
-                "name": ent.name,
-                "threat_actor_types": ["unknown"],
-            })
-        elif ent.type in ("malware",):
-            objects.append({
-                "type": "malware",
-                "spec_version": "2.1",
-                "id": f"malware--{ent.id}",
-                "created": now,
-                "modified": now,
-                "name": ent.name,
-                "is_family": True,
-            })
-        elif ent.type in ("tool",):
-            objects.append({
-                "type": "tool",
-                "spec_version": "2.1",
-                "id": f"tool--{ent.id}",
-                "created": now,
-                "modified": now,
-                "name": ent.name,
-            })
+    for hit in resp["hits"]["hits"]:
+        src = hit["_source"]
+        ent_type = src["type"]
+        if ent_type not in _TYPE_MAP:
+            continue
+        stix_type, extra_fn = _TYPE_MAP[ent_type]
+        obj = {
+            "type": stix_type,
+            "spec_version": "2.1",
+            "id": f"{stix_type}--{hit['_id']}",
+            "created": now,
+            "modified": now,
+            "name": src["name"],
+            **extra_fn(src["name"]),
+        }
+        objects.append(obj)
 
     bundle = {
         "type": "bundle",

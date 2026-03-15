@@ -112,9 +112,7 @@ async def main(args: argparse.Namespace) -> None:
             continue
 
         try:
-            async with AsyncSessionLocal() as session:
-                async with session.begin():
-                    await store_article_entities(slug, entities, session)
+            await store_article_entities(slug, entities)
             totals["links_created"] += len(entities)
             logger.info(
                 "[%s] Linked %d entities: %s",

@@ -1,14 +1,10 @@
 from typing import Optional
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, Query
+from opensearchpy import NotFoundError
 
 from app.api.routes.news import _hit_to_item
-from app.db.models.entity import ArticleEntity, Entity
-from app.db.opensearch import INDEX_NEWS, get_os_client
-from app.db.session import get_db
+from app.db.opensearch import INDEX_ENTITIES, INDEX_NEWS, get_os_client
 from app.models.entity import EntityDetail, EntityItem, EntityListResponse
 from app.models.errors import ErrorResponse
 
@@ -26,55 +22,47 @@ async def list_entities(
     q: Optional[str] = Query(None, description="Prefix search on entity name"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
 ):
-    # Base query: entities with article count
-    count_sub = (
-        select(
-            ArticleEntity.entity_id,
-            func.count(ArticleEntity.article_id).label("article_count"),
-        )
-        .group_by(ArticleEntity.entity_id)
-        .subquery()
-    )
-
-    query = (
-        select(
-            Entity,
-            func.coalesce(count_sub.c.article_count, 0).label("article_count"),
-        )
-        .outerjoin(count_sub, Entity.id == count_sub.c.entity_id)
-    )
-
+    filters: list[dict] = []
     if type:
-        query = query.where(Entity.type == type)
-    if q:
-        query = query.where(Entity.name.ilike(f"{q}%"))
+        filters.append({"term": {"type": type}})
 
-    # Total count
-    count_query = select(func.count()).select_from(Entity)
-    if type:
-        count_query = count_query.where(Entity.type == type)
     if q:
-        count_query = count_query.where(Entity.name.ilike(f"{q}%"))
-    total = (await db.execute(count_query)).scalar() or 0
+        query_clause: dict = {
+            "bool": {
+                "must": [{"prefix": {"name.raw": {"value": q, "case_insensitive": True}}}],
+                "filter": filters,
+            }
+        }
+    elif filters:
+        query_clause = {"bool": {"filter": filters}}
+    else:
+        query_clause = {"match_all": {}}
 
-    # Paginated results
-    query = query.order_by(Entity.last_seen.desc()).limit(limit).offset(offset)
-    rows = (await db.execute(query)).all()
+    body: dict = {
+        "query": query_clause,
+        "sort": [{"last_seen": {"order": "desc"}}],
+        "from": offset,
+        "size": limit,
+    }
+
+    resp = await get_os_client().search(index=INDEX_ENTITIES, body=body)
+    total = resp["hits"]["total"]["value"]
+    hits = resp["hits"]["hits"]
 
     items = [
         EntityItem(
-            id=str(row.Entity.id),
-            type=row.Entity.type,
-            name=row.Entity.name,
-            normalized_key=row.Entity.normalized_key,
-            cvss_score=row.Entity.cvss_score,
-            first_seen=row.Entity.first_seen,
-            last_seen=row.Entity.last_seen,
-            article_count=row.article_count,
+            id=h["_id"],
+            type=src["type"],
+            name=src["name"],
+            normalized_key=src["normalized_key"],
+            cvss_score=src.get("cvss_score"),
+            first_seen=src["first_seen"],
+            last_seen=src["last_seen"],
+            article_count=src.get("article_count", 0),
         )
-        for row in rows
+        for h in hits
+        for src in [h["_source"]]
     ]
 
     return EntityListResponse(items=items, total=total)
@@ -86,47 +74,26 @@ async def list_entities(
     summary="Get entity detail",
     description="Returns full entity details including aliases, description, and linked articles.",
     responses={
-        400: {"model": ErrorResponse, "description": "Invalid entity ID format"},
         404: {"model": ErrorResponse, "description": "Entity not found"},
     },
 )
-async def get_entity(
-    entity_id: str,
-    db: AsyncSession = Depends(get_db),
-):
-    # Fetch entity
+async def get_entity(entity_id: str):
     try:
-        uid = UUID(entity_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid entity ID")
-
-    result = await db.execute(select(Entity).where(Entity.id == uid))
-    entity = result.scalar_one_or_none()
-    if entity is None:
+        resp = await get_os_client().get(index=INDEX_ENTITIES, id=entity_id)
+    except NotFoundError:
         raise HTTPException(status_code=404, detail="Entity not found")
 
-    # Count linked articles
-    count_result = await db.execute(
-        select(func.count(ArticleEntity.article_id))
-        .where(ArticleEntity.entity_id == uid)
-    )
-    article_count = count_result.scalar() or 0
+    src = resp["_source"]
+    article_ids = src.get("article_ids", [])
 
-    # Fetch linked article slugs
-    slug_result = await db.execute(
-        select(ArticleEntity.article_id)
-        .where(ArticleEntity.entity_id == uid)
-    )
-    slugs = [row[0] for row in slug_result.all()]
-
-    # Fetch articles from OpenSearch
+    # Fetch linked articles from OpenSearch
     articles = []
-    if slugs:
-        resp = await get_os_client().search(
+    if article_ids:
+        art_resp = await get_os_client().search(
             index=INDEX_NEWS,
             body={
-                "query": {"ids": {"values": slugs}},
-                "size": len(slugs),
+                "query": {"ids": {"values": article_ids}},
+                "size": len(article_ids),
                 "sort": [{"published_at": {"order": "desc"}}],
                 "_source": [
                     "slug", "title", "desc", "tags", "keywords", "published_at",
@@ -135,18 +102,18 @@ async def get_entity(
                 ],
             },
         )
-        articles = [_hit_to_item(h) for h in resp["hits"]["hits"]]
+        articles = [_hit_to_item(h) for h in art_resp["hits"]["hits"]]
 
     return EntityDetail(
-        id=str(entity.id),
-        type=entity.type,
-        name=entity.name,
-        normalized_key=entity.normalized_key,
-        aliases=entity.aliases or [],
-        description=entity.description,
-        cvss_score=entity.cvss_score,
-        first_seen=entity.first_seen,
-        last_seen=entity.last_seen,
-        article_count=article_count,
+        id=resp["_id"],
+        type=src["type"],
+        name=src["name"],
+        normalized_key=src["normalized_key"],
+        aliases=src.get("aliases", []),
+        description=src.get("description"),
+        cvss_score=src.get("cvss_score"),
+        first_seen=src["first_seen"],
+        last_seen=src["last_seen"],
+        article_count=src.get("article_count", 0),
         articles=articles,
     )

@@ -269,12 +269,10 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient, *, update
                 stats["inserted"] += 1
                 try:
                     entities = extract_entities(article)
-                    if entities and AsyncSessionLocal is not None:
-                        async with AsyncSessionLocal() as session:
-                            async with session.begin():
-                                await store_article_entities(
-                                    article["slug"], entities, session,
-                                )
+                    if entities:
+                        await store_article_entities(
+                            article["slug"], entities,
+                        )
                 except Exception:
                     logger.exception(
                         "[%s] Entity extraction failed for '%s'",

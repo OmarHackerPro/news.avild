@@ -1,16 +1,12 @@
-"""Persist extracted entities to PostgreSQL.
+"""Persist extracted entities to OpenSearch.
 
-Handles upserts for both the entities table and the article_entities junction table.
+Handles upserts for the entities index and tracks article linkage via
+the article_ids field on each entity document.
 """
 import logging
-import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import func
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.models.entity import ArticleEntity, Entity
+from app.db.opensearch import INDEX_ENTITIES, get_os_client
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +14,6 @@ logger = logging.getLogger(__name__)
 async def store_article_entities(
     article_slug: str,
     entities: list[dict],
-    session: AsyncSession,
 ) -> None:
     """Upsert entities and link them to an article.
 
@@ -28,43 +23,51 @@ async def store_article_entities(
     if not entities:
         return
 
-    entity_ids: list[uuid.UUID] = []
-    now = datetime.now(timezone.utc)
+    client = get_os_client()
+    now = datetime.now(timezone.utc).isoformat()
 
     for ent in entities:
-        stmt = pg_insert(Entity).values(
-            id=uuid.uuid4(),
-            type=ent["type"],
-            name=ent["name"],
-            normalized_key=ent["normalized_key"],
-            cvss_score=ent.get("cvss_score"),
-            first_seen=now,
-            last_seen=now,
-        )
+        doc_id = ent["normalized_key"]
 
-        # Always update last_seen on conflict.
-        # For cvss_score: use COALESCE(existing, new) so we only fill NULLs.
-        update_set: dict = {"last_seen": now}
-        if ent.get("cvss_score") is not None:
-            update_set["cvss_score"] = func.coalesce(
-                Entity.cvss_score, stmt.excluded.cvss_score
+        # Try to update existing entity doc (add article_id, bump last_seen)
+        update_body: dict = {
+            "script": {
+                "source": (
+                    "if (!ctx._source.article_ids.contains(params.slug)) {"
+                    "  ctx._source.article_ids.add(params.slug);"
+                    "  ctx._source.article_count = ctx._source.article_ids.length();"
+                    "}"
+                    "ctx._source.last_seen = params.now;"
+                    "if (params.cvss != null && ctx._source.cvss_score == null) {"
+                    "  ctx._source.cvss_score = params.cvss;"
+                    "}"
+                ),
+                "params": {
+                    "slug": article_slug,
+                    "now": now,
+                    "cvss": ent.get("cvss_score"),
+                },
+            },
+            "upsert": {
+                "type": ent["type"],
+                "name": ent["name"],
+                "normalized_key": ent["normalized_key"],
+                "aliases": [],
+                "description": None,
+                "cvss_score": ent.get("cvss_score"),
+                "article_ids": [article_slug],
+                "article_count": 1,
+                "first_seen": now,
+                "last_seen": now,
+            },
+        }
+
+        try:
+            await client.update(
+                index=INDEX_ENTITIES,
+                id=doc_id,
+                body=update_body,
+                retry_on_conflict=3,
             )
-
-        stmt = stmt.on_conflict_do_update(
-            index_elements=["normalized_key"],
-            set_=update_set,
-        ).returning(Entity.id)
-
-        result = await session.execute(stmt)
-        entity_id = result.scalar_one()
-        entity_ids.append(entity_id)
-
-    # Bulk link article ↔ entities
-    if entity_ids:
-        link_stmt = pg_insert(ArticleEntity).values(
-            [
-                {"article_id": article_slug, "entity_id": eid}
-                for eid in entity_ids
-            ]
-        ).on_conflict_do_nothing()
-        await session.execute(link_stmt)
+        except Exception:
+            logger.exception("Failed to upsert entity %s", doc_id)
