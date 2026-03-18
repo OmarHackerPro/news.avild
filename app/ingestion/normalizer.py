@@ -104,6 +104,46 @@ def _strip_wp_footer(text: str) -> str:
     return re.sub(r"\s*The post .+? appeared first on .+?\.\s*\Z", "", text).strip()
 
 
+def _extract_image_url(
+    entry: feedparser.FeedParserDict, content_html: Optional[str]
+) -> Optional[str]:
+    """Extract article image URL from feed entry metadata or HTML content.
+
+    Priority: media:thumbnail > media:content (image) > enclosure (image) > featuredImage > <img> tag.
+    """
+    # 1. media:thumbnail
+    thumbs = entry.get("media_thumbnail") or []
+    if thumbs and thumbs[0].get("url"):
+        return thumbs[0]["url"][:2048]
+
+    # 2. media:content (image types only)
+    media = entry.get("media_content") or []
+    for m in media:
+        mtype = (m.get("type") or "").lower()
+        if mtype.startswith("image/") and m.get("url"):
+            return m["url"][:2048]
+
+    # 3. enclosure links with image type
+    for link in entry.get("links") or []:
+        if link.get("rel") == "enclosure":
+            ltype = (link.get("type") or "").lower()
+            if ltype.startswith("image/") and link.get("href"):
+                return link["href"][:2048]
+
+    # 4. Custom fields (e.g. Unit 42 featuredImage) — feedparser lowercases element names
+    featured = entry.get("featuredimage") or entry.get("featuredImage")
+    if featured:
+        return (featured if isinstance(featured, str) else str(featured))[:2048]
+
+    # 5. <img> tag from HTML content
+    if content_html:
+        img = _extract_first_image(content_html)
+        if img:
+            return img[:2048]
+
+    return None
+
+
 def _extract_cvss_score(html: str) -> Optional[Decimal]:
     """Extract a CVSS v3 base score from advisory HTML.
 
