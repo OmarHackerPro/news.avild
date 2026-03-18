@@ -225,3 +225,20 @@ class TestExtractImageUrl:
         result = _extract_image_url(entry, None)
         assert result is not None
         assert len(result) <= 2048
+
+
+from app.ingestion.normalizer import NORMALIZER_REGISTRY, normalize_cisa_news, normalize_cisa_advisory
+
+
+class TestNormalizerRegistry:
+    def test_all_keys_resolve(self):
+        expected_keys = {"generic", "thn", "bleepingcomputer", "securityweek", "krebs", "cisa_news", "cisa_advisory"}
+        assert set(NORMALIZER_REGISTRY.keys()) == expected_keys
+
+    def test_aliases_point_to_generic(self):
+        for key in ("generic", "thn", "bleepingcomputer", "securityweek", "krebs"):
+            assert NORMALIZER_REGISTRY[key] is normalize_generic
+
+    def test_cisa_normalizers_are_distinct(self):
+        assert NORMALIZER_REGISTRY["cisa_news"] is normalize_cisa_news
+        assert NORMALIZER_REGISTRY["cisa_advisory"] is normalize_cisa_advisory

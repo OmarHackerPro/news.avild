@@ -183,49 +183,6 @@ def _extract_advisory_id(url: str) -> Optional[str]:
 # Per-feed normalizers
 # ---------------------------------------------------------------------------
 
-def normalize_thn(
-    entry: feedparser.FeedParserDict,
-    source: FeedSource,
-) -> Optional[NormalizedArticle]:
-    """Normalizer for The Hacker News RSS feed.
-
-    THN entry fields used:
-      entry.title           plain text headline
-      entry.link            canonical article URL
-      entry.id / entry.guid unique identifier (may equal link)
-      entry.summary         CDATA HTML description
-      entry.published_parsed UTC struct_time
-    """
-    title = (entry.get("title") or "").strip()
-    link  = (entry.get("link")  or "").strip()
-
-    if not title or not link:
-        return None  # signals ingester to skip this entry
-
-    guid = (entry.get("id") or entry.get("guid") or link).strip()
-    raw_desc = entry.get("summary") or entry.get("description") or ""
-    desc = strip_html(raw_desc).strip() or title
-
-    return NormalizedArticle(
-        slug=build_slug(title, guid),
-        guid=guid,
-        source_name=source["name"],
-        title=title[:500],
-        author=(entry.get("author") or "").strip() or None,
-        desc=desc,
-        content_html=raw_desc or None,
-        summary=strip_html(raw_desc).strip()[:2000] or None,
-        content_source="rss" if raw_desc else None,
-        tags=_extract_tags(entry),
-        keywords=[],
-        published_at=_parse_date(entry),
-        severity=source["default_severity"],
-        type=source["default_type"],
-        category=source["default_category"],
-        source_url=link[:2048],
-    )
-
-
 def normalize_generic(
     entry: feedparser.FeedParserDict,
     source: FeedSource,
@@ -294,89 +251,6 @@ def normalize_generic(
         category=source["default_category"],
         source_url=link[:2048],
         cve_ids=cve_ids if cve_ids else [],
-    )
-
-
-def normalize_bleepingcomputer(
-    entry: feedparser.FeedParserDict,
-    source: FeedSource,
-) -> Optional[NormalizedArticle]:
-    """Normalizer for BleepingComputer RSS feed.
-
-    Fields: title, link, pubDate, dc:creator (author), categories (3-5 per item),
-    guid, description (summary only — no full article text in feed).
-    """
-    title = (entry.get("title") or "").strip()
-    link  = (entry.get("link")  or "").strip()
-
-    if not title or not link:
-        return None
-
-    guid = (entry.get("id") or link).strip()
-    raw_desc = entry.get("summary") or entry.get("description") or ""
-    desc = strip_html(raw_desc).strip() or None
-
-    return NormalizedArticle(
-        slug=build_slug(title, guid),
-        guid=guid,
-        source_name=source["name"],
-        title=title[:500],
-        author=(entry.get("author") or "").strip() or None,
-        desc=desc,
-        content_html=raw_desc or None,
-        summary=strip_html(raw_desc).strip()[:2000] or None,
-        content_source="rss" if raw_desc else None,
-        tags=_extract_tags(entry),
-        keywords=[],
-        published_at=_parse_date(entry),
-        severity=source["default_severity"],
-        type=source["default_type"],
-        category=source["default_category"],
-        source_url=link[:2048],
-    )
-
-
-def normalize_securityweek(
-    entry: feedparser.FeedParserDict,
-    source: FeedSource,
-) -> Optional[NormalizedArticle]:
-    """Normalizer for SecurityWeek RSS feed (WordPress-based).
-
-    Fields: title, link, pubDate, dc:creator (author), categories (5-10 per item),
-    guid, description. Summary only — WordPress appends a footer we strip.
-    """
-    title = (entry.get("title") or "").strip()
-    link  = (entry.get("link")  or "").strip()
-
-    if not title or not link:
-        return None
-
-    guid = (entry.get("id") or link).strip()
-    raw_desc = entry.get("summary") or entry.get("description") or ""
-    desc_text = strip_html(raw_desc).strip()
-    # WordPress appends "The post [title] appeared first on SecurityWeek." — strip it
-    desc_text = re.sub(
-        r"\s*The post .+? appeared first on SecurityWeek\.\s*$", "", desc_text
-    ).strip()
-    desc = desc_text or None
-
-    return NormalizedArticle(
-        slug=build_slug(title, guid),
-        guid=guid,
-        source_name=source["name"],
-        title=title[:500],
-        author=(entry.get("author") or "").strip() or None,
-        desc=desc,
-        content_html=raw_desc or None,
-        summary=desc_text[:2000] or None,
-        content_source="rss" if raw_desc else None,
-        tags=_extract_tags(entry),
-        keywords=[],
-        published_at=_parse_date(entry),
-        severity=source["default_severity"],
-        type=source["default_type"],
-        category=source["default_category"],
-        source_url=link[:2048],
     )
 
 
@@ -474,89 +348,17 @@ def normalize_cisa_advisory(
     )
 
 
-def normalize_krebs(
-    entry: feedparser.FeedParserDict,
-    source: FeedSource,
-) -> Optional[NormalizedArticle]:
-    """Normalizer for Krebs on Security RSS feed.
-
-    Krebs provides full article HTML in content:encoded, 10-20 categories per
-    article, embedded images, and comment metadata (count + RSS feed link).
-    """
-    title = (entry.get("title") or "").strip()
-    link  = (entry.get("link")  or "").strip()
-
-    if not title or not link:
-        return None
-
-    guid = (entry.get("id") or link).strip()
-
-    # Short teaser (entry.summary / description)
-    raw_desc = entry.get("summary") or entry.get("description") or ""
-    desc = strip_html(raw_desc).strip() or None
-
-    # Full article HTML from content:encoded
-    content_list = entry.get("content") or []
-    content_html = (content_list[0].get("value") if content_list else "") or None
-
-    # First image extracted from article body
-    image_url = _extract_first_image(content_html) if content_html else None
-
-    # CVE IDs from <category> tags (Krebs tags CVEs directly) + article body
-    tags = _extract_tags(entry)
-    tag_text = " ".join(tags)
-    body_text = content_html or ""
-    cve_ids = _extract_cve_ids(f"{tag_text} {body_text}")
-
-    # Comment metadata
-    raw_metadata: dict = {}
-    comment_count = entry.get("slash_comments")
-    if comment_count is not None:
-        try:
-            raw_metadata["comment_count"] = int(comment_count)
-        except (ValueError, TypeError):
-            pass
-    comment_rss = entry.get("wfw_commentrss") or entry.get("wfw_comment_rss")
-    if comment_rss:
-        raw_metadata["comment_rss_url"] = comment_rss
-    comments_url = entry.get("comments")
-    if comments_url:
-        raw_metadata["comments_url"] = comments_url
-
-    return NormalizedArticle(
-        slug=build_slug(title, guid),
-        guid=guid,
-        source_name=source["name"],
-        title=title[:500],
-        author=(entry.get("author") or "").strip() or None,
-        desc=desc,
-        content_html=content_html,
-        summary=strip_html(content_html).strip()[:2000] if content_html else None,
-        content_source="rss" if content_html else None,
-        image_url=image_url[:2048] if image_url else None,
-        tags=tags,
-        keywords=[],
-        published_at=_parse_date(entry),
-        severity=source["default_severity"],
-        type=source["default_type"],
-        category=source["default_category"],
-        source_url=link[:2048],
-        cve_ids=cve_ids if cve_ids else None,
-        raw_metadata=raw_metadata or None,
-    )
-
-
 # ---------------------------------------------------------------------------
 # Registry — string key → callable
 # Keeps FeedSource as pure serializable data (no Callable references there).
 # ---------------------------------------------------------------------------
 
 NORMALIZER_REGISTRY: dict[str, Callable] = {
-    "thn":              normalize_thn,
     "generic":          normalize_generic,
-    "bleepingcomputer": normalize_bleepingcomputer,
-    "securityweek":     normalize_securityweek,
+    "thn":              normalize_generic,
+    "bleepingcomputer": normalize_generic,
+    "securityweek":     normalize_generic,
+    "krebs":            normalize_generic,
     "cisa_news":        normalize_cisa_news,
     "cisa_advisory":    normalize_cisa_advisory,
-    "krebs":            normalize_krebs,
 }
