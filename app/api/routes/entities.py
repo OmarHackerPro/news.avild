@@ -96,9 +96,10 @@ async def get_entity(entity_id: str):
                 "size": len(article_ids),
                 "sort": [{"published_at": {"order": "desc"}}],
                 "_source": [
-                    "slug", "title", "desc", "tags", "keywords", "published_at",
-                    "severity", "type", "category", "author", "source_name",
-                    "source_url", "image_url", "cvss_score", "cve_ids",
+                    "slug", "title", "desc", "summary", "tags", "keywords",
+                    "published_at", "severity", "type", "category", "author",
+                    "source_name", "source_url", "image_url", "cvss_score",
+                    "cve_ids",
                 ],
             },
         )

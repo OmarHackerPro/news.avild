@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Extract entities from existing articles in OpenSearch and store in PostgreSQL.
+"""Extract entities from existing articles in OpenSearch and backfill keywords.
 
 Usage:
     python scripts/extract_entities.py                          # all articles
@@ -42,7 +42,7 @@ async def _scroll_articles(source: str | None) -> list[dict]:
             "sort": [{"published_at": {"order": "asc"}}],
             "size": 500,
             "_source": [
-                "slug", "title", "desc", "content_html",
+                "slug", "title", "desc", "summary", "content_html",
                 "cve_ids", "cvss_score", "tags", "keywords",
                 "source_name",
             ],
@@ -89,6 +89,7 @@ async def main(args: argparse.Namespace) -> None:
             "slug": slug,
             "title": src.get("title", ""),
             "desc": src.get("desc"),
+            "summary": src.get("summary"),
             "content_html": src.get("content_html"),
             "cve_ids": src.get("cve_ids") or [],
             "cvss_score": src.get("cvss_score"),
@@ -114,6 +115,18 @@ async def main(args: argparse.Namespace) -> None:
         try:
             await store_article_entities(slug, entities)
             totals["links_created"] += len(entities)
+
+            # Backfill article keywords from entity names
+            keyword_list = list(dict.fromkeys(e["name"] for e in entities))
+            try:
+                await get_os_client().update(
+                    index=INDEX_NEWS,
+                    id=slug,
+                    body={"doc": {"keywords": keyword_list}},
+                )
+            except Exception:
+                logger.exception("Failed to update keywords for %s", slug[:40])
+
             logger.info(
                 "[%s] Linked %d entities: %s",
                 slug[:40], len(entities), ", ".join(entity_names),

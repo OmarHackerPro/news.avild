@@ -82,6 +82,9 @@ def _prepare_article_doc(article: NormalizedArticle) -> tuple[str, dict]:
     doc.setdefault("tags", [])
     doc.setdefault("keywords", [])
     doc.setdefault("cve_ids", [])
+    doc.setdefault("content_html", None)
+    doc.setdefault("summary", None)
+    doc.setdefault("content_source", None)
     return doc["slug"], doc
 
 
@@ -273,6 +276,21 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient, *, update
                         await store_article_entities(
                             article["slug"], entities,
                         )
+                        # Write entity names back to article keywords
+                        keyword_list = list(dict.fromkeys(
+                            e["name"] for e in entities
+                        ))
+                        try:
+                            await get_os_client().update(
+                                index=INDEX_NEWS,
+                                id=article["slug"],
+                                body={"doc": {"keywords": keyword_list}},
+                            )
+                        except Exception:
+                            logger.exception(
+                                "[%s] Failed to update keywords for '%s'",
+                                name, article.get("slug"),
+                            )
                 except Exception:
                     logger.exception(
                         "[%s] Entity extraction failed for '%s'",

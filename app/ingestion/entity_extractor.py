@@ -58,6 +58,95 @@ VENDOR_KEYWORDS: dict[str, str] = {
     "signal": "Signal",
 }
 
+# Product seed list — normalized_key → display name
+PRODUCT_KEYWORDS: dict[str, str] = {
+    # Fortinet
+    "fortios": "FortiOS",
+    "fortigate": "FortiGate",
+    "fortimanager": "FortiManager",
+    "fortianalyzer": "FortiAnalyzer",
+    "fortisiem": "FortiSIEM",
+    "fortiproxy": "FortiProxy",
+    "fortiswitch": "FortiSwitch",
+    "fortiadc": "FortiADC",
+    "fortiweb": "FortiWeb",
+    "forticlient": "FortiClient",
+    # Microsoft
+    "exchange": "Exchange",
+    "windows-server": "Windows Server",
+    "active-directory": "Active Directory",
+    "azure-ad": "Azure AD",
+    "entra-id": "Entra ID",
+    "microsoft-365": "Microsoft 365",
+    "outlook": "Outlook",
+    "microsoft-edge": "Microsoft Edge",
+    "sharepoint": "SharePoint",
+    "windows": "Windows",
+    "microsoft-defender": "Microsoft Defender",
+    # VMware
+    "vcenter": "vCenter",
+    "esxi": "ESXi",
+    "vsphere": "vSphere",
+    "vmware-workstation": "VMware Workstation",
+    # Google
+    "chrome": "Chrome",
+    "android": "Android",
+    "chromium": "Chromium",
+    "google-cloud": "Google Cloud",
+    # Apple
+    "ios": "iOS",
+    "macos": "macOS",
+    "safari": "Safari",
+    "webkit": "WebKit",
+    "ipados": "iPadOS",
+    "watchos": "watchOS",
+    # Palo Alto Networks
+    "pan-os": "PAN-OS",
+    "cortex-xdr": "Cortex XDR",
+    "globalprotect": "GlobalProtect",
+    "panorama": "Panorama",
+    # Cisco
+    "ios-xe": "IOS XE",
+    "ios-xr": "IOS XR",
+    "cisco-asa": "Cisco ASA",
+    "firepower": "Firepower",
+    "webex": "Webex",
+    "meraki": "Meraki",
+    "cisco-duo": "Cisco Duo",
+    # Ivanti
+    "ivanti-connect-secure": "Ivanti Connect Secure",
+    "pulse-connect-secure": "Pulse Connect Secure",
+    "ivanti-epmm": "Ivanti EPMM",
+    # Citrix
+    "netscaler": "NetScaler",
+    "citrix-adc": "Citrix ADC",
+    "xenserver": "XenServer",
+    "citrix-workspace": "Citrix Workspace",
+    # SonicWall
+    "sonicos": "SonicOS",
+    # Juniper
+    "junos": "Junos",
+    "juniper-srx": "Juniper SRX",
+    # Atlassian
+    "confluence": "Confluence",
+    "jira": "Jira",
+    "bitbucket": "Bitbucket",
+    "bamboo": "Bamboo",
+    # Infrastructure / DevOps
+    "kubernetes": "Kubernetes",
+    "docker": "Docker",
+    "jenkins": "Jenkins",
+    "nginx": "Nginx",
+    "apache-http-server": "Apache HTTP Server",
+    "terraform": "Terraform",
+    "ansible": "Ansible",
+    # Other notable products
+    "apparmor": "AppArmor",
+    "openssh": "OpenSSH",
+    "openssl": "OpenSSL",
+    "wing-ftp": "Wing FTP",
+}
+
 # normalized_key → (display_name, entity_type)
 THREAT_KEYWORDS: dict[str, tuple[str, str]] = {
     # Malware families
@@ -118,6 +207,11 @@ for _key, _name in VENDOR_KEYWORDS.items():
     _flags = 0 if len(_name) <= 3 else re.IGNORECASE
     _VENDOR_PATTERNS.append((_key, _name, re.compile(r"\b" + re.escape(_name) + r"\b", _flags)))
 
+_PRODUCT_PATTERNS: list[tuple[str, str, re.Pattern]] = []
+for _key, _name in PRODUCT_KEYWORDS.items():
+    _flags = 0 if len(_name) <= 3 else re.IGNORECASE
+    _PRODUCT_PATTERNS.append((_key, _name, re.compile(r"\b" + re.escape(_name) + r"\b", _flags)))
+
 _THREAT_PATTERNS: list[tuple[str, str, str, re.Pattern]] = []
 for _key, (_name, _etype) in THREAT_KEYWORDS.items():
     _flags = 0 if len(_name) <= 3 else re.IGNORECASE
@@ -140,6 +234,7 @@ def extract_entities(article: NormalizedArticle) -> list[dict]:
     parts = [
         article.get("title") or "",
         article.get("desc") or "",
+        article.get("summary") or "",
     ]
     content_html = article.get("content_html")
     if content_html:
@@ -187,6 +282,15 @@ def extract_entities(article: NormalizedArticle) -> list[dict]:
         if key not in seen and pattern.search(combined):
             seen[key] = {
                 "type": "vendor",
+                "name": name,
+                "normalized_key": key,
+            }
+
+    # --- Product extraction ---
+    for key, name, pattern in _PRODUCT_PATTERNS:
+        if key not in seen and pattern.search(combined):
+            seen[key] = {
+                "type": "product",
                 "name": name,
                 "normalized_key": key,
             }

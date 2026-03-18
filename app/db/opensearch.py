@@ -34,6 +34,8 @@ _NEWS_MAPPING = {
                 "analyzer": "english",
                 "index_options": "offsets",
             },
+            "summary":      {"type": "text", "analyzer": "english"},
+            "content_source": {"type": "keyword"},
             "image_url":    {"type": "keyword", "index": False},
             "tags":         {"type": "keyword"},
             "keywords":     {"type": "keyword"},
@@ -186,7 +188,11 @@ async def close_os_client() -> None:
 
 
 async def ensure_indexes() -> None:
-    """Create OpenSearch indexes if they don't exist. Safe to call on every startup."""
+    """Create OpenSearch indexes if they don't exist, or update mappings if they do.
+
+    PUT mapping is additive — it adds new fields but never removes or changes
+    existing ones, so this is safe to call on every startup.
+    """
     import logging
 
     log = logging.getLogger(__name__)
@@ -201,6 +207,12 @@ async def ensure_indexes() -> None:
             if not await client.indices.exists(index=index):
                 await client.indices.create(index=index, body=mapping)
                 log.info("Created OpenSearch index: %s", index)
+            else:
+                await client.indices.put_mapping(
+                    index=index,
+                    body={"properties": mapping["mappings"]["properties"]},
+                )
+                log.info("Updated mapping for index: %s", index)
         except Exception as exc:
             log.warning(
                 "Could not ensure index '%s' (create it manually if needed): %s",

@@ -13,7 +13,7 @@ router = APIRouter(prefix="/news", tags=["news"])
 
 # Fields returned for list endpoints (lightweight)
 _LIST_SOURCE_FIELDS = [
-    "slug", "title", "desc", "tags", "keywords", "published_at",
+    "slug", "title", "desc", "summary", "tags", "keywords", "published_at",
     "severity", "type", "category", "author", "source_name",
     "source_url", "image_url", "cvss_score", "cve_ids",
 ]
@@ -45,6 +45,7 @@ def _hit_to_item(hit: dict) -> NewsItem:
         tags=src.get("tags") or [],
         title=src["title"],
         desc=src.get("desc"),
+        summary=src.get("summary"),
         keywords=src.get("keywords") or [],
         time=_time_ago(published_at),
         severity=src.get("severity"),
@@ -69,6 +70,7 @@ def _hit_to_detail(hit: dict) -> NewsDetail:
         tags=src.get("tags") or [],
         title=src["title"],
         desc=src.get("desc"),
+        summary=src.get("summary"),
         keywords=src.get("keywords") or [],
         time=_time_ago(published_at),
         severity=src.get("severity"),
@@ -82,6 +84,7 @@ def _hit_to_detail(hit: dict) -> NewsDetail:
         cve_ids=src.get("cve_ids") or [],
         published_at=src["published_at"],
         content_html=src.get("content_html"),
+        content_source=src.get("content_source"),
         raw_metadata=src.get("raw_metadata"),
     )
 
@@ -162,7 +165,7 @@ async def get_news(
     )
 
     if q:
-        must = [{"multi_match": {"query": q, "fields": ["title^3", "desc", "tags^2", "keywords"]}}]
+        must = [{"multi_match": {"query": q, "fields": ["title^3", "desc", "summary^1.5", "tags^2", "keywords"]}}]
     else:
         must = []
 

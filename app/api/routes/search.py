@@ -37,7 +37,7 @@ async def search_articles(
         {
             "multi_match": {
                 "query": q,
-                "fields": ["title^3", "desc^2", "tags^2", "keywords", "content_html"],
+                "fields": ["title^3", "desc^2", "summary^1.5", "tags^2", "keywords", "content_html"],
                 "type": "best_fields",
                 "fuzziness": "AUTO",
             }
@@ -52,9 +52,9 @@ async def search_articles(
         "from": offset,
         "size": limit,
         "_source": [
-            "slug", "title", "desc", "tags", "keywords", "published_at",
-            "severity", "type", "category", "author", "source_name",
-            "source_url", "image_url", "cvss_score", "cve_ids",
+            "slug", "title", "desc", "summary", "tags", "keywords",
+            "published_at", "severity", "type", "category", "author",
+            "source_name", "source_url", "image_url", "cvss_score", "cve_ids",
         ],
         "aggs": {
             "categories": {"terms": {"field": "category", "size": 20}},
