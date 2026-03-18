@@ -48,9 +48,9 @@ The ingestion pipeline has 7 normalizer functions, but 4 of them (`thn`, `bleepi
 
 **New helper: `_strip_wp_footer(text)`**
 
-Strips WordPress syndication footers from text:
+Strips WordPress syndication footers from text. Applied after HTML stripping, so the pattern matches plain text like "The post Title appeared first on SiteName." Uses `\Z` (end-of-string anchor) instead of `$` to avoid partial matches at line boundaries:
 ```python
-re.sub(r"\s*The post .+? appeared first on .+?\.\s*$", "", text).strip()
+re.sub(r"\s*The post .+? appeared first on .+?\.\s*\Z", "", text).strip()
 ```
 
 Applied to both `desc` and `summary` in the generic normalizer.
@@ -66,12 +66,18 @@ Extracts article image URL with priority:
 
 First match wins. Returns `Optional[str]`.
 
+Note: `featuredImage` access via feedparser needs verification against actual Unit 42 feed XML at implementation time. feedparser may normalize it to `entry.featuredimage` (lowercase) or may not expose it at all if it's in a custom namespace. The `<img>` tag fallback (step 5) covers this case if feedparser doesn't expose the custom field.
+
 **Enhanced `normalize_generic`**
 
 Content body extraction priority:
-- If `entry.content[0].value` exists and is longer than `entry.summary`, use it as `content_html` and derive `summary` from stripped text
-- Otherwise use `entry.summary` / `entry.description` as both `content_html` source and `summary` source
+
+- If `entry.content[0].value` exists, always prefer it as `content_html` (this is where feedparser puts `content:encoded` for RSS and `<content>` for Atom). Derive `summary` from stripped text.
+- Use `entry.summary` / `entry.description` for `desc` (short excerpt for list views)
+- If `entry.content` is absent, fall back to `entry.summary` / `entry.description` for both `content_html` and `summary`
 - This correctly handles RSS 2.0 with `content:encoded`, Atom with `content` element, and plain RSS with only `description`
+
+**CVE extraction in generic normalizer:** The old `normalize_krebs` extracted CVE IDs from content and tags into the article doc's `cve_ids` field. The enhanced generic normalizer will also do this — call `_extract_cve_ids()` on `content_html` + tag text and populate `cve_ids`. This ensures CVE IDs are available both on the article doc (for OpenSearch filtering) and in the entities index (via downstream entity extraction).
 
 WordPress footer stripping applied to `desc` and `summary`.
 
@@ -101,10 +107,15 @@ NORMALIZER_REGISTRY = {
 **Field validation in `_prepare_article_doc()`:**
 
 ```python
-_ALLOWED_FIELDS = frozenset(_NEWS_MAPPING["mappings"]["properties"].keys())
+from app.db.opensearch import NEWS_MAPPING
+_ALLOWED_FIELDS = frozenset(NEWS_MAPPING["mappings"]["properties"].keys())
 ```
 
+Requires renaming `_NEWS_MAPPING` to `NEWS_MAPPING` in `opensearch.py` (or adding it to `__all__`) to make it importable.
+
 After building the doc dict, strip any keys not in `_ALLOWED_FIELDS` with a warning log per removed key. This prevents `dynamic: "strict"` indexing crashes from unexpected normalizer output.
+
+Note: the `source_id` field in the mapping is intentionally unused — normalizers set `source_name` (string) instead. It remains in the mapping for potential future use.
 
 ### `app/ingestion/sources.py`
 
@@ -127,11 +138,24 @@ After building the doc dict, strip any keys not in `_ALLOWED_FIELDS` with a warn
 
 All use `default_severity=None`.
 
+### `app/db/opensearch.py`
+
+Rename `_NEWS_MAPPING` to `NEWS_MAPPING` so it can be imported by `ingester.py` for field validation. No mapping changes — all needed fields already exist.
+
 ### Files NOT changed
 
 - `entity_extractor.py` — no changes
-- `opensearch.py` — mapping already has all needed fields (`image_url`, `summary`, `content_html`, `content_source`)
 - API routes / models — no new fields
+
+## Deployment
+
+The 4 "dropped" feeds were candidates considered during the feed audit but were never added to `SEED_SOURCES` or the database — no removal needed.
+
+To deploy the 12 new feeds on an existing environment:
+
+1. Re-run `python scripts/seed_sources.py` — inserts new sources by name (existing sources are skipped via `on_conflict_do_nothing`).
+2. Note: `seed_sources.py` uses `on_conflict_do_nothing(index_elements=["name"])`. If you need to update an existing source's URL, do it manually in Postgres — re-seeding will not overwrite existing records.
+3. Restart the app to pick up normalizer code changes. `ensure_indexes()` handles any mapping updates on startup.
 
 ## What this does NOT include
 
