@@ -9,7 +9,7 @@ INDEX_ENTITIES = "entities"
 
 _client: AsyncOpenSearch | None = None
 
-_NEWS_MAPPING = {
+NEWS_MAPPING = {
     "settings": {
         "number_of_shards": 1,
         "number_of_replicas": 0,
@@ -198,7 +198,7 @@ async def ensure_indexes() -> None:
     log = logging.getLogger(__name__)
     client = get_os_client()
     for index, mapping in [
-        (INDEX_NEWS, _NEWS_MAPPING),
+        (INDEX_NEWS, NEWS_MAPPING),
         (INDEX_SNAPSHOTS, _SNAPSHOTS_MAPPING),
         (INDEX_CLUSTERS, _CLUSTERS_MAPPING),
         (INDEX_ENTITIES, _ENTITIES_MAPPING),
