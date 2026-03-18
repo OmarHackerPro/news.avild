@@ -97,6 +97,13 @@ def _extract_first_image(html: str) -> Optional[str]:
     return m.group(1) if m else None
 
 
+def _strip_wp_footer(text: str) -> str:
+    """Remove WordPress 'The post X appeared first on Y.' syndication footer."""
+    if not text:
+        return ""
+    return re.sub(r"\s*The post .+? appeared first on .+?\.\s*\Z", "", text).strip()
+
+
 def _extract_cvss_score(html: str) -> Optional[Decimal]:
     """Extract a CVSS v3 base score from advisory HTML.
 
