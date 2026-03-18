@@ -11,7 +11,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.feed_source import FeedSource as FeedSourceModel
-from app.db.opensearch import INDEX_NEWS, INDEX_SNAPSHOTS, get_os_client
+from app.db.opensearch import INDEX_NEWS, INDEX_SNAPSHOTS, get_os_client, NEWS_MAPPING
 from app.db.session import AsyncSessionLocal
 from app.ingestion.entity_extractor import extract_entities
 from app.ingestion.entity_store import store_article_entities
@@ -19,6 +19,8 @@ from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle
 from app.ingestion.sources import FeedSource
 
 logger = logging.getLogger(__name__)
+
+_ALLOWED_FIELDS = frozenset(NEWS_MAPPING["mappings"]["properties"].keys())
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +87,11 @@ def _prepare_article_doc(article: NormalizedArticle) -> tuple[str, dict]:
     doc.setdefault("content_html", None)
     doc.setdefault("summary", None)
     doc.setdefault("content_source", None)
+    # Strip unknown fields to prevent dynamic:strict indexing errors
+    unexpected = set(doc.keys()) - _ALLOWED_FIELDS
+    for key in unexpected:
+        logger.warning("Dropping unknown field '%s' from article '%s'", key, doc.get("slug"))
+        doc.pop(key)
     return doc["slug"], doc
 
 
