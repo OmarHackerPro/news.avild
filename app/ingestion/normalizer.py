@@ -230,24 +230,50 @@ def normalize_generic(
     entry: feedparser.FeedParserDict,
     source: FeedSource,
 ) -> Optional[NormalizedArticle]:
-    """Fallback normalizer for standard RSS 2.0 / Atom feeds.
-    Copy and rename this when adding a feed that needs custom field mapping.
+    """Universal normalizer for RSS 2.0 and Atom feeds.
+
+    Handles content:encoded (RSS), <content> (Atom), summary-only feeds,
+    WordPress footers, image extraction, and CVE ID extraction.
     """
     title = (entry.get("title") or "").strip()
-    link  = (entry.get("link")  or "").strip()
+    link = (entry.get("link") or "").strip()
 
     if not title or not link:
         return None
 
     guid = (entry.get("id") or link).strip()
+
+    # --- Content body: prefer content:encoded / Atom <content> ---
     content_list = entry.get("content") or []
-    raw_desc = (
-        entry.get("summary")
-        or (content_list[0].get("value") if content_list else "")
-        or entry.get("description")
-        or ""
-    )
-    desc = strip_html(raw_desc).strip() or title
+    content_value = (content_list[0].get("value") if content_list else "") or ""
+    raw_desc = entry.get("summary") or entry.get("description") or ""
+
+    # If content:encoded / Atom content exists, use it as the full body
+    if content_value:
+        content_html = content_value or None
+        desc_text = _strip_wp_footer(strip_html(raw_desc).strip()) or strip_html(content_value).strip() or title
+        summary_text = _strip_wp_footer(strip_html(content_value).strip())[:2000] or None
+    elif raw_desc:
+        content_html = raw_desc or None
+        desc_text = _strip_wp_footer(strip_html(raw_desc).strip()) or title
+        summary_text = _strip_wp_footer(strip_html(raw_desc).strip())[:2000] or None
+    else:
+        content_html = None
+        desc_text = title
+        summary_text = None
+
+    content_source = "rss" if content_html else None
+
+    # --- Image extraction ---
+    image_url = _extract_image_url(entry, content_html)
+
+    # --- Tags ---
+    tags = _extract_tags(entry)
+
+    # --- CVE extraction from content + tags ---
+    tag_text = " ".join(tags)
+    cve_source = f"{title} {content_html or ''} {tag_text}"
+    cve_ids = _extract_cve_ids(cve_source)
 
     return NormalizedArticle(
         slug=build_slug(title, guid),
@@ -255,17 +281,19 @@ def normalize_generic(
         source_name=source["name"],
         title=title[:500],
         author=(entry.get("author") or "").strip() or None,
-        desc=desc,
-        content_html=raw_desc or None,
-        summary=strip_html(raw_desc).strip()[:2000] or None,
-        content_source="rss" if raw_desc else None,
-        tags=_extract_tags(entry),
+        desc=desc_text,
+        content_html=content_html,
+        summary=summary_text,
+        content_source=content_source,
+        image_url=image_url[:2048] if image_url else None,
+        tags=tags,
         keywords=[],
         published_at=_parse_date(entry),
         severity=source["default_severity"],
         type=source["default_type"],
         category=source["default_category"],
         source_url=link[:2048],
+        cve_ids=cve_ids if cve_ids else [],
     )
 
 
