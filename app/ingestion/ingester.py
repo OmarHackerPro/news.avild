@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.feed_source import FeedSource as FeedSourceModel
 from app.db.opensearch import INDEX_NEWS, INDEX_SNAPSHOTS, get_os_client, NEWS_MAPPING
 from app.db.session import AsyncSessionLocal
+from app.ingestion.clusterer import cluster_article
 from app.ingestion.entity_extractor import extract_entities
 from app.ingestion.entity_store import store_article_entities
 from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle
@@ -277,6 +278,7 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient, *, update
             inserted = await (overwrite_article if update else upsert_article)(article)
             if inserted:
                 stats["inserted"] += 1
+                entities = []
                 try:
                     entities = extract_entities(article)
                     if entities:
@@ -301,6 +303,16 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient, *, update
                 except Exception:
                     logger.exception(
                         "[%s] Entity extraction failed for '%s'",
+                        name, article.get("slug"),
+                    )
+
+                # Clustering — always attempt, even without entities
+                try:
+                    entity_keys = [e["normalized_key"] for e in entities]
+                    await cluster_article(article, article["slug"], entity_keys)
+                except Exception:
+                    logger.exception(
+                        "[%s] Clustering failed for '%s'",
                         name, article.get("slug"),
                     )
             else:

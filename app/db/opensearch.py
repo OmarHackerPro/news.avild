@@ -113,6 +113,8 @@ _CLUSTERS_MAPPING = {
             "categories":     {"type": "keyword"},
             "tags":           {"type": "keyword"},
             "article_count":  {"type": "integer"},
+            "cve_ids":        {"type": "keyword"},
+            "entity_keys":    {"type": "keyword"},
             "latest_at": {
                 "type": "date",
                 "format": "strict_date_time||strict_date_time_no_millis",
