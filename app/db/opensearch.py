@@ -115,6 +115,22 @@ _CLUSTERS_MAPPING = {
             "article_count":  {"type": "integer"},
             "cve_ids":        {"type": "keyword"},
             "entity_keys":    {"type": "keyword"},
+            "timeline": {
+                "type": "nested",
+                "properties": {
+                    "article_slug": {"type": "keyword"},
+                    "source_name":  {"type": "keyword"},
+                    "title":        {"type": "text", "analyzer": "english"},
+                    "published_at": {
+                        "type": "date",
+                        "format": "strict_date_time||strict_date_time_no_millis",
+                    },
+                    "added_at": {
+                        "type": "date",
+                        "format": "strict_date_time||strict_date_time_no_millis",
+                    },
+                },
+            },
             "latest_at": {
                 "type": "date",
                 "format": "strict_date_time||strict_date_time_no_millis",

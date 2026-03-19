@@ -6,6 +6,14 @@ from pydantic import BaseModel, Field
 from app.models.news import NewsItem
 
 
+class ClusterTimelineEntry(BaseModel):
+    article_slug: str = Field(json_schema_extra={"example": "fortios-rce-cve-2026-12345"})
+    source_name: str = Field(json_schema_extra={"example": "BleepingComputer"})
+    title: str = Field(json_schema_extra={"example": "Critical FortiOS RCE vulnerability exploited in the wild"})
+    published_at: str = Field(json_schema_extra={"example": "2026-03-14T09:00:00Z"})
+    added_at: str = Field(json_schema_extra={"example": "2026-03-14T09:05:00Z"})
+
+
 class ClusterSummary(BaseModel):
     id: str = Field(json_schema_extra={"example": "cluster-fortinet-rce-2026-03"})
     label: str = Field(json_schema_extra={"example": "Fortinet FortiOS Critical RCE (CVE-2026-12345)"})
@@ -29,6 +37,7 @@ class ClusterDetail(BaseModel):
     articles: List[NewsItem]
     categories: List[str] = Field(json_schema_extra={"example": ["breaking", "research"]})
     tags: List[str] = Field(json_schema_extra={"example": ["fortinet", "zero-day", "rce", "cve-2026-12345"]})
+    timeline: List[ClusterTimelineEntry] = Field(default_factory=list)
     earliest_at: str = Field(json_schema_extra={"example": "2026-03-14T09:00:00Z"})  # ISO-8601
     latest_at: str = Field(json_schema_extra={"example": "2026-03-15T14:22:00Z"})  # ISO-8601
 

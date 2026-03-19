@@ -105,6 +105,12 @@ async def find_cluster_by_mlt(
         like_text = f"{title} {summary}"
 
     client = get_os_client()
+
+    # Guard: MLT needs a minimum corpus to produce meaningful results
+    count_resp = await client.count(index=INDEX_CLUSTERS)
+    if count_resp.get("count", 0) < 20:
+        return None
+
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=window_hours)).isoformat()
 
     resp = await client.search(
@@ -117,8 +123,8 @@ async def find_cluster_by_mlt(
                             "more_like_this": {
                                 "fields": ["label", "summary"],
                                 "like": like_text,
-                                "min_term_freq": 2,
-                                "min_doc_freq": 3,
+                                "min_term_freq": 1,
+                                "min_doc_freq": 1,
                                 "minimum_should_match": "30%",
                             }
                         }
@@ -163,6 +169,13 @@ async def create_cluster(
         "entity_keys": entity_keys,
         "categories": [article["category"]] if article.get("category") else [],
         "tags": article.get("tags") or [],
+        "timeline": [{
+            "article_slug": slug,
+            "source_name": article.get("source_name", ""),
+            "title": article.get("title", ""),
+            "published_at": article.get("published_at", now),
+            "added_at": now,
+        }],
         "latest_at": now,
         "created_at": now,
         "updated_at": now,
@@ -185,14 +198,37 @@ async def merge_into_cluster(
     article_slug: str,
     entity_keys: list[str],
     cve_ids: list[str],
+    *,
+    source_name: str = "",
+    title: str = "",
+    published_at: str = "",
 ) -> None:
     """Merge an article into an existing cluster via scripted update."""
     now = datetime.now(timezone.utc).isoformat()
+    if not published_at:
+        published_at = now
 
     script = """
         if (!ctx._source.article_ids.contains(params.slug)) {
             ctx._source.article_ids.add(params.slug);
             ctx._source.article_count = ctx._source.article_ids.length();
+            // Append timeline entry (dedupe by slug)
+            if (ctx._source.timeline == null) {
+                ctx._source.timeline = new ArrayList();
+            }
+            boolean found = false;
+            for (entry in ctx._source.timeline) {
+                if (entry.article_slug.equals(params.slug)) { found = true; break; }
+            }
+            if (!found) {
+                Map e = new HashMap();
+                e.put('article_slug', params.slug);
+                e.put('source_name', params.source_name);
+                e.put('title', params.title);
+                e.put('published_at', params.published_at);
+                e.put('added_at', params.now);
+                ctx._source.timeline.add(e);
+            }
         }
         for (key in params.entity_keys) {
             if (!ctx._source.entity_keys.contains(key)) {
@@ -222,6 +258,9 @@ async def merge_into_cluster(
                 "source": script,
                 "params": {
                     "slug": article_slug,
+                    "source_name": source_name,
+                    "title": title,
+                    "published_at": published_at,
                     "entity_keys": entity_keys,
                     "cve_ids": cve_ids,
                     "now": now,
@@ -277,6 +316,11 @@ async def cluster_article(
 
     # 4. Merge or create
     if cluster_id:
-        await merge_into_cluster(cluster_id, slug, entity_keys, cve_ids)
+        await merge_into_cluster(
+            cluster_id, slug, entity_keys, cve_ids,
+            source_name=article.get("source_name", ""),
+            title=article.get("title", ""),
+            published_at=article.get("published_at", ""),
+        )
     else:
         await create_cluster(article, entity_keys)

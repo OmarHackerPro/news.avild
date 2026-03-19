@@ -6,7 +6,7 @@ from opensearchpy import NotFoundError
 
 from app.api.routes.news import _hit_to_item
 from app.db.opensearch import INDEX_CLUSTERS, INDEX_NEWS, get_os_client
-from app.models.cluster import ClusterDetail, ClusterListResponse, ClusterSummary
+from app.models.cluster import ClusterDetail, ClusterListResponse, ClusterSummary, ClusterTimelineEntry
 from app.models.errors import ErrorResponse
 
 router = APIRouter(prefix="/clusters", tags=["clusters"])
@@ -122,6 +122,11 @@ async def get_cluster(cluster_id: str):
     tags = list({t for a in articles for t in a.tags})
     dates = [a.published_at for a in articles if a.published_at]
 
+    timeline = [
+        ClusterTimelineEntry(**entry)
+        for entry in (src.get("timeline") or [])
+    ]
+
     return ClusterDetail(
         id=resp["_id"],
         label=src["label"],
@@ -133,6 +138,7 @@ async def get_cluster(cluster_id: str):
         articles=articles,
         categories=src.get("categories", []),
         tags=tags,
+        timeline=timeline,
         earliest_at=min(dates) if dates else "",
         latest_at=max(dates) if dates else "",
     )

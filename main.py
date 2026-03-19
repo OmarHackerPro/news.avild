@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import (
-    admin, auth, clusters, digest, entities, exports, feeds, news,
+    admin, auth, clusters, digest, entities, exports, feed, feeds, news,
     preferences, rss, search, sources,
 )
 from app.core.config import settings
@@ -34,6 +34,7 @@ openapi_tags = [
     {"name": "digest", "description": "Daily/weekly digests and trending topics"},
     {"name": "exports", "description": "CSV, JSON, and STIX 2.1 data exports"},
     {"name": "rss", "description": "RSS 2.0 feed generation"},
+    {"name": "feed", "description": "Main cluster feed for the home page"},
     {"name": "feeds", "description": "Feed source management (admin)"},
     {"name": "sources", "description": "Public list of active feed sources"},
     {"name": "admin", "description": "Administrative operations (requires X-Admin-Secret)"},
@@ -86,6 +87,7 @@ app.include_router(preferences.router, prefix="/api")
 app.include_router(digest.router, prefix="/api")
 app.include_router(exports.router, prefix="/api")
 app.include_router(clusters.router, prefix="/api")
+app.include_router(feed.router, prefix="/api")
 
 
 @app.get("/health", tags=["health"], summary="Health check")
