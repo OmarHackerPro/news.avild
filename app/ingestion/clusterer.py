@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from app.db.opensearch import INDEX_CLUSTERS, get_os_client
+from app.db.opensearch import INDEX_CLUSTERS, INDEX_NEWS, get_os_client
 from app.ingestion.normalizer import NormalizedArticle
 
 logger = logging.getLogger(__name__)
@@ -146,6 +146,19 @@ async def find_cluster_by_mlt(
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+async def _tag_article(client, slug: str, cluster_id: str) -> None:
+    """Set cluster_id on the article doc (denormalized back-reference)."""
+    await client.update(
+        index=INDEX_NEWS,
+        id=slug,
+        body={"doc": {"cluster_id": cluster_id}},
+    )
+
+
+# ---------------------------------------------------------------------------
 # Mutators — create or merge
 # ---------------------------------------------------------------------------
 
@@ -189,6 +202,7 @@ async def create_cluster(
     )
 
     cluster_id = resp["_id"]
+    await _tag_article(client, slug, cluster_id)
     logger.info("Created cluster %s for article '%s'", cluster_id, slug)
     return cluster_id
 
@@ -211,7 +225,7 @@ async def merge_into_cluster(
     script = """
         if (!ctx._source.article_ids.contains(params.slug)) {
             ctx._source.article_ids.add(params.slug);
-            ctx._source.article_count = ctx._source.article_ids.length();
+            ctx._source.article_count = ctx._source.article_ids.size();
             // Append timeline entry (dedupe by slug)
             if (ctx._source.timeline == null) {
                 ctx._source.timeline = new ArrayList();
@@ -270,6 +284,7 @@ async def merge_into_cluster(
         retry_on_conflict=3,
     )
 
+    await _tag_article(client, article_slug, cluster_id)
     logger.info("Merged article '%s' into cluster %s", article_slug, cluster_id)
 
 
@@ -309,10 +324,9 @@ async def cluster_article(
     if not cluster_id:
         title = article.get("title") or ""
         summary = article.get("summary") or article.get("desc")
-        if title:
-            cluster_id = await find_cluster_by_mlt(title, summary)
-            if cluster_id:
-                logger.debug("MLT match for '%s' → cluster %s", slug, cluster_id)
+        cluster_id = await find_cluster_by_mlt(title, summary)
+        if cluster_id:
+            logger.debug("MLT match for '%s' → cluster %s", slug, cluster_id)
 
     # 4. Merge or create
     if cluster_id:
