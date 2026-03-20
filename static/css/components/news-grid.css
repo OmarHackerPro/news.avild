@@ -155,3 +155,62 @@
   to { transform: rotate(360deg); }
 }
 
+/* ── Sort toggle ── */
+.sort-toggle {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.sort-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sort-btn:hover { color: var(--text-primary); border-color: var(--text-muted); }
+.sort-btn.active { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+
+/* ── Cluster state badges ── */
+.card-tag.cluster-state-new        { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.35); }
+.card-tag.cluster-state-developing { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+.card-tag.cluster-state-confirmed  { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.35); }
+.card-tag.cluster-state-resolved   { background: rgba(139,148,158,0.12); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* ── Category pill ── */
+.card-tag.card-category { background: rgba(139,148,158,0.1); color: var(--text-secondary); border: 1px solid var(--border); text-transform: capitalize; }
+
+/* ── Source count & score badges in card-meta ── */
+.card-sources, .card-score {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.card-sources i, .card-score i { margin-right: 3px; }
+.card-score { color: var(--accent-orange); }
+.card-source-name { font-size: 0.75rem; color: var(--text-muted); }
+
+/* ── Feed empty & error states ── */
+.feed-empty, .feed-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.feed-empty i, .feed-error i { font-size: 2rem; opacity: 0.5; }
+.feed-error-retry {
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.feed-error-retry:hover { opacity: 0.9; }
