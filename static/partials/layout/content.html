@@ -88,9 +88,22 @@
           </div>
         </div>
       </div>
+      <div class="sort-toggle">
+        <button class="sort-btn active" data-sort="latest"><i class="far fa-clock"></i> Latest</button>
+        <button class="sort-btn" data-sort="score"><i class="fas fa-fire"></i> Top</button>
+      </div>
     </div>
     <h2 class="section-title" id="categoryTitle" data-i18n-key="sections.latestNews">Latest Security News</h2>
     <div class="news-grid" id="newsGrid"></div>
+    <div class="feed-empty" id="feedEmpty" hidden>
+      <i class="fas fa-inbox"></i>
+      <p>No clusters found. Try adjusting your filters or check back later.</p>
+    </div>
+    <div class="feed-error" id="feedError" hidden>
+      <i class="fas fa-exclamation-triangle"></i>
+      <p>Failed to load feed.</p>
+      <button class="feed-error-retry" id="feedRetryBtn">Retry</button>
+    </div>
     <div class="load-indicator" id="loadIndicator">
       <div class="spinner"></div>
       <span data-i18n-key="loading.moreNews">Loading more news...</span>
