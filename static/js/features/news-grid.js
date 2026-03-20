@@ -110,10 +110,10 @@
     card.setAttribute('data-cluster-id', cluster.id || '');
     card.style.animationDelay = (index % 12) * 0.03 + 's';
 
-    // Tags
+    // Tags (class name sanitized to [a-z0-9-] to avoid CSS injection)
     var tagSpans = tags.map(function (t) {
-      var c = t.toLowerCase().replace(/\s/g, '');
-      return '<span class="card-tag ' + esc(c) + '">' + esc(t) + '</span>';
+      var c = t.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      return '<span class="card-tag ' + c + '">' + esc(t) + '</span>';
     }).join('');
 
     // Severity badge
@@ -179,7 +179,7 @@
 
   // ── Load a page and render ──
   async function loadPage(append) {
-    if (loading) return;
+    if (loading && append) return; // only guard scroll-appends, not full refreshes
     loading = true;
 
     if (!append) {
@@ -201,7 +201,8 @@
         return;
       }
 
-      showState('none');
+      if (feedEmpty) feedEmpty.hidden = true;
+      if (feedError) feedError.hidden = true;
 
       items.forEach(function (cluster, i) {
         loadedClusterList.push(cluster);
@@ -210,9 +211,9 @@
 
       offset += items.length;
 
-      // Hide load indicator if we've loaded everything
-      if (offset >= total) {
-        if (loadIndicator) loadIndicator.classList.add('hidden');
+      // Show spinner if more pages remain, hide if all loaded
+      if (loadIndicator) {
+        loadIndicator.classList.toggle('hidden', offset >= total);
       }
     } catch (err) {
       if (err.name === 'AbortError') {
