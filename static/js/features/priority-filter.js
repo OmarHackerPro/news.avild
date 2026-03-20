@@ -11,8 +11,23 @@
   window.mainFilterType   = null;
   window.mainFilterSource = 'all';
 
+  // Hide filters not supported by cluster feed API
+  var priorityPills = document.querySelector('.priority-pills');
+  if (priorityPills) priorityPills.hidden = true;
+
+  // Hide Content type and Sources groups in filter dropdown
+  document.querySelectorAll('.fmd-group').forEach(function(group) {
+    var label = group.querySelector('.fmd-group-label');
+    if (!label) return;
+    var text = label.textContent.trim().toLowerCase();
+    if (text.indexOf('content') !== -1 || text.indexOf('sources') !== -1) {
+      group.hidden = true;
+    }
+  });
+
   function reapply() {
-    if (typeof window.applyFilters === 'function') window.applyFilters();
+    if (typeof window.refreshFeed === 'function') window.refreshFeed();
+    else if (typeof window.applyFilters === 'function') window.applyFilters();
   }
 
   function updateFilterCount() {
@@ -91,6 +106,19 @@
     });
 
     updateFilterCount();
+    reapply();
+  });
+
+  /* ── Sort toggle ── */
+  window.currentSort = 'latest';
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.sort-btn');
+    if (!btn) return;
+    document.querySelectorAll('.sort-btn').forEach(function(b) {
+      b.classList.remove('active');
+    });
+    btn.classList.add('active');
+    window.currentSort = btn.getAttribute('data-sort') || 'latest';
     reapply();
   });
 
