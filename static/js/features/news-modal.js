@@ -72,10 +72,20 @@
       var card = e.target && e.target.closest ? e.target.closest('.news-card') : null;
       if (!card) return;
       e.preventDefault();
-      var id = card.getAttribute('data-news-id') || '';
-      var list = window.loadedNewsList || [];
-      var item = list.find(function(x) { return (x.id || '') === id; });
-      if (item) openNewsModal(item);
+      var clusterId = card.getAttribute('data-cluster-id') || '';
+      if (!clusterId) return;
+
+      // Try cluster detail page first; fallback to top article source URL
+      var list = window.loadedClusterList || [];
+      var cluster = list.find(function(x) { return (x.id || '') === clusterId; });
+      var clusterUrl = '/cluster/' + encodeURIComponent(clusterId);
+
+      // Check if cluster detail page exists (FE-04). For now, fallback to source_url.
+      if (cluster && cluster.top_article && cluster.top_article.source_url) {
+        window.open(cluster.top_article.source_url, '_blank', 'noopener');
+      } else {
+        window.location.href = clusterUrl;
+      }
     });
   }
 
