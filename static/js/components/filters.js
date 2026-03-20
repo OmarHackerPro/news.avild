@@ -59,7 +59,8 @@
           if (labelEl) labelEl.textContent = this.textContent.trim();
           close();
         }
-        if (typeof window.applyFilters === 'function') window.applyFilters();
+        if (typeof window.refreshFeed === 'function') window.refreshFeed();
+        else if (typeof window.applyFilters === 'function') window.applyFilters();
       });
     });
 
@@ -100,7 +101,8 @@
       if (typeTrigger) typeTrigger.setAttribute('aria-expanded', 'false');
     }
     updateFilterCount();
-    if (typeof window.applyFilters === 'function') window.applyFilters();
+    if (typeof window.refreshFeed === 'function') window.refreshFeed();
+    else if (typeof window.applyFilters === 'function') window.applyFilters();
   }
 
   if (filterClearBtn) filterClearBtn.addEventListener('click', function (e) { e.stopPropagation(); clearAllFilters(); });
@@ -161,7 +163,8 @@
         this.classList.add('active');
         window.currentMoreCategory = this.getAttribute('data-category');
         closeMore();
-        if (typeof window.applyFilters === 'function') window.applyFilters();
+        if (typeof window.refreshFeed === 'function') window.refreshFeed();
+        else if (typeof window.applyFilters === 'function') window.applyFilters();
       });
     });
 
