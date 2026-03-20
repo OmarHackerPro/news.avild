@@ -1,217 +1,262 @@
 /**
- * News grid: templates, filtering, infinite scroll (depends on data/translations, components/filters)
+ * News grid: fetches clusters from /api/feed, builds cards, infinite scroll.
+ * Depends on: priority-filter.js (globals: mainFilterTime, currentSort)
  */
-(function() {
+(function () {
   'use strict';
-  var translations = window.CyberNews && window.CyberNews.translations ? window.CyberNews.translations : { en: {} };
 
-  var newsTemplates = [
-    { id: 'card1',  tags: ['CISA', 'Zero-Day'],    title: 'CISA Adds Critical VPN Flaw to Known Exploited Catalog',    desc: 'Federal agencies must patch within two weeks as attacks escalate.',              keywords: ['CVE-2026-0001', 'VPN', 'RCE', 'Zero-Day'],         time: '15m',     severity: 'critical', type: 'advisory',  category: 'research',    access: 'link' },
-    { id: 'card2',  tags: ['APT29', 'Breaches'],   title: 'APT29 Campaign Linked to Recent Government Breaches',       desc: 'Intelligence agencies attribute multiple incidents to same actor.',             keywords: ['APT29', 'Breach', 'Government'],                    time: '1h 10m',  severity: 'critical', type: 'analysis',  category: 'deep-dives' },
-    { id: 'card3',  tags: ['Ransomware'],           title: 'New Ransomware Variant Targets Healthcare Sector',          desc: 'Hospitals and clinics report encrypted systems and ransom demands.',           keywords: ['Ransomware', 'Healthcare', 'Encryption'],           time: '2h 40m',  severity: 'high',     type: 'news',      category: 'research' },
-    { id: 'card4',  tags: ['Zero-Day'],             title: 'Second Zero-Day in Same VPN Product Under Attack',          desc: 'Researchers confirm exploitation of an additional vulnerability in the same product.', keywords: ['Zero-Day', 'VPN', 'CVE'],                     time: '4h',      severity: 'high',     type: 'news',      category: 'research' },
-    { id: 'card5',  tags: ['CISA'],                 title: 'Emergency Directive: Patch VPN Zero-Day by Friday',         desc: 'CISA orders federal agencies to apply vendor patches immediately.',             keywords: ['CISA', 'Directive', 'VPN'],                         time: '5h',      severity: 'high',     type: 'advisory',  category: 'research' },
-    { id: 'card6',  tags: ['Mandiant', 'Report'],   title: 'APT41 Expands Supply Chain Attacks in 2026',                desc: 'New report details evolving TTPs and infrastructure used by the group.',       keywords: ['APT41', 'Supply Chain', 'Mandiant'],                time: '6h 30m',  severity: 'medium',   type: 'report',    category: 'deep-dives' },
-    { id: 'card7',  tags: ['Malware'],              title: 'Stealer Malware Spreads via Fake Software Updates',         desc: 'Users tricked into installing trojanized installers from spoofed sites.',     keywords: ['Malware', 'Stealer', 'Fake Updates'],               time: '8h',      severity: 'medium',   type: 'news',      category: 'beginner' },
-    { id: 'card8',  tags: ['Threat Intel'],         title: 'IOC Database Updated with Latest Campaign Signatures',      desc: 'New indicators of compromise available for detection rules.',                keywords: ['IOC', 'Threat Intel', 'Signatures'],                time: '10h',     severity: 'medium',   type: 'advisory',  category: 'research' },
-    { id: 'card9',  tags: ['Bug Bounty'],           title: 'Major Bug Bounty Program Doubles Critical Payouts',         desc: 'Platform announces increased rewards for critical vulnerabilities.',           keywords: ['Bug Bounty', 'Payouts', 'Critical'],                time: '12h',     severity: 'low',      type: 'news',      category: 'beginner',  access: 'public' },
-    { id: 'card10', tags: ['Pentest', 'Report'],    title: 'Penetration Testing Framework Updated for Cloud',           desc: 'New modules added for AWS, Azure, and GCP assessments.',                     keywords: ['Pentest', 'Cloud', 'AWS'],                          time: '14h',     severity: 'low',      type: 'report',    category: 'deep-dives' },
-    { id: 'card11', tags: ['CISA'],                 title: 'CISA Releases Advisory on RDP Hardening',                  desc: 'Best practices to reduce risk of RDP-based attacks published.',               keywords: ['CISA', 'RDP', 'Hardening'],                         time: '17h',     severity: 'low',      type: 'advisory',  category: 'beginner' },
-    { id: 'card12', tags: ['Breaches'],             title: 'Retail Giant Discloses Third-Party Data Exposure',          desc: 'Supplier breach may have exposed millions of customer records.',              keywords: ['Breach', 'Retail', 'Third-Party'],                  time: '20h',     severity: 'medium',   type: 'news',      category: 'dark-web' }
-  ];
+  // ── State ──
+  var PAGE_SIZE = 10;
+  var offset = 0;
+  var total = 0;
+  var loading = false;
+  var abortCtrl = null;
+  var loadedClusterList = [];
+  window.loadedClusterList = loadedClusterList;
 
-  var newsIndex = 0;
-  var loadedNewsList = [];
-  window.loadedNewsList = loadedNewsList;
-
-  function getNextNewsItem() {
-    var item = newsTemplates[newsIndex % newsTemplates.length];
-    newsIndex++;
-    return Object.assign({}, item);
-  }
-
-  function getSelectedFilterValue(dropdownId) {
-    var dropdown = document.getElementById(dropdownId);
-    if (!dropdown) return null;
-    var sel = dropdown.querySelector('.filter-dropdown-option.selected');
-    return sel ? sel.getAttribute('data-value') : null;
-  }
-
+  // ── DOM refs ──
   var newsGrid = document.getElementById('newsGrid');
   var loadIndicator = document.getElementById('loadIndicator');
+  var feedEmpty = document.getElementById('feedEmpty');
+  var feedError = document.getElementById('feedError');
+  var feedRetryBtn = document.getElementById('feedRetryBtn');
 
-  function buildCard(data, index) {
-    var lang = window.currentLanguage || document.documentElement.lang || 'en';
-    var dict = translations[lang] || translations.en;
-    var baseDict = translations.en;
-    var title = data.title;
-    var desc = data.desc;
-    if (data.id) {
-      var baseKey = 'news.' + data.id + '.';
-      title = (dict[baseKey + 'title'] || baseDict[baseKey + 'title'] || title);
-      desc = (dict[baseKey + 'desc'] || baseDict[baseKey + 'desc'] || desc);
-    }
-    var readLabel = (dict && dict['card.read']) || (baseDict && baseDict['card.read']) || 'Read';
+  // ── Category mapping (URL param -> API category value) ──
+  var CATEGORY_MAP = {
+    'threat-intel': 'deep-dives',
+    'apt': 'deep-dives',
+    'pentest': 'deep-dives',
+    'malware': 'research',
+    'breaches': 'dark-web',
+    'bug-bounty': 'beginner',
+    'deep-dives': 'deep-dives',
+    'beginner': 'beginner',
+    'research': 'research',
+    'dark-web': 'dark-web',
+    'breaking': 'breaking'
+  };
+
+  function getCategory() {
+    var params = new URLSearchParams(location.search);
+    var urlCat = params.get('category');
+    if (!urlCat) return null;
+    return CATEGORY_MAP[urlCat] || null;
+  }
+
+  // ── Relative time helper ──
+  function timeAgo(isoStr) {
+    if (!isoStr) return '';
+    var diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+    if (diff < 0) diff = 0;
+    if (diff < 60) return Math.floor(diff) + 's';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+    return Math.floor(diff / 86400) + 'd';
+  }
+
+  // ── Compute date_from from time filter value ──
+  function dateFromFilter() {
+    var tf = window.mainFilterTime || '24h';
+    if (tf === 'all') return null;
+    var ms = { '1h': 3600000, '24h': 86400000, '7d': 604800000 };
+    var delta = ms[tf] || 86400000;
+    return new Date(Date.now() - delta).toISOString();
+  }
+
+  // ── Build query params ──
+  function buildParams(pageOffset) {
+    var params = new URLSearchParams();
+    params.set('view', 'global');
+    params.set('sort', window.currentSort || 'latest');
+    params.set('limit', String(PAGE_SIZE));
+    params.set('offset', String(pageOffset));
+    var cat = getCategory();
+    if (cat) params.set('category', cat);
+    var df = dateFromFilter();
+    if (df) params.set('date_from', df);
+    return params;
+  }
+
+  // ── Fetch a page of clusters ──
+  async function fetchPage(pageOffset) {
+    if (abortCtrl) abortCtrl.abort();
+    abortCtrl = new AbortController();
+
+    var url = '/api/feed?' + buildParams(pageOffset).toString();
+    var resp = await fetch(url, { signal: abortCtrl.signal });
+    if (!resp.ok) throw new Error('API returned ' + resp.status);
+    return resp.json();
+  }
+
+  // ── Escape HTML to prevent XSS (safe for element content and attributes) ──
+  function esc(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // ── Build a card from a ClusterSummary ──
+  function buildCard(cluster, index) {
+    var a = cluster.top_article || {};
+    var tags = a.tags || [];
+    var keywords = a.keywords || [];
+    var severity = a.severity;
 
     var card = document.createElement('article');
     card.className = 'news-card';
-    card.setAttribute('data-news-id', data.id || '');
+    card.setAttribute('data-cluster-id', cluster.id || '');
     card.style.animationDelay = (index % 12) * 0.03 + 's';
-    var accessBadge = '';
-    if (data.access === 'private') accessBadge = '<span class="access-badge private card-access"><i class="fas fa-lock"></i> Private</span>';
-    else if (data.access === 'link') accessBadge = '<span class="access-badge link card-access"><i class="fas fa-link"></i> Link</span>';
-    else if (data.access === 'public') accessBadge = '<span class="access-badge public card-access"><i class="fas fa-globe"></i> Public</span>';
-    var tagSpans = (accessBadge ? accessBadge : '') + data.tags.map(function(t) {
+
+    // Tags
+    var tagSpans = tags.map(function (t) {
       var c = t.toLowerCase().replace(/\s/g, '');
-      return '<span class="card-tag ' + c + '">' + t + '</span>';
+      return '<span class="card-tag ' + esc(c) + '">' + esc(t) + '</span>';
     }).join('');
+
+    // Severity badge
     var sevLabels = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
-    var sevIcons  = { critical: 'fas fa-skull-crossbones', high: 'fas fa-exclamation-triangle', medium: 'fas fa-exclamation-circle', low: 'fas fa-info-circle' };
-    if (data.severity && sevLabels[data.severity]) {
-      tagSpans += '<span class="card-tag sev-' + data.severity + '"><i class="' + sevIcons[data.severity] + '"></i> ' + sevLabels[data.severity] + '</span>';
+    var sevIcons = { critical: 'fas fa-skull-crossbones', high: 'fas fa-exclamation-triangle', medium: 'fas fa-exclamation-circle', low: 'fas fa-info-circle' };
+    if (severity && sevLabels[severity]) {
+      tagSpans += '<span class="card-tag sev-' + esc(severity) + '"><i class="' + sevIcons[severity] + '"></i> ' + sevLabels[severity] + '</span>';
     }
-    var keywordSpans = data.keywords.map(function(k, i) {
+
+    // Cluster state badge
+    var stateLabels = { 'new': 'New', developing: 'Developing', confirmed: 'Confirmed', resolved: 'Resolved' };
+    if (cluster.state && stateLabels[cluster.state]) {
+      tagSpans += '<span class="card-tag cluster-state-' + esc(cluster.state) + '">' + stateLabels[cluster.state] + '</span>';
+    }
+
+    // Category pill (first cluster category)
+    if (cluster.categories && cluster.categories.length > 0) {
+      tagSpans += '<span class="card-tag card-category">' + esc(cluster.categories[0]) + '</span>';
+    }
+
+    // Keywords
+    var keywordSpans = keywords.map(function (k, i) {
       var cl = i === 0 ? 'card-keyword highlight' : 'card-keyword';
-      return '<span class="' + cl + '">' + k + '</span>';
+      return '<span class="' + cl + '">' + esc(k) + '</span>';
     }).join('');
+
+    // Source count badge
+    var sourceCountHtml = '';
+    if (cluster.article_count > 1) {
+      sourceCountHtml = '<span class="card-sources"><i class="fas fa-layer-group"></i> ' + cluster.article_count + ' sources</span>';
+    }
+
+    // Score (shown when sorting by score)
+    var scoreHtml = '';
+    if ((window.currentSort === 'score') && cluster.score != null) {
+      scoreHtml = '<span class="card-score"><i class="fas fa-fire"></i> ' + Number(cluster.score).toFixed(1) + '</span>';
+    }
+
+    var readLabel = (window.CyberNews && window.CyberNews.t) ? window.CyberNews.t('card.read') : 'Read';
+
     card.innerHTML =
       '<div class="card-tags">' + tagSpans + '</div>' +
-      '<h3 class="card-title">' + title + '</h3>' +
-      '<p class="card-desc">' + desc + '</p>' +
+      '<h3 class="card-title">' + esc(a.title) + '</h3>' +
+      '<p class="card-desc">' + esc(a.desc || '') + '</p>' +
       '<div class="card-keywords">' + keywordSpans + '</div>' +
-      '<div class="card-meta"><span><i class="far fa-clock"></i> ' + data.time + '</span>' +
-      '<button class="card-read" data-news-id="' + (data.id || '') + '">' + readLabel + '</button></div>';
+      '<div class="card-meta">' +
+        '<span><i class="far fa-clock"></i> ' + timeAgo(a.published_at) + '</span>' +
+        (a.source_name ? '<span class="card-source-name">' + esc(a.source_name) + '</span>' : '') +
+        sourceCountHtml +
+        scoreHtml +
+        '<button class="card-read" data-cluster-id="' + esc(cluster.id || '') + '">' + readLabel + '</button>' +
+      '</div>';
+
     return card;
   }
 
-  /** Map URL category param to data category or special filter. */
-  function applyCategoryFromUrl() {
-    var params = new URLSearchParams(location.search);
-    var urlCategory = params.get('category');
-    if (!urlCategory) {
-      window.currentMoreCategory = null;
-      window.breakingOnly = false;
-      return;
-    }
-    if (urlCategory === 'breaking') {
-      window.currentMoreCategory = null;
-      window.breakingOnly = true;
-      return;
-    }
-    window.breakingOnly = false;
-    var map = {
-      'threat-intel': 'deep-dives',
-      'apt': 'deep-dives',
-      'pentest': 'deep-dives',
-      'malware': 'research',
-      'breaches': 'dark-web',
-      'bug-bounty': 'beginner',
-      'deep-dives': 'deep-dives',
-      'beginner': 'beginner',
-      'research': 'research',
-      'dark-web': 'dark-web'
-    };
-    window.currentMoreCategory = map[urlCategory] || null;
+  // ── Show/hide state containers ──
+  function showState(state) {
+    if (feedEmpty) feedEmpty.hidden = (state !== 'empty');
+    if (feedError) feedError.hidden = (state !== 'error');
+    if (loadIndicator) loadIndicator.classList.toggle('hidden', state !== 'loading');
   }
 
-  applyCategoryFromUrl();
+  // ── Load a page and render ──
+  async function loadPage(append) {
+    if (loading) return;
+    loading = true;
 
-  function parseTimeToHours(t) {
-    if (!t) return 0;
-    var h = 0;
-    var mHour = t.match(/(\d+)\s*h/);
-    var mMin = t.match(/(\d+)\s*m/);
-    if (mHour) h += parseInt(mHour[1], 10);
-    if (mMin) h += parseInt(mMin[1], 10) / 60;
-    return h;
-  }
-
-  function itemPassesFilter(item) {
-    var typeVals = window.selectedTypes && window.selectedTypes.length > 0 ? window.selectedTypes : null;
-    var sourcesVal = getSelectedFilterValue('sourcesDropdown');
-    var category = window.currentMoreCategory || null;
-    var breakingOnly = window.breakingOnly === true;
-    if (breakingOnly) return item.severity === 'high';
-
-    // Search query filter
-    var q = (window.searchQuery || '').trim().toLowerCase();
-    if (q) {
-      var haystack = [item.title, item.desc].concat(item.keywords || []).concat(item.tags || []).join(' ').toLowerCase();
-      if (haystack.indexOf(q) === -1) return false;
+    if (!append) {
+      offset = 0;
+      loadedClusterList.length = 0;
+      if (newsGrid) newsGrid.innerHTML = '';
     }
 
-    // Priority filter
-    var priority = window.selectedPriority || 'all';
-    if (priority !== 'all' && (item.severity || 'low') !== priority) return false;
+    showState('loading');
 
-    // Time filter
-    var timeFilter = window.mainFilterTime || '24h';
-    if (timeFilter === '1h' && parseTimeToHours(item.time) > 1) return false;
-    if (timeFilter === '7d' && parseTimeToHours(item.time) > 168) return false;
+    try {
+      var data = await fetchPage(offset);
+      total = data.total || 0;
+      var items = data.items || [];
 
-    // Content type (main filter panel overrides legacy)
-    var mainType = window.mainFilterType || null;
-    if (mainType) {
-      if (item.type !== mainType) return false;
-    } else if (typeVals && typeVals.length > 0) {
-      if (typeVals.indexOf(item.type) === -1) return false;
-    } else {
-      if (item.type !== 'news') return false;
+      if (!append && items.length === 0) {
+        showState('empty');
+        loading = false;
+        return;
+      }
+
+      showState('none');
+
+      items.forEach(function (cluster, i) {
+        loadedClusterList.push(cluster);
+        if (newsGrid) newsGrid.appendChild(buildCard(cluster, offset + i));
+      });
+
+      offset += items.length;
+
+      // Hide load indicator if we've loaded everything
+      if (offset >= total) {
+        if (loadIndicator) loadIndicator.classList.add('hidden');
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        loading = false;
+        return;
+      }
+      console.error('[feed]', err);
+      if (!append && loadedClusterList.length === 0) {
+        showState('error');
+      }
     }
 
-    // Source filter
-    var mainSource = window.mainFilterSource || 'all';
-    if (mainSource !== 'all' && item.type !== mainSource) return false;
-    if (sourcesVal && sourcesVal !== 'all' && item.type !== sourcesVal) return false;
-
-    if (category && item.category !== category) return false;
-    return true;
+    loading = false;
   }
 
-  window.applyFilters = function() {
-    var filtered = loadedNewsList.filter(itemPassesFilter);
-    if (newsGrid) newsGrid.innerHTML = '';
-    filtered.forEach(function(data, i) {
-      if (newsGrid) newsGrid.appendChild(buildCard(data, i));
-    });
-    if (loadIndicator) loadIndicator.classList.toggle('hidden', filtered.length === 0);
+  // ── Infinite scroll (debounced) ──
+  var scrollTimer = null;
+  var SCROLL_THRESHOLD = 400;
+  function onScroll() {
+    if (scrollTimer) return;
+    scrollTimer = setTimeout(function () {
+      scrollTimer = null;
+      if (loading || offset >= total) return;
+      if (!loadIndicator) return;
+      var rect = loadIndicator.getBoundingClientRect();
+      if (rect.top < window.innerHeight + SCROLL_THRESHOLD) {
+        loadPage(true);
+      }
+    }, 200);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  // ── Public: full refresh (called by filter changes) ──
+  window.refreshFeed = function () {
+    loadPage(false);
   };
 
-  function appendNews(count) {
-    var startLen = loadedNewsList.length;
-    for (var i = 0; i < count; i++) loadedNewsList.push(getNextNewsItem());
-    if (typeof window.applyFilters === 'function') {
-      var newItems = loadedNewsList.slice(startLen);
-      var toAppend = newItems.filter(itemPassesFilter);
-      toAppend.forEach(function(data, j) {
-        var idx = startLen + j;
-        if (newsGrid) newsGrid.appendChild(buildCard(data, idx));
-      });
-      if (loadIndicator) loadIndicator.classList.toggle('hidden', false);
-    } else {
-      loadedNewsList.slice(startLen).forEach(function(data, i) {
-        if (newsGrid) newsGrid.appendChild(buildCard(data, startLen + i));
-      });
-    }
+  // ── Retry button ──
+  if (feedRetryBtn) {
+    feedRetryBtn.addEventListener('click', function () {
+      loadPage(false);
+    });
   }
 
-  appendNews(6);
-
-  var loading = false;
-  var loadMoreThreshold = 400;
-  function maybeLoadMore() {
-    if (loading || !loadIndicator) return;
-    var rect = loadIndicator.getBoundingClientRect();
-    if (rect.top < window.innerHeight + loadMoreThreshold) {
-      loading = true;
-      loadIndicator.classList.remove('hidden');
-      setTimeout(function() {
-        appendNews(3);
-        loadIndicator.classList.add('hidden');
-        loading = false;
-      }, 800);
-    }
-  }
-  window.addEventListener('scroll', function() { maybeLoadMore(); }, { passive: true });
-  maybeLoadMore();
+  // ── Initial load ──
+  loadPage(false);
 })();
