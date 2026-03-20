@@ -1,5 +1,5 @@
 /**
- * News modal (Read button): open/close, content from loadedNewsList (depends on features/news-grid)
+ * News card click: navigates to source URL or cluster detail page (depends on features/news-grid)
  */
 (function() {
   'use strict';
