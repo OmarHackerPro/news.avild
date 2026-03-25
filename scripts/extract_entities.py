@@ -18,7 +18,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from app.db.opensearch import INDEX_NEWS, get_os_client
-from app.db.session import AsyncSessionLocal
 from app.ingestion.entity_extractor import extract_entities
 from app.ingestion.entity_store import store_article_entities
 
@@ -70,10 +69,6 @@ async def _scroll_articles(source: str | None) -> list[dict]:
 
 
 async def main(args: argparse.Namespace) -> None:
-    if AsyncSessionLocal is None:
-        logger.error("DATABASE_URL not configured.")
-        return
-
     articles = await _scroll_articles(source=args.source)
     logger.info("Found %d article(s) to process.", len(articles))
 
