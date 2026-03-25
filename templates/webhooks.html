@@ -6,14 +6,15 @@
   <meta name="google" content="notranslate">
   <title>Webhooks - CyberNews</title>
   <link rel="stylesheet" href="/static/css/main/main.css">
-  <link rel="stylesheet" href="/static/css/layout/navbar.css">
+  <link rel="stylesheet" href="/static/css/layout/navbar.css?v=3">
   <link rel="stylesheet" href="/static/css/pages/webhooks.css">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
   <style>
     .navbar { display: flex !important; flex-direction: column !important; }
-    .nav-bottom { display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 48px !important; }
-    .nav-links { display: flex !important; visibility: visible !important; }
+    .nav-bottom { display: flex !important; align-items: center !important; position: relative !important; visibility: visible !important; opacity: 1 !important; min-height: 48px !important; }
+    .nav-brand { flex-shrink: 0 !important; }
+    .nav-links { display: flex !important; visibility: visible !important; position: absolute !important; left: 50% !important; transform: translateX(-50%) !important; overflow-x: visible !important; gap: 0.35rem !important; flex: 0 0 auto !important; white-space: nowrap !important; pointer-events: auto !important; }
   </style>
   <script>
     (function() {
@@ -28,7 +29,7 @@
     <div class="nav-bottom">
       <a href="/" class="nav-brand">
         <span class="brand-logo-box"><i class="fas fa-shield-alt brand-icon"></i></span>
-        <span class="brand-text"><span class="brand-cyber">News.</span><span class="brand-news">avild</span></span>
+        <span class="brand-text"><span class="brand-avild">avild</span><span class="brand-news">.news</span></span>
       </a>
       <ul class="nav-links">
         <li><a href="/"><i class="fas fa-home nav-link-icon"></i> Home</a></li>
