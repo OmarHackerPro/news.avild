@@ -6,15 +6,18 @@
   <meta name="google" content="notranslate">
   <title>news.avild.com — Security News & Threat Intel</title>
   <link rel="stylesheet" href="/static/css/main/main.css">
-  <link rel="stylesheet" href="/static/css/layout/navbar.css">
+  <link rel="stylesheet" href="/static/css/layout/navbar.css?v=3">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
   <style>
     .navbar { display: flex !important; flex-direction: column !important; }
     .nav-top { display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 44px !important; }
-    .nav-bottom { display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 48px !important; }
+    .nav-bottom { display: flex !important; justify-content: space-between !important; align-items: center !important; position: relative !important; visibility: visible !important; opacity: 1 !important; min-height: 48px !important; }
+    .nav-brand { flex-shrink: 0 !important; }
+    .nav-bottom .nav-links { position: absolute !important; left: 50% !important; transform: translateX(-50%) !important; flex: 0 0 auto !important; white-space: nowrap !important; pointer-events: auto !important; }
+    .nav-bottom .search-box.nav-bottom-search { flex-shrink: 0 !important; width: 180px !important; min-width: 0 !important; max-width: 180px !important; }
     .nav-actions { display: flex !important; visibility: visible !important; opacity: 1 !important; }
-    .nav-links { display: flex !important; visibility: visible !important; overflow-x: auto !important; }
+    .nav-links { display: flex !important; visibility: visible !important; overflow-x: visible !important; gap: 0.35rem !important; }
   </style>
   <script>
     (function() {
@@ -30,15 +33,11 @@
       <div class="lang-select-wrapper">
         <select id="langSelect" class="lang-select-native" aria-label="Language">
           <option value="en" selected>English</option>
+          <option value="az">Azərbaycan</option>
+          <option value="ru">Русский</option>
           <option value="es">Español</option>
           <option value="fr">Français</option>
           <option value="de">Deutsch</option>
-          <option value="ja">日本語</option>
-          <option value="zh">中文</option>
-          <option value="ru">Русский</option>
-          <option value="ar">العربية</option>
-          <option value="az">Azərbaycan</option>
-          <option value="tr">Türkçe</option>
         </select>
         <div class="lang-select-trigger" id="langTrigger" aria-expanded="false" aria-haspopup="listbox">
           <i class="fas fa-globe lang-icon"></i>
@@ -47,19 +46,17 @@
         </div>
         <div class="lang-dropdown" id="langDropdown" role="listbox">
           <div class="lang-option selected" data-lang="en" data-short="EN" role="option">English</div>
+          <div class="lang-option" data-lang="az" data-short="AZ" role="option">Azərbaycan</div>
+          <div class="lang-option" data-lang="ru" data-short="RU" role="option">Русский</div>
           <div class="lang-option" data-lang="es" data-short="ES" role="option">Español</div>
           <div class="lang-option" data-lang="fr" data-short="FR" role="option">Français</div>
           <div class="lang-option" data-lang="de" data-short="DE" role="option">Deutsch</div>
-          <div class="lang-option" data-lang="ja" data-short="JA" role="option">日本語</div>
-          <div class="lang-option" data-lang="zh" data-short="ZH" role="option">中文</div>
-          <div class="lang-option" data-lang="ru" data-short="RU" role="option">Русский</div>
-          <div class="lang-option" data-lang="ar" data-short="AR" role="option">العربية</div>
-          <div class="lang-option" data-lang="az" data-short="AZ" role="option">Azərbaycan</div>
-          <div class="lang-option" data-lang="tr" data-short="TR" role="option">Türkçe</div>
         </div>
       </div>
       <div class="nav-actions">
-        <a href="/preferences" class="nav-subscribe-btn nav-pref-link"><i class="fas fa-layer-group"></i> <span data-i18n-key="nav.myStack">My Stack</span></a>
+        <a href="/preferences" class="nav-subscribe-btn nav-pref-link nav-pref-mystack"><i class="fas fa-layer-group"></i> <span data-i18n-key="nav.myStack">My Stack</span></a>
+        <a href="/webhooks" class="nav-subscribe-btn nav-pref-link nav-pref-webhooks"><i class="fas fa-plug"></i> <span data-i18n-key="nav.webhooks">Webhooks</span></a>
+        <a href="/rss-config" class="nav-subscribe-btn nav-pref-link nav-pref-rss"><i class="fas fa-rss"></i> <span data-i18n-key="nav.rssConfig">RSS Feed</span></a>
         <div class="nav-rss-wrap">
           <button type="button" class="nav-rss-btn" id="rssTrigger" aria-expanded="false" aria-haspopup="true">
             <i class="fas fa-rss nav-rss-icon"></i> RSS <i class="fas fa-chevron-down"></i>
@@ -101,7 +98,7 @@
         <li><a href="/category?category=apt"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span> <span data-i18n-key="nav.apt">APT</span></a></li>
         <li><a href="/category?category=breaches"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></span> <span data-i18n-key="nav.breaches">Breaches</span></a></li>
         <li><a href="/category?category=pentest"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span> <span data-i18n-key="nav.pentest">Pentest</span></a></li>
-        <li><a href="/category?category=bug-bounty"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5c-2.2 0-4 1.8-4 4 0 1.2.5 2.3 1.3 3.1-.9 1.1-2 2-3.3 2.5v2c1.5-.5 3.2-1.1 4.5-2.5 1.3 1.4 3 2 4.5 2.5v-2c-1.3-.5-2.4-1.4-3.3-2.5.8-.8 1.3-1.9 1.3-3.1 0-2.2-1.8-4-4-4z"/><circle cx="9" cy="15" r="1.2"/><circle cx="15" cy="15" r="1.2"/><path d="M7 10l-2 1.5"/><path d="M17 10l2 1.5"/></svg></span> <span data-i18n-key="nav.bugBounty">Bounty</span></a></li>
+        <li><a href="/category?category=bug-bounty"><span class="nav-link-icon" aria-hidden="true"><svg class="nav-icon-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5c-2.2 0-4 1.8-4 4 0 1.2.5 2.3 1.3 3.1-.9 1.1-2 2-3.3 2.5v2c1.5-.5 3.2-1.1 4.5-2.5 1.3 1.4 3 2 4.5 2.5v-2c-1.3-.5-2.4-1.4-3.3-2.5.8-.8 1.3-1.9 1.3-3.1 0-2.2-1.8-4-4-4z"/><circle cx="9" cy="15" r="1.2"/><circle cx="15" cy="15" r="1.2"/><path d="M7 10l-2 1.5"/><path d="M17 10l2 1.5"/></svg></span> <span data-i18n-key="nav.bugBounty">Bug Bounty</span></a></li>
         <li class="nav-more-wrap">
           <button type="button" class="nav-more-btn" id="moreTrigger" aria-expanded="false" aria-haspopup="true"><span class="nav-more-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg></span> <span data-i18n-key="nav.more">More</span> <span class="nav-chevron" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span></button>
           <div class="more-dropdown-card" id="moreDropdown" role="menu">
