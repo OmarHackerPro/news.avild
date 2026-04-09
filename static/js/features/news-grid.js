@@ -251,6 +251,16 @@
     loadPage(false);
   };
 
+  // ── "Read" button → navigate to cluster detail page ──
+  if (newsGrid) {
+    newsGrid.addEventListener('click', function (e) {
+      var btn = e.target.closest('.card-read');
+      if (!btn) return;
+      var id = btn.getAttribute('data-cluster-id');
+      if (id) window.location.href = '/cluster?id=' + encodeURIComponent(id);
+    });
+  }
+
   // ── Retry button ──
   if (feedRetryBtn) {
     feedRetryBtn.addEventListener('click', function () {
