@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from app.api.routes.news import _hit_to_item
 from app.api.routes.clusters import _fetch_articles_for_slugs
 from app.db.opensearch import INDEX_CLUSTERS, get_os_client
-from app.models.cluster import ClusterListResponse, ClusterSummary
+from app.models.cluster import ClusterListResponse, ClusterSummary, ScoringFactor
 
 router = APIRouter(prefix="/feed", tags=["feed"])
 
@@ -91,6 +91,7 @@ async def get_feed(
                 categories=src.get("categories", []),
                 score=Decimal(str(src["score"])) if src.get("score") is not None else None,
                 confidence=src.get("confidence"),
+                top_factors=[ScoringFactor(**f) for f in (src.get("top_factors") or [])],
                 latest_at=src.get("latest_at", ""),
             )
         )

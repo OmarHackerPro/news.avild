@@ -110,6 +110,15 @@ _CLUSTERS_MAPPING = {
             "why_it_matters": {"type": "text", "analyzer": "english"},
             "score":          {"type": "half_float"},
             "confidence":     {"type": "keyword"},
+            "max_cvss":       {"type": "half_float"},
+            "top_factors": {
+                "type": "nested",
+                "properties": {
+                    "factor": {"type": "keyword"},
+                    "label":  {"type": "keyword"},
+                    "points": {"type": "half_float"},
+                },
+            },
             "article_ids":    {"type": "keyword"},
             "categories":     {"type": "keyword"},
             "tags":           {"type": "keyword"},

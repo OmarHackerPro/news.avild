@@ -6,7 +6,7 @@ from opensearchpy import NotFoundError
 
 from app.api.routes.news import _hit_to_item
 from app.db.opensearch import INDEX_CLUSTERS, INDEX_NEWS, get_os_client
-from app.models.cluster import ClusterDetail, ClusterListResponse, ClusterSummary, ClusterTimelineEntry
+from app.models.cluster import ClusterDetail, ClusterListResponse, ClusterSummary, ClusterTimelineEntry, ScoringFactor
 from app.models.errors import ErrorResponse
 
 router = APIRouter(prefix="/clusters", tags=["clusters"])
@@ -93,6 +93,7 @@ async def list_clusters(
                 categories=src.get("categories", []),
                 score=Decimal(str(src["score"])) if src.get("score") is not None else None,
                 confidence=src.get("confidence"),
+                top_factors=[ScoringFactor(**f) for f in (src.get("top_factors") or [])],
                 latest_at=src.get("latest_at", ""),
             )
         )
@@ -135,6 +136,7 @@ async def get_cluster(cluster_id: str):
         why_it_matters=src.get("why_it_matters"),
         score=Decimal(str(src["score"])) if src.get("score") is not None else None,
         confidence=src.get("confidence"),
+        top_factors=[ScoringFactor(**f) for f in (src.get("top_factors") or [])],
         articles=articles,
         categories=src.get("categories", []),
         tags=tags,

@@ -6,6 +6,12 @@ from pydantic import BaseModel, Field
 from app.models.news import NewsItem
 
 
+class ScoringFactor(BaseModel):
+    factor: str = Field(json_schema_extra={"example": "cvss_score"})
+    label: str = Field(json_schema_extra={"example": "CVSS 9.8"})
+    points: float = Field(json_schema_extra={"example": 29.4})
+
+
 class ClusterTimelineEntry(BaseModel):
     article_slug: str = Field(json_schema_extra={"example": "fortios-rce-cve-2026-12345"})
     source_name: str = Field(json_schema_extra={"example": "BleepingComputer"})
@@ -23,6 +29,7 @@ class ClusterSummary(BaseModel):
     categories: List[str] = Field(json_schema_extra={"example": ["breaking", "research"]})
     score: Optional[Decimal] = Field(None, json_schema_extra={"example": 87.5})
     confidence: Optional[str] = Field(None, json_schema_extra={"example": "high"})
+    top_factors: List[ScoringFactor] = Field(default_factory=list)
     latest_at: str = Field(json_schema_extra={"example": "2026-03-15T14:22:00Z"})  # ISO-8601
 
 
@@ -34,6 +41,7 @@ class ClusterDetail(BaseModel):
     why_it_matters: Optional[str] = Field(None, json_schema_extra={"example": "FortiOS is deployed across 500K+ enterprises globally. Active exploitation confirmed by multiple threat intelligence sources. Unauthenticated RCE allows full device takeover."})
     score: Optional[Decimal] = Field(None, json_schema_extra={"example": 87.5})
     confidence: Optional[str] = Field(None, json_schema_extra={"example": "high"})
+    top_factors: List[ScoringFactor] = Field(default_factory=list)
     articles: List[NewsItem]
     categories: List[str] = Field(json_schema_extra={"example": ["breaking", "research"]})
     tags: List[str] = Field(json_schema_extra={"example": ["fortinet", "zero-day", "rce", "cve-2026-12345"]})
