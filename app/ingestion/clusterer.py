@@ -13,6 +13,7 @@ from typing import Optional
 
 from app.db.opensearch import INDEX_CLUSTERS, INDEX_NEWS, get_os_client
 from app.ingestion.normalizer import NormalizedArticle
+from app.ingestion.scorer import compute_cluster_score, rescore_cluster
 
 logger = logging.getLogger(__name__)
 
@@ -169,16 +170,32 @@ async def create_cluster(
     now = datetime.now(timezone.utc).isoformat()
     slug = article["slug"]
 
+    cve_ids = article.get("cve_ids") or []
+    max_cvss = article.get("cvss_score")
+    if max_cvss is not None:
+        max_cvss = float(max_cvss)
+
+    score_data = compute_cluster_score(
+        article_count=1,
+        max_cvss=max_cvss,
+        cve_count=len(cve_ids),
+        entity_keys=entity_keys,
+        state="new",
+        latest_at=now,
+    )
+
     doc = {
         "label": article.get("title", ""),
         "state": "new",
         "summary": article.get("summary") or article.get("desc"),
         "why_it_matters": None,
-        "score": None,
-        "confidence": None,
+        "score": score_data["score"],
+        "confidence": score_data["confidence"],
+        "top_factors": score_data["top_factors"],
+        "max_cvss": max_cvss,
         "article_ids": [slug],
         "article_count": 1,
-        "cve_ids": article.get("cve_ids") or [],
+        "cve_ids": cve_ids,
         "entity_keys": entity_keys,
         "categories": [article["category"]] if article.get("category") else [],
         "tags": article.get("tags") or [],
@@ -216,6 +233,7 @@ async def merge_into_cluster(
     source_name: str = "",
     title: str = "",
     published_at: str = "",
+    cvss_score: Optional[float] = None,
 ) -> None:
     """Merge an article into an existing cluster via scripted update."""
     now = datetime.now(timezone.utc).isoformat()
@@ -254,6 +272,12 @@ async def merge_into_cluster(
                 ctx._source.cve_ids.add(cve);
             }
         }
+        // Track max CVSS seen across all member articles
+        if (params.cvss_score != null) {
+            if (ctx._source.max_cvss == null || params.cvss_score > ctx._source.max_cvss) {
+                ctx._source.max_cvss = params.cvss_score;
+            }
+        }
         ctx._source.latest_at = params.now;
         ctx._source.updated_at = params.now;
         if (ctx._source.article_count >= 3) {
@@ -277,6 +301,7 @@ async def merge_into_cluster(
                     "published_at": published_at,
                     "entity_keys": entity_keys,
                     "cve_ids": cve_ids,
+                    "cvss_score": cvss_score,
                     "now": now,
                 },
             },
@@ -286,6 +311,9 @@ async def merge_into_cluster(
 
     await _tag_article(client, article_slug, cluster_id)
     logger.info("Merged article '%s' into cluster %s", article_slug, cluster_id)
+
+    # Recompute score now that article_count, max_cvss, and state have changed
+    await rescore_cluster(cluster_id)
 
 
 # ---------------------------------------------------------------------------
@@ -330,11 +358,13 @@ async def cluster_article(
 
     # 4. Merge or create
     if cluster_id:
+        raw_cvss = article.get("cvss_score")
         await merge_into_cluster(
             cluster_id, slug, entity_keys, cve_ids,
             source_name=article.get("source_name", ""),
             title=article.get("title", ""),
             published_at=article.get("published_at", ""),
+            cvss_score=float(raw_cvss) if raw_cvss is not None else None,
         )
     else:
         await create_cluster(article, entity_keys)
