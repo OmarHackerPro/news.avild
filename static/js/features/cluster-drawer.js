@@ -35,7 +35,14 @@
   }
 
   // ── DOM creation ───────────────────────────────────────────────────────
-  var backdrop, drawer, drawerBody, fullLink;
+  var backdrop, drawer, drawerBody, fullLink, resizeHandle;
+  var isResizing = false;
+
+  function positionResizeHandle() {
+    if (!resizeHandle || !drawer) return;
+    var left = window.innerWidth - drawer.offsetWidth;
+    resizeHandle.style.left = (left - 4) + 'px';
+  }
 
   function buildDOM() {
     if (backdrop) return; // already built
@@ -82,36 +89,36 @@
     drawerBody = document.createElement('div');
     drawerBody.className = 'cluster-drawer-body';
 
-    // Resize handle on the left edge
-    var resizeHandle = document.createElement('div');
-    resizeHandle.className = 'cluster-drawer-resize';
-
-    drawer.appendChild(resizeHandle);
     drawer.appendChild(header);
     drawer.appendChild(drawerBody);
 
+    // Resize handle — body-level fixed element, avoids stacking context issues
+    resizeHandle = document.createElement('div');
+    resizeHandle.className = 'cluster-drawer-resize';
+
     document.body.appendChild(backdrop);
     document.body.appendChild(drawer);
+    document.body.appendChild(resizeHandle);
 
-    // ── Resize drag logic ──
-    var isResizing = false;
     resizeHandle.addEventListener('mousedown', function (e) {
       isResizing = true;
-      document.body.style.cursor = 'ew-resize';
-      document.body.style.userSelect = 'none';
+      document.documentElement.style.cursor = 'ew-resize';
+      document.documentElement.style.userSelect = 'none';
       e.preventDefault();
+      e.stopPropagation();
     });
     document.addEventListener('mousemove', function (e) {
       if (!isResizing) return;
       var newWidth = window.innerWidth - e.clientX;
       newWidth = Math.max(320, Math.min(newWidth, Math.floor(window.innerWidth * 0.85)));
       drawer.style.width = newWidth + 'px';
+      positionResizeHandle();
     });
     document.addEventListener('mouseup', function () {
       if (!isResizing) return;
       isResizing = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      document.documentElement.style.cursor = '';
+      document.documentElement.style.userSelect = '';
     });
 
     document.addEventListener('keydown', function (e) {
@@ -246,6 +253,9 @@
     backdrop.classList.add('is-open');
     drawer.classList.add('is-open');
     drawerBody.scrollTop = 0;
+    // Position resize handle after slide animation completes
+    setTimeout(positionResizeHandle, 300);
+    resizeHandle.style.display = 'block';
 
     showLoading();
 
@@ -267,6 +277,7 @@
     if (!backdrop) return;
     backdrop.classList.remove('is-open');
     drawer.classList.remove('is-open');
+    resizeHandle.style.display = 'none';
     document.documentElement.style.overflow = '';
     document.documentElement.style.paddingRight = '';
   }
