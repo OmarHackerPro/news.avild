@@ -41,7 +41,7 @@
   function positionResizeHandle() {
     if (!resizeHandle || !drawer) return;
     var left = window.innerWidth - drawer.offsetWidth;
-    resizeHandle.style.left = (left - 4) + 'px';
+    resizeHandle.style.left = (left - 6) + 'px';
   }
 
   function buildDOM() {
@@ -253,8 +253,7 @@
     backdrop.classList.add('is-open');
     drawer.classList.add('is-open');
     drawerBody.scrollTop = 0;
-    // Position resize handle after slide animation completes
-    setTimeout(positionResizeHandle, 300);
+    positionResizeHandle();
     resizeHandle.style.display = 'block';
 
     showLoading();
