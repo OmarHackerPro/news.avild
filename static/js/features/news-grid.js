@@ -152,8 +152,6 @@
       scoreHtml = '<span class="card-score"><i class="fas fa-fire"></i> ' + Number(cluster.score).toFixed(1) + '</span>';
     }
 
-    var readLabel = (window.CyberNews && window.CyberNews.t) ? window.CyberNews.t('card.read') : 'Read';
-
     card.innerHTML =
       '<div class="card-tags">' + tagSpans + '</div>' +
       '<h3 class="card-title">' + esc(a.title) + '</h3>' +
@@ -164,7 +162,6 @@
         (a.source_name ? '<span class="card-source-name">' + esc(a.source_name) + '</span>' : '') +
         sourceCountHtml +
         scoreHtml +
-        '<button class="card-read" data-cluster-id="' + esc(cluster.id || '') + '">' + readLabel + '</button>' +
       '</div>';
 
     return card;
@@ -251,15 +248,6 @@
     loadPage(false);
   };
 
-  // ── "Read" button → navigate to cluster detail page ──
-  if (newsGrid) {
-    newsGrid.addEventListener('click', function (e) {
-      var btn = e.target.closest('.card-read');
-      if (!btn) return;
-      var id = btn.getAttribute('data-cluster-id');
-      if (id) window.location.href = '/cluster?id=' + encodeURIComponent(id);
-    });
-  }
 
   // ── Retry button ──
   if (feedRetryBtn) {

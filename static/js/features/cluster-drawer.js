@@ -1,0 +1,239 @@
+/**
+ * Cluster drawer: slide-in panel that fetches and renders cluster detail
+ * without leaving the feed page.
+ *
+ * Public API: window.ClusterDrawer.open(clusterId), window.ClusterDrawer.close()
+ */
+(function () {
+  'use strict';
+
+  // ── Helpers (mirrors cluster-page.js) ──────────────────────────────────
+  function esc(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function timeAgo(isoStr) {
+    if (!isoStr) return '';
+    var diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+    if (diff < 0) diff = 0;
+    if (diff < 60)    return Math.floor(diff) + 's ago';
+    if (diff < 3600)  return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
+  }
+
+  function formatDate(isoStr) {
+    if (!isoStr) return '';
+    try {
+      return new Date(isoStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (e) { return isoStr; }
+  }
+
+  // ── DOM creation ───────────────────────────────────────────────────────
+  var backdrop, drawer, drawerBody, fullLink;
+
+  function buildDOM() {
+    if (backdrop) return; // already built
+
+    // Inject stylesheet
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/static/css/components/cluster-drawer.css';
+    document.head.appendChild(link);
+
+    backdrop = document.createElement('div');
+    backdrop.className = 'cluster-drawer-backdrop';
+    backdrop.addEventListener('click', close);
+
+    drawer = document.createElement('div');
+    drawer.className = 'cluster-drawer';
+    drawer.setAttribute('role', 'dialog');
+    drawer.setAttribute('aria-modal', 'true');
+    drawer.setAttribute('aria-label', 'Cluster detail');
+
+    fullLink = document.createElement('a');
+    fullLink.className = 'cluster-drawer-full-link';
+    fullLink.target = '_blank';
+    fullLink.rel = 'noopener';
+    fullLink.innerHTML = '<i class="fas fa-external-link-alt"></i> Open full page';
+
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'cluster-drawer-close';
+    closeBtn.type = 'button';
+    closeBtn.setAttribute('aria-label', 'Close');
+    closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    closeBtn.addEventListener('click', close);
+
+    var header = document.createElement('div');
+    header.className = 'cluster-drawer-header';
+    header.appendChild(fullLink);
+    header.appendChild(closeBtn);
+
+    drawerBody = document.createElement('div');
+    drawerBody.className = 'cluster-drawer-body';
+
+    drawer.appendChild(header);
+    drawer.appendChild(drawerBody);
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(drawer);
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') close();
+    });
+  }
+
+  // ── State helpers ───────────────────────────────────────────────────────
+  function showLoading() {
+    drawerBody.innerHTML =
+      '<div class="cluster-drawer-state">' +
+        '<div class="cluster-drawer-spinner"></div>' +
+        '<p class="cluster-drawer-state-msg">Loading&hellip;</p>' +
+      '</div>';
+  }
+
+  function showError(msg) {
+    drawerBody.innerHTML =
+      '<div class="cluster-drawer-state">' +
+        '<div class="cluster-state-icon"><i class="fas fa-exclamation-triangle"></i></div>' +
+        '<p class="cluster-drawer-state-title">Failed to load</p>' +
+        '<p class="cluster-drawer-state-msg">' + esc(msg) + '</p>' +
+      '</div>';
+  }
+
+  function showNotFound() {
+    drawerBody.innerHTML =
+      '<div class="cluster-drawer-state">' +
+        '<div class="cluster-state-icon"><i class="fas fa-search"></i></div>' +
+        '<p class="cluster-drawer-state-title">Cluster not found</p>' +
+        '<p class="cluster-drawer-state-msg">This cluster may have been removed.</p>' +
+      '</div>';
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────
+  function renderCluster(cluster) {
+    // Badges
+    var stateLabels = { 'new': 'New', developing: 'Developing', confirmed: 'Confirmed', resolved: 'Resolved' };
+    var stateLabel = stateLabels[cluster.state] || esc(cluster.state);
+    var badgesHtml = '<span class="cluster-state cluster-state-' + esc(cluster.state) + '">' + stateLabel + '</span>';
+
+    if (cluster.confidence) {
+      var confIcons = { high: 'fas fa-shield-alt', medium: 'fas fa-adjust', low: 'fas fa-question-circle' };
+      var icon = confIcons[cluster.confidence] || 'fas fa-circle';
+      badgesHtml += '<span class="cluster-confidence"><i class="' + icon + '"></i> ' + esc(cluster.confidence) + ' confidence</span>';
+    }
+    if (cluster.categories && cluster.categories.length > 0) {
+      cluster.categories.forEach(function (cat) {
+        badgesHtml += '<span class="cluster-category-pill">' + esc(cat) + '</span>';
+      });
+    }
+
+    // Meta
+    var metaParts = [];
+    if (cluster.earliest_at) metaParts.push('<span><i class="far fa-clock"></i> First seen ' + esc(formatDate(cluster.earliest_at)) + '</span>');
+    if (cluster.latest_at)   metaParts.push('<span><i class="fas fa-sync-alt"></i> Updated ' + esc(timeAgo(cluster.latest_at)) + '</span>');
+    if (cluster.score != null) metaParts.push('<span><i class="fas fa-fire"></i> Score ' + Number(cluster.score).toFixed(1) + '</span>');
+    var articleCount = cluster.articles ? cluster.articles.length : 0;
+    if (articleCount > 0) metaParts.push('<span><i class="fas fa-layer-group"></i> ' + articleCount + ' source' + (articleCount !== 1 ? 's' : '') + '</span>');
+
+    // Summary
+    var summaryHtml = cluster.summary
+      ? '<p class="cluster-summary-text">' + esc(cluster.summary) + '</p>'
+      : '<p class="cluster-empty-state">Summary not yet available — analysis in progress.</p>';
+
+    // Why it matters
+    var whyHtml = cluster.why_it_matters
+      ? '<p class="cluster-why-text">' + esc(cluster.why_it_matters) + '</p>'
+      : '<p class="cluster-empty-state">Impact analysis not yet available — check back soon.</p>';
+
+    // Tags
+    var tagsSection = '';
+    if (cluster.tags && cluster.tags.length > 0) {
+      tagsSection =
+        '<div class="cluster-section">' +
+          '<div class="cluster-section-title"><i class="fas fa-tags"></i> Tags</div>' +
+          '<div class="cluster-tags">' +
+            cluster.tags.map(function (t) { return '<span class="cluster-tag">' + esc(t) + '</span>'; }).join('') +
+          '</div>' +
+        '</div>';
+    }
+
+    // Sources
+    var articles = cluster.articles || [];
+    var sourcesHtml = articles.length === 0
+      ? '<p class="cluster-empty-state">No source articles available.</p>'
+      : articles.map(function (a) {
+          var url = a.source_url || '#';
+          return '<a class="cluster-source-item" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' +
+            '<div class="cluster-source-body">' +
+              '<div class="cluster-source-title">' + esc(a.title || 'Untitled') + '</div>' +
+              (a.source_name ? '<div class="cluster-source-name">' + esc(a.source_name) + '</div>' : '') +
+            '</div>' +
+            '<div class="cluster-source-time"><i class="far fa-clock"></i> ' + esc(timeAgo(a.published_at)) + '</div>' +
+          '</a>';
+        }).join('');
+
+    drawerBody.innerHTML =
+      '<div class="cluster-header">' +
+        '<div class="cluster-badges">' + badgesHtml + '</div>' +
+        '<h2 class="cluster-title">' + esc(cluster.label || 'Untitled cluster') + '</h2>' +
+        '<div class="cluster-meta-row">' + metaParts.join('') + '</div>' +
+      '</div>' +
+      '<div class="cluster-section">' +
+        '<div class="cluster-section-title"><i class="fas fa-align-left"></i> TL;DR</div>' +
+        summaryHtml +
+      '</div>' +
+      '<div class="cluster-section">' +
+        '<div class="cluster-section-title"><i class="fas fa-exclamation-circle"></i> Why it matters</div>' +
+        whyHtml +
+      '</div>' +
+      tagsSection +
+      '<div class="cluster-section">' +
+        '<div class="cluster-section-title"><i class="fas fa-newspaper"></i> Sources <span style="font-size:0.85rem;font-weight:400;color:var(--text-muted);margin-left:0.3rem;">(' + articles.length + ')</span></div>' +
+        '<div class="cluster-sources-list">' + sourcesHtml + '</div>' +
+      '</div>';
+  }
+
+  // ── Public API ──────────────────────────────────────────────────────────
+  function open(clusterId) {
+    buildDOM();
+
+    // Update "open full page" link
+    fullLink.href = '/cluster?id=' + encodeURIComponent(clusterId);
+
+    // Show panel
+    backdrop.classList.add('is-open');
+    drawer.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+    drawerBody.scrollTop = 0;
+
+    showLoading();
+
+    fetch('/api/clusters/' + encodeURIComponent(clusterId))
+      .then(function (r) {
+        if (r.status === 404) { showNotFound(); return null; }
+        if (!r.ok) throw new Error('API returned ' + r.status);
+        return r.json();
+      })
+      .then(function (cluster) {
+        if (cluster) renderCluster(cluster);
+      })
+      .catch(function (err) {
+        showError(err.message || 'Could not fetch cluster data.');
+      });
+  }
+
+  function close() {
+    if (!backdrop) return;
+    backdrop.classList.remove('is-open');
+    drawer.classList.remove('is-open');
+    document.body.style.overflow = '';
+  }
+
+  window.ClusterDrawer = { open: open, close: close };
+})();
