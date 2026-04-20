@@ -37,21 +37,31 @@
   transform: translateX(0);
 }
 
-/* Resize handle */
+/* Resize handle — fixed body-level element, shown only when drawer is open */
 .cluster-drawer-resize {
-  position: absolute;
-  left: -4px;
+  position: fixed;
   top: 0;
   bottom: 0;
   width: 8px;
   cursor: ew-resize;
-  background: transparent;
-  transition: background 0.15s;
   z-index: 10005;
+  display: none;
 }
-.cluster-drawer-resize:hover,
-.cluster-drawer-resize:active {
-  background: var(--accent-green);
+.cluster-drawer-resize::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 48px;
+  border-radius: 2px;
+  background: var(--border);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.cluster-drawer-resize:hover::after {
+  opacity: 1;
 }
 
 /* Drawer header bar */
