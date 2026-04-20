@@ -40,11 +40,16 @@
   function buildDOM() {
     if (backdrop) return; // already built
 
-    // Inject stylesheet
+    // Inject stylesheets
     var link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = '/static/css/components/cluster-drawer.css';
     document.head.appendChild(link);
+
+    var link2 = document.createElement('link');
+    link2.rel = 'stylesheet';
+    link2.href = '/static/css/pages/cluster.css';
+    document.head.appendChild(link2);
 
     backdrop = document.createElement('div');
     backdrop.className = 'cluster-drawer-backdrop';
@@ -151,15 +156,17 @@
       ? '<p class="cluster-why-text">' + esc(cluster.why_it_matters) + '</p>'
       : '<p class="cluster-empty-state">Impact analysis not yet available — check back soon.</p>';
 
-    // Tags
+    // Tags (cap at 8 to avoid overwhelming the drawer)
     var tagsSection = '';
     if (cluster.tags && cluster.tags.length > 0) {
+      var visibleTags = cluster.tags.slice(0, 8);
+      var hiddenCount = cluster.tags.length - visibleTags.length;
+      var tagBadges = visibleTags.map(function (t) { return '<span class="cluster-tag">' + esc(t) + '</span>'; }).join('');
+      if (hiddenCount > 0) tagBadges += '<span class="cluster-tag" style="color:var(--text-muted)">+' + hiddenCount + ' more</span>';
       tagsSection =
         '<div class="cluster-section">' +
           '<div class="cluster-section-title"><i class="fas fa-tags"></i> Tags</div>' +
-          '<div class="cluster-tags">' +
-            cluster.tags.map(function (t) { return '<span class="cluster-tag">' + esc(t) + '</span>'; }).join('') +
-          '</div>' +
+          '<div class="cluster-tags">' + tagBadges + '</div>' +
         '</div>';
     }
 
