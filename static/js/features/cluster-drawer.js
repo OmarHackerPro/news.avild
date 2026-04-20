@@ -36,7 +36,6 @@
 
   // ── DOM creation ───────────────────────────────────────────────────────
   var backdrop, drawer, drawerBody, fullLink, resizeHandle;
-  var isResizing = false;
 
   function positionResizeHandle() {
     if (!resizeHandle || !drawer) return;
@@ -100,23 +99,20 @@
     document.body.appendChild(drawer);
     document.body.appendChild(resizeHandle);
 
-    resizeHandle.addEventListener('mousedown', function (e) {
-      isResizing = true;
+    resizeHandle.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      resizeHandle.setPointerCapture(e.pointerId);
       document.documentElement.style.cursor = 'ew-resize';
       document.documentElement.style.userSelect = 'none';
-      e.preventDefault();
-      e.stopPropagation();
     });
-    document.addEventListener('mousemove', function (e) {
-      if (!isResizing) return;
+    resizeHandle.addEventListener('pointermove', function (e) {
+      if (!resizeHandle.hasPointerCapture(e.pointerId)) return;
       var newWidth = window.innerWidth - e.clientX;
       newWidth = Math.max(320, Math.min(newWidth, Math.floor(window.innerWidth * 0.85)));
       drawer.style.width = newWidth + 'px';
       positionResizeHandle();
     });
-    document.addEventListener('mouseup', function () {
-      if (!isResizing) return;
-      isResizing = false;
+    resizeHandle.addEventListener('pointerup', function () {
       document.documentElement.style.cursor = '';
       document.documentElement.style.userSelect = '';
     });
