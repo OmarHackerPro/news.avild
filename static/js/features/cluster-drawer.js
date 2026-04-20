@@ -82,11 +82,37 @@
     drawerBody = document.createElement('div');
     drawerBody.className = 'cluster-drawer-body';
 
+    // Resize handle on the left edge
+    var resizeHandle = document.createElement('div');
+    resizeHandle.className = 'cluster-drawer-resize';
+
+    drawer.appendChild(resizeHandle);
     drawer.appendChild(header);
     drawer.appendChild(drawerBody);
 
     document.body.appendChild(backdrop);
     document.body.appendChild(drawer);
+
+    // ── Resize drag logic ──
+    var isResizing = false;
+    resizeHandle.addEventListener('mousedown', function (e) {
+      isResizing = true;
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function (e) {
+      if (!isResizing) return;
+      var newWidth = window.innerWidth - e.clientX;
+      newWidth = Math.max(320, Math.min(newWidth, Math.floor(window.innerWidth * 0.85)));
+      drawer.style.width = newWidth + 'px';
+    });
+    document.addEventListener('mouseup', function () {
+      if (!isResizing) return;
+      isResizing = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    });
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') close();
@@ -213,10 +239,12 @@
     // Update "open full page" link
     fullLink.href = '/cluster?id=' + encodeURIComponent(clusterId);
 
-    // Show panel
+    // Show panel — compensate for scrollbar width to avoid layout shift
+    var scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.paddingRight = scrollbarWidth + 'px';
+    document.body.style.overflow = 'hidden';
     backdrop.classList.add('is-open');
     drawer.classList.add('is-open');
-    document.body.style.overflow = 'hidden';
     drawerBody.scrollTop = 0;
 
     showLoading();
@@ -240,6 +268,7 @@
     backdrop.classList.remove('is-open');
     drawer.classList.remove('is-open');
     document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
   }
 
   window.ClusterDrawer = { open: open, close: close };

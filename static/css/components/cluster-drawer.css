@@ -38,6 +38,23 @@
   transform: translateX(0);
 }
 
+/* Resize handle */
+.cluster-drawer-resize {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: ew-resize;
+  background: transparent;
+  transition: background 0.15s;
+  z-index: 1;
+}
+.cluster-drawer-resize:hover,
+.cluster-drawer-resize:active {
+  background: var(--accent-green);
+}
+
 /* Drawer header bar */
 .cluster-drawer-header {
   display: flex;
