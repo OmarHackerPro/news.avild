@@ -239,10 +239,10 @@
     // Update "open full page" link
     fullLink.href = '/cluster?id=' + encodeURIComponent(clusterId);
 
-    // Show panel — compensate for scrollbar width to avoid layout shift
+    // Lock scroll on both html and body; compensate width to avoid layout shift
     var scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-    document.body.style.paddingRight = scrollbarWidth + 'px';
-    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.style.paddingRight = scrollbarWidth + 'px';
     backdrop.classList.add('is-open');
     drawer.classList.add('is-open');
     drawerBody.scrollTop = 0;
@@ -267,8 +267,8 @@
     if (!backdrop) return;
     backdrop.classList.remove('is-open');
     drawer.classList.remove('is-open');
-    document.body.style.overflow = '';
-    document.body.style.paddingRight = '';
+    document.documentElement.style.overflow = '';
+    document.documentElement.style.paddingRight = '';
   }
 
   window.ClusterDrawer = { open: open, close: close };
