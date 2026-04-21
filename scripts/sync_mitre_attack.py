@@ -35,8 +35,10 @@ def _normalize(name: str) -> str:
 
 def _build_threat_data(stix: dict) -> dict:
     keywords: dict[str, list] = {}
-    aliases: dict[str, str] = {}
+    # Collect raw alias pairs before deduplication
+    raw_aliases: list[tuple[str, str]] = []
 
+    # Pass 1: collect all canonical keyword entries
     for obj in stix.get("objects", []):
         if obj.get("revoked") or obj.get("x_mitre_deprecated"):
             continue
@@ -64,7 +66,14 @@ def _build_threat_data(stix: dict) -> dict:
         for alias in obj_aliases:
             alias = alias.strip()
             if alias and alias != name:
-                aliases[alias] = canonical_key
+                raw_aliases.append((alias, canonical_key))
+
+    # Pass 2: add aliases only when their normalized form is not already a keyword
+    aliases: dict[str, str] = {}
+    for alias, canonical_key in raw_aliases:
+        alias_normalized = _normalize(alias)
+        if alias_normalized not in keywords:  # skip — text already covered by keyword entry
+            aliases[alias] = canonical_key
 
     return {"keywords": keywords, "aliases": aliases}
 
