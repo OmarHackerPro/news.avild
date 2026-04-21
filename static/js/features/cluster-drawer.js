@@ -49,7 +49,7 @@
     // Inject stylesheets
     var link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = '/static/css/components/cluster-drawer.css';
+    link.href = '/static/css/components/cluster-drawer.css?v=3';
     document.head.appendChild(link);
 
     var link2 = document.createElement('link');
@@ -108,7 +108,7 @@
     resizeHandle.addEventListener('pointermove', function (e) {
       if (!resizeHandle.hasPointerCapture(e.pointerId)) return;
       var newWidth = window.innerWidth - e.clientX;
-      newWidth = Math.max(320, Math.min(newWidth, Math.floor(window.innerWidth * 0.85)));
+      newWidth = Math.max(360, Math.min(newWidth, Math.floor(window.innerWidth * 0.75)));
       drawer.style.width = newWidth + 'px';
       positionResizeHandle();
     });
@@ -249,8 +249,11 @@
     backdrop.classList.add('is-open');
     drawer.classList.add('is-open');
     drawerBody.scrollTop = 0;
-    positionResizeHandle();
-    resizeHandle.style.display = 'block';
+    // Defer handle positioning one frame so CSS width is applied before measuring
+    requestAnimationFrame(function () {
+      positionResizeHandle();
+      resizeHandle.style.display = 'block';
+    });
 
     showLoading();
 

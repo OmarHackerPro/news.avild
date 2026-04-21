@@ -82,7 +82,7 @@
         'features/category-filter.js',
         'features/priority-filter.js',
         'features/news-grid.js',
-        'features/cluster-drawer.js',
+        'features/cluster-drawer.js?v=3',
         'features/news-modal.js',
         'features/share-modal.js',
         'features/breaking.js',
