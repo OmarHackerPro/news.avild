@@ -11,6 +11,8 @@ COPY alembic.ini .
 COPY main.py .
 COPY scripts/ scripts/
 COPY static/ static/
+COPY tests/ tests/
+COPY data/ data/
 
 RUN mkdir -p static/uploads/avatars
 
