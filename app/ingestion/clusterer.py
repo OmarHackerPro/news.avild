@@ -370,7 +370,6 @@ async def cluster_article(
     cluster_id: Optional[str] = None
 
     # 1. CVE overlap — skip if article is a roundup (too many CVEs)
-    cve_signal_ids = [k for k in signal_keys if k.startswith("cve-")]
     if cve_ids and len(cve_ids) <= _MAX_ARTICLE_CVES_FOR_MATCHING:
         cluster_id = await find_cluster_by_cve(cve_ids)
         if cluster_id:
