@@ -30,6 +30,23 @@ _SIGNAL_TYPES = frozenset({"cve", "product", "malware", "actor", "tool"})
 # "noise" (e.g., bulk advisories) and should not match on CVE overlap.
 _MAX_ARTICLE_CVES_FOR_MATCHING = 3
 
+_MLT_STOP_WORDS = [
+    # Report boilerplate
+    "advisory", "bulletin", "alert", "roundup", "brief", "summary", "report",
+    "update", "updates", "patch", "patches",
+    # Generic security verbs / nouns
+    "vulnerability", "vulnerabilities", "security", "cyber", "cybersecurity",
+    "threat", "threats", "attack", "attacks", "exploit", "exploitation",
+    "malware", "ransomware", "phishing", "breach", "incident",
+    "critical", "high", "medium", "low", "severity",
+    "affected", "systems", "users", "allow", "allows", "attacker", "attackers",
+    "remote", "code", "execution", "arbitrary", "access", "unauthorized",
+    "disclosed", "disclosure", "researchers", "researcher", "cve", "cvss",
+    "mitigation", "mitigate", "mitigated", "detection", "protect", "protection",
+]
+
+_MLT_MAX_CLUSTER_SIZE = 15  # clusters larger than this cannot absorb via MLT
+
 
 def _signal_keys(entities: list[dict]) -> list[str]:
     """Extract normalized_key from entities that have signal value in clustering.
@@ -152,11 +169,13 @@ async def find_cluster_by_mlt(
                                 "min_term_freq": 1,
                                 "min_doc_freq": 1,
                                 "minimum_should_match": "30%",
+                                "stop_words": _MLT_STOP_WORDS,
                             }
                         }
                     ],
                     "filter": [
                         {"range": {"created_at": {"gte": cutoff}}},
+                        {"range": {"article_count": {"lte": _MLT_MAX_CLUSTER_SIZE}}},
                     ],
                 }
             },

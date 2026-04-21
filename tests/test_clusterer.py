@@ -179,3 +179,45 @@ async def test_cluster_article_excludes_vendors_from_entity_matching():
         await cluster_article(article, "generic-article", entities)
         # Should be called with empty signal_keys (vendors excluded)
         mock_entities.assert_awaited_once_with([])
+
+
+# ---------------------------------------------------------------------------
+# find_cluster_by_mlt — stop words and size cap
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_mlt_query_includes_stop_words(mock_os_client):
+    """MLT query must include a stop_words list to suppress boilerplate terms."""
+    from app.ingestion.clusterer import find_cluster_by_mlt
+
+    mock_os_client.count.return_value = {"count": 25}
+    mock_os_client.search.return_value = {"hits": {"hits": []}}
+
+    await find_cluster_by_mlt("Critical vulnerability in Apache", None)
+
+    call_body = mock_os_client.search.call_args.kwargs["body"]
+    mlt_query = call_body["query"]["bool"]["must"][0]["more_like_this"]
+    assert "stop_words" in mlt_query
+    assert "advisory" in mlt_query["stop_words"]
+    assert "vulnerability" in mlt_query["stop_words"]
+    assert "critical" in mlt_query["stop_words"]
+
+
+@pytest.mark.asyncio
+async def test_mlt_query_caps_cluster_size(mock_os_client):
+    """MLT query must filter out clusters with article_count > 15."""
+    from app.ingestion.clusterer import find_cluster_by_mlt
+
+    mock_os_client.count.return_value = {"count": 25}
+    mock_os_client.search.return_value = {"hits": {"hits": []}}
+
+    await find_cluster_by_mlt("Ransomware gang targets hospitals", None)
+
+    call_body = mock_os_client.search.call_args.kwargs["body"]
+    filters = call_body["query"]["bool"]["filter"]
+    size_filter = next(
+        (f for f in filters if "range" in f and "article_count" in f["range"]),
+        None,
+    )
+    assert size_filter is not None, "Expected article_count range filter"
+    assert size_filter["range"]["article_count"]["lte"] == 15
