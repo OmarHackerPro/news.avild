@@ -206,7 +206,7 @@ async def test_mlt_query_includes_stop_words(mock_os_client):
 @pytest.mark.asyncio
 async def test_mlt_query_caps_cluster_size(mock_os_client):
     """MLT query must filter out clusters with article_count > 15."""
-    from app.ingestion.clusterer import find_cluster_by_mlt
+    from app.ingestion.clusterer import find_cluster_by_mlt, _MLT_MAX_CLUSTER_SIZE
 
     mock_os_client.count.return_value = {"count": 25}
     mock_os_client.search.return_value = {"hits": {"hits": []}}
@@ -220,4 +220,4 @@ async def test_mlt_query_caps_cluster_size(mock_os_client):
         None,
     )
     assert size_filter is not None, "Expected article_count range filter"
-    assert size_filter["range"]["article_count"]["lte"] == 15
+    assert size_filter["range"]["article_count"]["lte"] == _MLT_MAX_CLUSTER_SIZE

@@ -30,6 +30,8 @@ _SIGNAL_TYPES = frozenset({"cve", "product", "malware", "actor", "tool"})
 # "noise" (e.g., bulk advisories) and should not match on CVE overlap.
 _MAX_ARTICLE_CVES_FOR_MATCHING = 3
 
+# MLT stop words — excluded from similarity scoring to avoid false merges on
+# generic security vocabulary that appears in nearly every cybersecurity article.
 _MLT_STOP_WORDS = [
     # Report boilerplate
     "advisory", "bulletin", "alert", "roundup", "brief", "summary", "report",
