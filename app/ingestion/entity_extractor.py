@@ -182,7 +182,6 @@ _BASELINE_KEYWORDS: dict[str, tuple[str, str]] = {
     # Threat actors
     "scattered-spider": ("Scattered Spider", "actor"),
     "lazarus-group": ("Lazarus Group", "actor"),
-    "lazarus": ("Lazarus", "actor"),
     "apt28": ("APT28", "actor"),
     "apt29": ("APT29", "actor"),
     "apt41": ("APT41", "actor"),
