@@ -27,10 +27,10 @@ async def test_find_cluster_by_cve_returns_match(mock_os_client):
     result = await find_cluster_by_cve(["CVE-2026-1234"])
     assert result == "cluster-abc"
 
-    # Verify the query used terms on cve_ids
+    # Verify the query used terms on seed_cve_ids (not cve_ids)
     call_body = mock_os_client.search.call_args.kwargs["body"]
     terms = call_body["query"]["bool"]["filter"][0]
-    assert terms == {"terms": {"cve_ids": ["CVE-2026-1234"]}}
+    assert terms == {"terms": {"seed_cve_ids": ["CVE-2026-1234"]}}
 
 
 # ---------------------------------------------------------------------------
@@ -221,3 +221,68 @@ async def test_mlt_query_caps_cluster_size(mock_os_client):
     )
     assert size_filter is not None, "Expected article_count range filter"
     assert size_filter["range"]["article_count"]["lte"] == _MLT_MAX_CLUSTER_SIZE
+
+
+# ---------------------------------------------------------------------------
+# Seed-based CVE gating
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_create_cluster_sets_seed_cve_ids(mock_os_client):
+    """New cluster must store seed_cve_ids equal to the founding article's CVEs."""
+    from app.ingestion.clusterer import create_cluster
+
+    mock_os_client.index.return_value = {"_id": "new-cluster-001"}
+    mock_os_client.update.return_value = {}
+
+    article = {
+        "slug": "fortigate-rce-001",
+        "title": "FortiGate RCE",
+        "cve_ids": ["CVE-2026-1111"],
+        "category": "vulnerability",
+        "published_at": "2026-04-21T10:00:00Z",
+        "source_name": "BleepingComputer",
+    }
+    await create_cluster(article, ["fortigate", "fortios"])
+
+    indexed_doc = mock_os_client.index.call_args.kwargs["body"]
+    assert indexed_doc["seed_cve_ids"] == ["CVE-2026-1111"]
+    assert indexed_doc["cve_ids"] == ["CVE-2026-1111"]
+
+
+@pytest.mark.asyncio
+async def test_find_cluster_by_cve_queries_seed_cve_ids(mock_os_client):
+    """CVE cluster lookup must query seed_cve_ids, not cve_ids."""
+    from app.ingestion.clusterer import find_cluster_by_cve
+
+    mock_os_client.search.return_value = {
+        "hits": {"hits": [{"_id": "cluster-seed-test"}]}
+    }
+
+    await find_cluster_by_cve(["CVE-2026-9999"])
+
+    call_body = mock_os_client.search.call_args.kwargs["body"]
+    terms_filter = call_body["query"]["bool"]["filter"][0]
+    assert terms_filter == {"terms": {"seed_cve_ids": ["CVE-2026-9999"]}}
+
+
+@pytest.mark.asyncio
+async def test_merge_does_not_grow_seed_cve_ids(mock_os_client):
+    """Merging an article into a cluster must NOT update seed_cve_ids."""
+    from app.ingestion.clusterer import merge_into_cluster
+
+    mock_os_client.update.return_value = {}
+
+    await merge_into_cluster(
+        "cluster-existing",
+        "article-new",
+        ["fortios"],
+        ["CVE-2026-AAAA"],
+        source_name="KrebsOnSecurity",
+        title="Follow-up FortiGate story",
+        published_at="2026-04-21T12:00:00Z",
+    )
+
+    # The Painless script passed to update must NOT reference seed_cve_ids
+    script_source = mock_os_client.update.call_args_list[0].kwargs["body"]["script"]["source"]
+    assert "seed_cve_ids" not in script_source

@@ -86,7 +86,7 @@ async def find_cluster_by_cve(
             "query": {
                 "bool": {
                     "filter": [
-                        {"terms": {"cve_ids": cve_ids}},
+                        {"terms": {"seed_cve_ids": cve_ids}},
                         {"range": {"created_at": {"gte": cutoff}}},
                     ]
                 }
@@ -242,6 +242,7 @@ async def create_cluster(
         "article_ids": [slug],
         "article_count": 1,
         "cve_ids": cve_ids,
+        "seed_cve_ids": cve_ids,
         "entity_keys": entity_keys,
         "categories": [article["category"]] if article.get("category") else [],
         "tags": article.get("tags") or [],
