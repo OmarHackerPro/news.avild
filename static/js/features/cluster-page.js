@@ -130,7 +130,7 @@
     var tagsEl = document.getElementById('clusterTags');
     var tagsSectionEl = document.getElementById('clusterTagsSection');
     if (tagsEl && cluster.tags && cluster.tags.length > 0) {
-      tagsEl.innerHTML = cluster.tags.map(function (t) {
+      tagsEl.innerHTML = cluster.tags.slice(0, 6).map(function (t) {
         return '<span class="cluster-tag">' + esc(t) + '</span>';
       }).join('');
     } else if (tagsSectionEl) {
