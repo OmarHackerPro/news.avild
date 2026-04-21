@@ -1,17 +1,17 @@
 /* CyberNews - Main stylesheet (imports by layer: base → layout → components) */
 /* Base: variables, reset, theme */
-@import url('../base/variables.css');
+@import url('../base/variables.css?v=3');
 /* Layout: page structure, navbar */
-@import url('../layout/layout.css');
-@import url('../layout/navbar.css');
+@import url('../layout/layout.css?v=3');
+@import url('../layout/navbar.css?v=3');
 /* Components */
-@import url('../components/language-select.css');
-@import url('../components/search.css');
-@import url('../components/sections.css');
-@import url('../components/breaking.css');
-@import url('../components/filters.css');
-@import url('../components/news-grid.css');
-@import url('../components/news-modal.css');
-@import url('../components/share-modal.css');
-@import url('../components/sidebar.css');
-@import url('../layout/responsive.css');
+@import url('../components/language-select.css?v=3');
+@import url('../components/search.css?v=3');
+@import url('../components/sections.css?v=3');
+@import url('../components/breaking.css?v=3');
+@import url('../components/filters.css?v=3');
+@import url('../components/news-grid.css?v=3');
+@import url('../components/news-modal.css?v=3');
+@import url('../components/share-modal.css?v=3');
+@import url('../components/sidebar.css?v=3');
+@import url('../layout/responsive.css?v=3');

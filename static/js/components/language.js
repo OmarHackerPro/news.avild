@@ -78,6 +78,7 @@
         var chosenLang = this.getAttribute('data-lang');
         if (langSelectNative) langSelectNative.value = chosenLang;
         if (window.CyberNews && window.CyberNews.applyLanguage) window.CyberNews.applyLanguage(chosenLang || 'en');
+        if (window.translateAllNewsCards) window.translateAllNewsCards(chosenLang || 'en');
         try { localStorage.setItem('lang', chosenLang || 'en'); } catch(e) {}
         if (langCurrent) {
           langCurrent.style.transform = 'scale(1.15)';

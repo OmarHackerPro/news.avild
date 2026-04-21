@@ -5,6 +5,7 @@
 (function() {
   var partialsBase = '/static/partials/';
   var jsBase = '/static/js/';
+  var jsVersion = '4';
 
   function fetchHtml(path) {
     return fetch(partialsBase + path).then(function(r) {
@@ -16,7 +17,7 @@
   function loadScript(src) {
     return new Promise(function(resolve, reject) {
       var s = document.createElement('script');
-      s.src = jsBase + src;
+      s.src = jsBase + src + '?v=' + jsVersion;
       s.async = false;
       s.onload = resolve;
       s.onerror = reject;
@@ -81,6 +82,7 @@
         'components/filters.js',
         'features/category-filter.js',
         'features/priority-filter.js',
+        'core/translator.js',
         'features/news-grid.js',
         'features/cluster-drawer.js?v=3',
         'features/news-modal.js',
