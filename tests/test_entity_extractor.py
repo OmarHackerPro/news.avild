@@ -1,6 +1,5 @@
 """Tests for entity_extractor — file-based loader and alias normalization."""
 import json
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 import pytest
