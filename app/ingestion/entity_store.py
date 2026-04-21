@@ -35,7 +35,7 @@ async def store_article_entities(
                 "source": (
                     "if (!ctx._source.article_ids.contains(params.slug)) {"
                     "  ctx._source.article_ids.add(params.slug);"
-                    "  ctx._source.article_count = ctx._source.article_ids.length();"
+                    "  ctx._source.article_count = ctx._source.article_ids.size();"
                     "}"
                     "ctx._source.last_seen = params.now;"
                     "if (params.cvss != null && ctx._source.cvss_score == null) {"

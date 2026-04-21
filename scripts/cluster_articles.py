@@ -32,33 +32,28 @@ async def _get_clustered_slugs() -> set[str]:
     client = get_os_client()
     slugs: set[str] = set()
 
-    resp = await client.search(
-        index=INDEX_CLUSTERS,
-        body={
-            "query": {"match_all": {}},
-            "size": 1000,
-            "_source": ["article_ids"],
-        },
-        params={"scroll": "2m"},
-    )
-    scroll_id = resp.get("_scroll_id")
-    hits = resp["hits"]["hits"]
+    page_size = 100
+    from_offset = 0
 
-    while hits:
+    while True:
+        resp = await client.search(
+            index=INDEX_CLUSTERS,
+            body={
+                "query": {"match_all": {}},
+                "size": page_size,
+                "from": from_offset,
+                "_source": ["article_ids"],
+            },
+        )
+        hits = resp["hits"]["hits"]
+        if not hits:
+            break
         for hit in hits:
             for slug in hit["_source"].get("article_ids") or []:
                 slugs.add(slug)
-        if not scroll_id:
+        from_offset += len(hits)
+        if len(hits) < page_size:
             break
-        resp = await client.scroll(scroll_id=scroll_id, params={"scroll": "2m"})
-        scroll_id = resp.get("_scroll_id")
-        hits = resp["hits"]["hits"]
-
-    if scroll_id:
-        try:
-            await client.clear_scroll(scroll_id=scroll_id)
-        except Exception:
-            pass
 
     return slugs
 
@@ -73,35 +68,30 @@ async def _scroll_articles(source: str | None) -> list[dict]:
     query = {"bool": {"filter": filters}} if filters else {"match_all": {}}
 
     results = []
-    resp = await client.search(
-        index=INDEX_NEWS,
-        body={
-            "query": query,
-            "sort": [{"published_at": {"order": "asc"}}],
-            "size": 500,
-            "_source": [
-                "slug", "title", "desc", "summary", "cve_ids",
-                "category", "tags", "published_at",
-            ],
-        },
-        params={"scroll": "2m"},
-    )
-    scroll_id = resp.get("_scroll_id")
-    hits = resp["hits"]["hits"]
+    page_size = 100
+    from_offset = 0
 
-    while hits:
-        results.extend(hits)
-        if not scroll_id:
-            break
-        resp = await client.scroll(scroll_id=scroll_id, params={"scroll": "2m"})
-        scroll_id = resp.get("_scroll_id")
+    while True:
+        resp = await client.search(
+            index=INDEX_NEWS,
+            body={
+                "query": query,
+                "sort": [{"published_at": {"order": "asc"}}],
+                "size": page_size,
+                "from": from_offset,
+                "_source": [
+                    "slug", "title", "desc", "summary", "cve_ids",
+                    "category", "tags", "published_at",
+                ],
+            },
+        )
         hits = resp["hits"]["hits"]
-
-    if scroll_id:
-        try:
-            await client.clear_scroll(scroll_id=scroll_id)
-        except Exception:
-            pass
+        if not hits:
+            break
+        results.extend(hits)
+        from_offset += len(hits)
+        if len(hits) < page_size:
+            break
 
     return results
 
@@ -123,9 +113,25 @@ async def _get_entities_for_slug(slug: str) -> list[dict]:
     ]
 
 
+async def _reset_clusters() -> None:
+    """Delete all cluster documents so everything can be re-clustered from scratch."""
+    client = get_os_client()
+    resp = await client.delete_by_query(
+        index=INDEX_CLUSTERS,
+        body={"query": {"match_all": {}}},
+        params={"refresh": "true", "conflicts": "proceed"},
+    )
+    deleted = resp.get("deleted", 0)
+    logger.info("Reset: deleted %d cluster documents.", deleted)
+
+
 async def main(args: argparse.Namespace) -> None:
-    # Collect already-clustered slugs to skip them
-    clustered = await _get_clustered_slugs()
+    if args.reset:
+        logger.info("--reset: wiping all clusters before re-clustering.")
+        await _reset_clusters()
+
+    # Collect already-clustered slugs to skip them (empty after reset)
+    clustered = set() if args.reset else await _get_clustered_slugs()
     logger.info("Found %d article slugs already in clusters.", len(clustered))
 
     articles = await _scroll_articles(source=args.source)
@@ -190,4 +196,5 @@ if __name__ == "__main__":
     parser.add_argument("--source", type=str, help="Filter by source name")
     parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
     parser.add_argument("--batch-size", type=int, default=100, help="Log progress every N articles")
+    parser.add_argument("--reset", action="store_true", help="Delete all clusters first, then re-cluster everything")
     asyncio.run(main(parser.parse_args()))
