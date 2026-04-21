@@ -21,6 +21,31 @@ logger = logging.getLogger(__name__)
 # Tuned conservatively to avoid false merges; lower if clusters are too granular.
 _MLT_SCORE_THRESHOLD = 10.0
 
+# Entity types that have signal value in clustering (discriminators).
+# Vendors (e.g., Microsoft, Google, Apache) are excluded because they appear in
+# nearly every security article and offer no discriminatory power.
+_SIGNAL_TYPES = frozenset({"cve", "product", "malware", "actor", "tool"})
+
+# CVE count cap for matching: articles with > this many CVEs are considered
+# "noise" (e.g., bulk advisories) and should not match on CVE overlap.
+_MAX_ARTICLE_CVES_FOR_MATCHING = 3
+
+
+def _signal_keys(entities: list[dict]) -> list[str]:
+    """Extract normalized_key from entities that have signal value in clustering.
+
+    Filters out vendor type (which appears in nearly all articles) and returns
+    the normalized_keys of entities that are CVEs, products, malware, actors,
+    or tools—sufficiently specific to discriminate between events.
+
+    Args:
+        entities: list of entity dicts with 'normalized_key' and 'type' keys
+
+    Returns:
+        list of normalized_key strings for high-signal entity types
+    """
+    return [e["normalized_key"] for e in entities if e["type"] in _SIGNAL_TYPES]
+
 
 # ---------------------------------------------------------------------------
 # Finders — each returns the best matching cluster_id or None

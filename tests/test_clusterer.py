@@ -2,6 +2,8 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
+from app.ingestion.clusterer import _signal_keys
+
 
 @pytest.fixture
 def mock_os_client():
@@ -106,3 +108,28 @@ async def test_cluster_article_cve_match_merges():
         assert merge_args[0][0] == "cluster-existing"
         assert merge_args[0][1] == "test-article-001"
         mock_create.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# _signal_keys helper
+# ---------------------------------------------------------------------------
+
+def test_signal_keys_excludes_vendors():
+    entities = [
+        {"normalized_key": "microsoft", "type": "vendor"},
+        {"normalized_key": "cve-2024-1234", "type": "cve"},
+        {"normalized_key": "lockbit", "type": "malware"},
+    ]
+    assert _signal_keys(entities) == ["cve-2024-1234", "lockbit"]
+
+
+def test_signal_keys_empty_input():
+    assert _signal_keys([]) == []
+
+
+def test_signal_keys_all_vendors_returns_empty():
+    entities = [
+        {"normalized_key": "microsoft", "type": "vendor"},
+        {"normalized_key": "google", "type": "vendor"},
+    ]
+    assert _signal_keys(entities) == []
