@@ -284,5 +284,8 @@ async def test_merge_does_not_grow_seed_cve_ids(mock_os_client):
     )
 
     # The Painless script passed to update must NOT reference seed_cve_ids
-    script_source = mock_os_client.update.call_args_list[0].kwargs["body"]["script"]["source"]
-    assert "seed_cve_ids" not in script_source
+    # Check all update calls (order-independent)
+    for call in mock_os_client.update.call_args_list:
+        script = call.kwargs.get("body", {}).get("script", {})
+        if "source" in script:
+            assert "seed_cve_ids" not in script["source"]

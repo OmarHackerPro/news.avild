@@ -80,6 +80,8 @@ async def find_cluster_by_cve(
     client = get_os_client()
     cutoff = (datetime.now(timezone.utc) - timedelta(days=window_days)).isoformat()
 
+    # Match seed_cve_ids only — not cve_ids (which grows as articles merge in) —
+    # to prevent roundup articles from expanding the match pool.
     resp = await client.search(
         index=INDEX_CLUSTERS,
         body={
@@ -242,7 +244,7 @@ async def create_cluster(
         "article_ids": [slug],
         "article_count": 1,
         "cve_ids": cve_ids,
-        "seed_cve_ids": cve_ids,
+        "seed_cve_ids": cve_ids,  # frozen at creation; never updated on merge
         "entity_keys": entity_keys,
         "categories": [article["category"]] if article.get("category") else [],
         "tags": article.get("tags") or [],
