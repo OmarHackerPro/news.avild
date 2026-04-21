@@ -1,0 +1,4472 @@
+{
+  "aliases": {
+    "9002 RAT": "hydraq",
+    "ACTINIUM": "gamaredon-group",
+    "AIRBREAK": "orz",
+    "ALPHV": "blackcat",
+    "AMERICIUM": "agrius",
+    "ANEL": "uppercut",
+    "APT-C-00": "apt32",
+    "APT-C-43": "machete",
+    "APT10": "menupass",
+    "APT15": "ke3chang",
+    "APT2": "putter-panda",
+    "APT27": "threat-group-3390",
+    "APT31": "zirconium",
+    "APT34": "oilrig",
+    "APT35": "magic-hound",
+    "APT36": "transparent-tribe",
+    "APT40": "leviathan",
+    "APT43": "kimsuky",
+    "APT44": "sandworm-team",
+    "ASPXTool": "aspxspy",
+    "AZZY": "advstoreshell",
+    "Adwind": "jrat",
+    "Agenda": "qilin",
+    "Agonizing Serpens": "agrius",
+    "AjaxTM": "ajax-security-team",
+    "AlienSpy": "jrat",
+    "Anchor_DNS": "anchor",
+    "Anunak": "carbanak",
+    "Aqua Blizzard": "gamaredon-group",
+    "Arid Viper": "apt-c-23",
+    "Armageddon": "gamaredon-group",
+    "Aurora": "hydraq",
+    "Ave Maria": "warzonerat",
+    "BARIUM": "apt41",
+    "BELUGASTURGEON": "turla",
+    "BISMUTH": "apt32",
+    "BKDR_ESILE": "elise",
+    "BROMINE": "dragonfly",
+    "BRONZE FLEETWOOD": "apt5",
+    "BRONZE HIGHLAND": "daggerfly",
+    "BRONZE HUNTLEY": "tonto-team",
+    "BRONZE MOHAWK": "leviathan",
+    "BRONZE PRESIDENT": "mustang-panda",
+    "BRONZE RIVERSIDE": "menupass",
+    "BRONZE SILHOUETTE": "volt-typhoon",
+    "BRONZE STARLIGHT": "cinnamon-tempest",
+    "BRONZE UNION": "threat-group-3390",
+    "BRc4": "brute-ratel-c4",
+    "BUGJUICE": "redleaves",
+    "Babyk": "babuk",
+    "Backdoor.APT.CookieCutter": "shotput",
+    "Backdoor.APT.FakeWinHTTPHelper": "bubblewrap",
+    "Backdoor.Linux.BPFDOOR": "bpfdoor",
+    "Backdoor.MacOS.OCEANLOTUS.F": "osx-oceanlotus-d",
+    "Backdoor.Nidiran": "nidiran",
+    "Backdoor.Remsec": "remsec",
+    "Backdoor.SofacyX": "chopstick",
+    "Backdoor.Solaris.BPFDOOR.ZAJE": "bpfdoor",
+    "Bahamut": "windshift",
+    "Bazaloader": "bazar",
+    "BeagleBoyz": "apt38",
+    "Beijing Group": "elderwood",
+    "Berserk Bear": "dragonfly",
+    "Big Bang APT": "apt-c-23",
+    "Bilbug": "lotus-blossom",
+    "Black Banshee": "kimsuky",
+    "Black Energy": "blackenergy",
+    "Black Vine": "deep-panda",
+    "BlackEnergy (Group)": "sandworm-team",
+    "BlackShadow": "agrius",
+    "Blackfly": "winnti-group",
+    "Bladabindi": "njrat",
+    "Bleeding Bear": "ember-bear",
+    "Blind Eagle": "apt-c-36",
+    "Blue Kitsune": "apt29",
+    "Bluenoroff": "apt38",
+    "BotgenStudios": "cosmicduke",
+    "Brass Typhoon": "apt41",
+    "Breut": "poisonivy",
+    "Buckeye": "apt3",
+    "Bugat v5": "dridex",
+    "C0d0so0": "apt19",
+    "CAMARO DRAGON": "mustang-panda",
+    "CANOPY": "starwhale",
+    "CHIMBORAZO": "ta505",
+    "CHROMIUM": "earth-lusca",
+    "COBALT DICKENS": "silent-librarian",
+    "COBALT GYPSY": "oilrig",
+    "COBALT ILLUSION": "magic-hound",
+    "COLDRIVER": "star-blizzard",
+    "COPERNICIUM": "apt38",
+    "COPPER FIELDSTONE": "transparent-tribe",
+    "CRASHOVERRIDE": "industroyer",
+    "CVNX": "menupass",
+    "CactusPete": "tonto-team",
+    "Cadet Blizzard": "ember-bear",
+    "Callisto Group": "star-blizzard",
+    "Camouflage Tempest": "fin6",
+    "Canvas Cyclone": "apt32",
+    "Carbon Spider": "fin7",
+    "Casbaneiro": "metamorfo",
+    "Chafer": "apt39",
+    "Chanitor": "hancitor",
+    "Charcoal Typhoon": "earth-lusca",
+    "Charming Kitten": "magic-hound",
+    "Chinastrats": "patchwork",
+    "Cicada": "menupass",
+    "Citrine Sleet": "applejeus",
+    "Cloud Atlas": "inception",
+    "CloudLook": "cloudduke",
+    "Cobalt Gang": "cobalt-group",
+    "Cobalt Spider": "cobalt-group",
+    "Codoso": "apt19",
+    "Codoso Team": "apt19",
+    "Comment Crew": "apt1",
+    "Comment Group": "apt1",
+    "Comment Panda": "apt1",
+    "Confucius APT": "confucius",
+    "ControlX": "earth-lusca",
+    "Cosmic Wolf": "sea-turtle",
+    "Cozer": "cozycar",
+    "Cozy Bear": "apt29",
+    "CozyBear": "cozycar",
+    "CozyDuke": "apt29",
+    "Crambus": "oilrig",
+    "Crimson Sandstorm": "curium",
+    "Crossrider": "osx-shlayer",
+    "Crouching Yeti": "dragonfly",
+    "Custom HDoor": "hdoor",
+    "DARKTOWN": "sodamaster",
+    "DEADEYE.APPEND": "deadeye",
+    "DEADEYE.EMBED": "deadeye",
+    "DESLoader": "ecipekac",
+    "DEV#POPPER": "contagious-interview",
+    "DEV-0157": "gamaredon-group",
+    "DEV-0193": "wizard-spider",
+    "DEV-0206": "mustard-tempest",
+    "DEV-0243": "indrik-spider",
+    "DEV-0391": "volt-typhoon",
+    "DEV-0401": "cinnamon-tempest",
+    "DEV-0500": "moses-staff",
+    "DEV-0537": "lapsus",
+    "DEV-0586": "ember-bear",
+    "DILLJUICE stage2": "fyanti",
+    "DNSCALC": "apt12",
+    "DNSMessenger": "textmate",
+    "DRAGONFISH": "lotus-blossom",
+    "DRIFTWOOD": "rawpos",
+    "DROPSHOT": "stonedrill",
+    "DUBNIUM": "darkhotel",
+    "DUEBREW": "rawpos",
+    "DYMALLOY": "dragonfly",
+    "Dark Halo": "apt29",
+    "DarkKomet": "darkcomet",
+    "Darkmoon": "poisonivy",
+    "DazzleSpy": "macma",
+    "DeceptiveDevelopment": "contagious-interview",
+    "DelfsCake": "sodamaster",
+    "Delphacy": "downdelph",
+    "Deputy Dog": "apt17",
+    "Desert Falcon": "apt-c-23",
+    "DestroyRAT": "plugx",
+    "Diamond Sleet": "lazarus-group",
+    "DiceLoader": "lizar",
+    "Diskcoder.C": "notpetya",
+    "Disttrack": "shamoon",
+    "Dofoil": "smoke-loader",
+    "Downadup": "conficker",
+    "Dreambot": "ursnif",
+    "DriveSlayer": "hermeticwiper",
+    "Dropping Elephant": "patchwork",
+    "DustSquad": "nomadic-octopus",
+    "DynCalc": "apt12",
+    "Dynamite Panda": "apt18",
+    "Dyreza": "dyre",
+    "Dyzap": "dyre",
+    "EARTH PRETA": "mustang-panda",
+    "ELBRUS": "fin7",
+    "ELECTRUM": "sandworm-team",
+    "EUROPIUM": "oilrig",
+    "EVILTOSS": "advstoreshell",
+    "Earth Akhlut": "tonto-team",
+    "Earth Simnavaz": "oilrig",
+    "Earth Smilodon": "threat-group-3390",
+    "Earth Vetala": "muddywater",
+    "El Machete": "machete",
+    "Elderwood Gang": "elderwood",
+    "Elephant Beetle": "fin13",
+    "Elfin": "apt33",
+    "EmPyre": "empire",
+    "Emerald Sleet": "kimsuky",
+    "Emissary Panda": "threat-group-3390",
+    "Emperor Dragonfly": "cinnamon-tempest",
+    "Energetic Bear": "dragonfly",
+    "Enfal": "lurid",
+    "EuroAPT": "cozycar",
+    "Evasive Panda": "daggerfly",
+    "Evasive Serpens": "oilrig",
+    "Evil Corp": "indrik-spider",
+    "EvilQuest": "thiefquest",
+    "ExPetr": "notpetya",
+    "FIENDCRY": "rawpos",
+    "FIN12": "wizard-spider",
+    "FIREANT": "mustang-panda",
+    "FOCUSFJORD": "sysupdate",
+    "FROZENBARENTS": "sandworm-team",
+    "FROZENLAKE": "apt28",
+    "FYNLOS": "darkcomet",
+    "FakeUpdates": "socgholish",
+    "Fancy Bear": "apt28",
+    "FinSpy": "finfisher",
+    "Flamer": "flame",
+    "Flying Kitten": "ajax-security-team",
+    "Fobushell": "p-a-s-webshell",
+    "Forest Blizzard": "apt28",
+    "Formbook": "xloader",
+    "FriedEx": "bitpaymer",
+    "Frozenvista": "ember-bear",
+    "Frutas": "jrat",
+    "Fynloski": "darkcomet",
+    "GAMEFISH": "jhuhugit",
+    "GIFTEDVISITOR": "wirefire",
+    "GOLD BLACKBURN": "wizard-spider",
+    "GOLD CABIN": "ta551",
+    "GOLD FEATHER": "water-galura",
+    "GOLD IONIC": "inc-ransom",
+    "GOLD KINGSWOOD": "cobalt-group",
+    "GOLD NIAGARA": "fin7",
+    "GOLD PRELUDE": "mustard-tempest",
+    "GOLD SAHARA": "akira",
+    "GRAMDOOR": "small-sieve",
+    "GREF": "ke3chang",
+    "Gadolinium": "leviathan",
+    "Gameover ZeuS": "p2p-zeus",
+    "Gaza Cybergang": "molerats",
+    "Gelsemine": "gelsemium",
+    "Gelsenicine": "gelsemium",
+    "Gelsevirine": "gelsemium",
+    "Geodo": "emotet",
+    "Ghost Blizzard": "dragonfly",
+    "Gingham Typhoon": "leviathan",
+    "Gleaming Pisces": "applejeus",
+    "GoldenEye": "notpetya",
+    "Gothic Panda": "apt3",
+    "Gozi-ISFB": "ursnif",
+    "Granite Typhoon": "gallium",
+    "GreetCake": "p8rat",
+    "Gresim": "zox",
+    "Grey Karkadann": "apt-c-23",
+    "GreyEnergy mini": "felixroot",
+    "Grim Spider": "wizard-spider",
+    "Group 72": "axiom",
+    "Group 74": "apt28",
+    "Group 88": "turla",
+    "Group123": "apt37",
+    "GruesomeLarch": "apt28",
+    "Guardians of Peace": "lazarus-group",
+    "Guildma": "astaroth",
+    "Gwisin Gang": "contagious-interview",
+    "HAYMAKER": "chches",
+    "HEAVYHAND": "ecipekac",
+    "HEAVYPOT": "p8rat",
+    "HIDDEN COBRA": "lazarus-group",
+    "HIVE0154": "mustang-panda",
+    "HOGFISH": "menupass",
+    "HOLMIUM": "apt33",
+    "HUC Packet Transmit Tool": "htran",
+    "HammerDuke": "hammertoss",
+    "Hangover Group": "patchwork",
+    "Havex": "backdoor-oldrea",
+    "Hazel Sandstorm": "oilrig",
+    "Hecamede": "blackbyte",
+    "Helix Kitten": "oilrig",
+    "HidraQ": "hydraq",
+    "Hive0065": "ta505",
+    "HomeUnix": "hydraq",
+    "Homux": "hydraq",
+    "Howling Scorpius": "akira",
+    "HttpDump": "httpbrowser",
+    "HydraQ": "hydraq",
+    "HyperSSL": "sysupdate",
+    "IRIDIUM": "sandworm-team",
+    "IRN2": "oilrig",
+    "IRON HEMLOCK": "apt29",
+    "IRON HUNTER": "turla",
+    "IRON LIBERTY": "dragonfly",
+    "IRON RITUAL": "apt29",
+    "IRON TILDEN": "gamaredon-group",
+    "IRON TWILIGHT": "apt28",
+    "IRON VIKING": "sandworm-team",
+    "ITG07": "apt39",
+    "ITG08": "fin6",
+    "ITG13": "oilrig",
+    "ITG14": "fin7",
+    "ITG18": "magic-hound",
+    "ITG23": "wizard-spider",
+    "IXESHE": "apt12",
+    "IceNova": "latrodectus",
+    "Icebot": "lizar",
+    "Inception Framework": "inception",
+    "InkySquid": "apt37",
+    "Insidious Taurus": "volt-typhoon",
+    "Iron Tiger": "threat-group-3390",
+    "JKEYSKW": "jhuhugit",
+    "JSocket": "jrat",
+    "JackOfHearts": "slothfulmedia",
+    "James": "milan",
+    "JustForFun": "bpfdoor",
+    "KEGTAP": "bazar",
+    "KEYPLUG.LINUX": "keyplug",
+    "Kaba": "plugx",
+    "Karagany": "trojan-karagany",
+    "Karma Panda": "tonto-team",
+    "KeyBoy": "tropic-trooper",
+    "Keyhole Panda": "apt5",
+    "Kido": "conficker",
+    "KnuckleTouch": "kapeka",
+    "Korplug": "plugx",
+    "Krademok": "darkcomet",
+    "Krypton": "turla",
+    "Kryptonite Panda": "leviathan",
+    "KungFu Kittens": "deep-panda",
+    "LATEOP": "babyshark",
+    "LUMINOUS MOTH": "mustang-panda",
+    "LV": "njrat",
+    "Labyrinth Chollima": "lazarus-group",
+    "Lebanese Cedar": "volatile-cedar",
+    "Lecna": "backspace",
+    "Lemon Sandstorm": "fox-kitten",
+    "Linen Typhoon": "threat-group-3390",
+    "LockBit Black": "lockbit-3-0",
+    "Lorec53": "saint-bear",
+    "LuckyMouse": "threat-group-3390",
+    "LummaStealer": "lumma-stealer",
+    "Lyceum": "hexane",
+    "MANGANESE": "apt5",
+    "MERCURY": "muddywater",
+    "MONSOON": "patchwork",
+    "MSIL/Crimson": "crimson",
+    "MSUpdater": "putter-panda",
+    "MUDCARP": "leviathan",
+    "MacRansom.K": "thiefquest",
+    "Magecart Group 6": "fin6",
+    "Manatee Tempest": "indrik-spider",
+    "Mango Sandstorm": "muddywater",
+    "Mantis": "apt-c-23",
+    "Marbled Dust": "sea-turtle",
+    "Marigold Sandstorm": "moses-staff",
+    "McRat": "hydraq",
+    "MdmBot": "hydraq",
+    "Mespinoza": "pysa",
+    "Midnight Blizzard": "apt29",
+    "MiniDionis": "cloudduke",
+    "Mint Sandstorm": "magic-hound",
+    "Mirage": "ke3chang",
+    "Moudoor": "gh0st-rat",
+    "Muirim": "daserf",
+    "Mulberry Typhoon": "apt5",
+    "Mydoor": "gh0st-rat",
+    "Mythic Leopard": "transparent-tribe",
+    "NETUI": "advstoreshell",
+    "NICKEL": "ke3chang",
+    "NICKEL ACADEMY": "lazarus-group",
+    "NICKEL GLADSTONE": "apt38",
+    "NOBELIUM": "apt29",
+    "NeD Worm": "dustysky",
+    "NemesisGemina": "cosmicduke",
+    "NetC": "net-crawler",
+    "NetDuke": "hammertoss",
+    "Newscaster": "magic-hound",
+    "Nioupale": "daserf",
+    "Njw0rm": "njrat",
+    "Noberus": "blackcat",
+    "NobleBaron": "apt29",
+    "Numbered Panda": "apt12",
+    "Nyetya": "notpetya",
+    "Nylon Typhoon": "ke3chang",
+    "OSX.Bundlore": "bundlore",
+    "OSX.CDDS": "macma",
+    "OSX.DubRobber": "xcsset",
+    "OSX.Sofacy": "xagentosx",
+    "OSX/Keydnap": "keydnap",
+    "OSX/MacDownloader": "ikitten",
+    "OceanLotus": "apt32",
+    "Octo Tempest": "scattered-spider",
+    "Onyx Sleet": "andariel",
+    "Operation Exchange Marauder": "hafnium",
+    "Operation Hangover": "patchwork",
+    "Operation Molerats": "molerats",
+    "Operation Saffron Rose": "ajax-security-team",
+    "Operation Woolen-Goldfish": "ajax-security-team",
+    "PE_URSNIF": "ursnif",
+    "PHOTO": "derusbi",
+    "PLUTONIUM": "andariel",
+    "POISONPLUG.SHADOW": "shadowpad",
+    "POTASSIUM": "menupass",
+    "PSVC": "punchtrack",
+    "PUNK SPIDER": "akira",
+    "Page": "elise",
+    "Palmerworm": "blacktech",
+    "Parisite": "fox-kitten",
+    "Pawn Storm": "apt28",
+    "Peach Sandstorm": "apt33",
+    "Peer-to-Peer ZeuS": "p2p-zeus",
+    "Penquin 2.0": "penquin",
+    "Penquin_x64": "penquin",
+    "Periwinkle Tempest": "wizard-spider",
+    "Petrwrap": "notpetya",
+    "Phosphorus": "magic-hound",
+    "Pinchy Spider": "gold-southfield",
+    "Pink Sandstorm": "agrius",
+    "PinkPanther": "deep-panda",
+    "Pinkslipbot": "qakbot",
+    "Pioneer Kitten": "fox-kitten",
+    "Pirate Panda": "tropic-trooper",
+    "Pirpi": "apt3",
+    "Plaid Rain": "polonium",
+    "Play": "playcrypt",
+    "Playful Dragon": "ke3chang",
+    "Poison Ivy": "poisonivy",
+    "PowerShell Empire": "empire",
+    "Powermud": "powerstats",
+    "Primitive Bear": "gamaredon-group",
+    "ProjectM": "transparent-tribe",
+    "ProjectSauron": "strider",
+    "Pterodo": "pteranodon",
+    "PurpleBravo": "contagious-interview",
+    "Pyark": "machete",
+    "QBot": "qakbot",
+    "QuackBot": "qakbot",
+    "Quedagh": "sandworm-team",
+    "QueenOfClubs": "slothfulmedia",
+    "RADIUM": "lotus-blossom",
+    "REDBALDKNIGHT": "bronze-butler",
+    "RUBIDIUM": "fox-kitten",
+    "Raspberry Typhoon": "lotus-blossom",
+    "Raspite": "leafminer",
+    "Rattlesnake": "sidewinder",
+    "Reaper": "apt37",
+    "Red Apollo": "menupass",
+    "Red Lich": "mustang-panda",
+    "RedDelta": "mustang-panda",
+    "Redaman": "rtm",
+    "Remix Kitten": "apt39",
+    "Retefe": "dok",
+    "Ricochet Chollima": "apt37",
+    "Roarur": "hydraq",
+    "Roasted 0ktapus": "scattered-spider",
+    "Rocket Kitten": "ajax-security-team",
+    "Roptimizer": "auditcred",
+    "RoyalAPT": "ke3chang",
+    "SC5k": "samplecheck5000",
+    "SEABORGIUM": "star-blizzard",
+    "SILICON": "sea-turtle",
+    "SKID": "more-eggs",
+    "SNAKEHOSE": "ekans",
+    "SNAKEMACKEREL": "apt28",
+    "SOURFACE": "coreshell",
+    "SPLM": "chopstick",
+    "STATELY TAURUS": "mustang-panda",
+    "STRONTIUM": "apt28",
+    "SUNSHUTTLE": "goldmax",
+    "Sakurel": "sakula",
+    "Samas": "samsam",
+    "Sangria Tempest": "fin7",
+    "Sapphire Sleet": "apt38",
+    "Sasfis": "oldbait",
+    "ScarCruft": "apt37",
+    "Scorpion": "chches",
+    "ScreenConnect": "connectwise",
+    "SeaDaddy": "seaduke",
+    "SeaDesk": "seaduke",
+    "SeaLotus": "apt32",
+    "Seashell Blizzard": "sandworm-team",
+    "Secret Blizzard": "turla",
+    "Sednit": "apt28",
+    "Sedreco": "advstoreshell",
+    "Seduploader": "jhuhugit",
+    "Seedworm": "muddywater",
+    "Sensocode": "zxshell",
+    "Shathak": "ta551",
+    "Shell Crew": "deep-panda",
+    "ShellTea": "punchbuggy",
+    "Shuckworm": "gamaredon-group",
+    "Siamesekitten": "hexane",
+    "SigLoader": "ecipekac",
+    "Silent Chollima": "andariel",
+    "Silk Typhoon": "hafnium",
+    "Skeleton Spider": "fin6",
+    "Snake": "turla",
+    "Sneaky Panda": "elderwood",
+    "Sockrat": "jrat",
+    "Sodin": "revil",
+    "Sodinokibi": "revil",
+    "Sofacy": "apt28",
+    "SofacyCarberp": "jhuhugit",
+    "Sogu": "plugx",
+    "SolarStorm": "apt29",
+    "Soldier": "sysupdate",
+    "Solorigate": "sunburst",
+    "Spandex Tempest": "ta505",
+    "SpicyOmelette": "more-eggs",
+    "Spirlin": "hexane",
+    "Spring Dragon": "lotus-blossom",
+    "Springtail": "kimsuky",
+    "Stardust Chollima": "apt38",
+    "Static Kitten": "muddywater",
+    "Stone Panda": "menupass",
+    "Storm-0587": "saint-bear",
+    "Storm-0875": "scattered-spider",
+    "Storm-1789": "moonstone-sleet",
+    "Strawberry Tempest": "lapsus",
+    "StrongPity": "promethium",
+    "Sunshop Group": "apt19",
+    "Swallowtail": "apt28",
+    "Syssphinx": "fin8",
+    "T-APT-04": "sidewinder",
+    "T-APT-17": "bitter",
+    "TA407": "silent-librarian",
+    "TA416": "mustang-panda",
+    "TA427": "kimsuky",
+    "TA446": "star-blizzard",
+    "TA450": "muddywater",
+    "TA452": "oilrig",
+    "TA453": "magic-hound",
+    "TA456": "curium",
+    "TA471": "saint-bear",
+    "TA473": "winter-vivern",
+    "TA569": "mustard-tempest",
+    "TAAL": "fin6",
+    "TAG-121": "contagious-interview",
+    "TAG-22": "earth-lusca",
+    "TAG-63": "apt-c-23",
+    "TANTALUM": "mustang-panda",
+    "TEMP.Hex": "mustang-panda",
+    "TEMP.Isotope": "dragonfly",
+    "TEMP.Jumper": "leviathan",
+    "TEMP.MixMaster": "wizard-spider",
+    "TEMP.Periscope": "leviathan",
+    "TEMP.Reaper": "apt37",
+    "TEMP.Zagros": "muddywater",
+    "TG-0110": "apt3",
+    "TG-0416": "apt18",
+    "TG-1314": "threat-group-1314",
+    "TG-2889": "cleaver",
+    "TG-3390": "threat-group-3390",
+    "TG-4127": "apt28",
+    "TG-4192": "dragonfly",
+    "THALLIUM": "kimsuky",
+    "TSPY_TRICKLOAD": "trickbot",
+    "TVT": "plugx",
+    "TWILL TYPHOON": "mustang-panda",
+    "TadjMakhal": "epic",
+    "Tavdig": "epic",
+    "Teal Kurma": "sea-turtle",
+    "Team9": "bazar",
+    "Telebots": "sandworm-team",
+    "Tenacious Pungsan": "contagious-interview",
+    "Terra Loader": "more-eggs",
+    "The Dukes": "apt29",
+    "Thoper": "plugx",
+    "Threat Group 2889": "cleaver",
+    "Threat Group-0110": "apt3",
+    "Threat Group-0416": "apt18",
+    "Threat Group-4127": "apt28",
+    "Thrip": "lotus-blossom",
+    "Tick": "bronze-butler",
+    "TinyBaron": "cosmicduke",
+    "Tirion": "lizar",
+    "Token Control": "httpbrowser",
+    "Tortoise Shell": "curium",
+    "Totbrick": "trickbot",
+    "Trinity": "frameworkpos",
+    "Trojan Manuscript": "bankshot",
+    "Trojan.GTALK": "glooxmail",
+    "Trojan.Killdisk": "hermeticwiper",
+    "Trojan.Maljava": "jrat",
+    "Trojan.Shunnael": "xtunnel",
+    "Trojan.Sofacy": "jhuhugit",
+    "Tsar Team": "apt28",
+    "Tunnus": "quietcanary",
+    "Two-tailed Scorpion": "apt-c-23",
+    "UAC-0056": "saint-bear",
+    "UAC-0114": "winter-vivern",
+    "UNC1543": "mustard-tempest",
+    "UNC1720": "applejeus",
+    "UNC1878": "wizard-spider",
+    "UNC2165": "indrik-spider",
+    "UNC2452": "apt29",
+    "UNC2589": "ember-bear",
+    "UNC2630": "apt5",
+    "UNC3236": "volt-typhoon",
+    "UNC3524": "apt29",
+    "UNC3944": "scattered-spider",
+    "UNC4736": "applejeus",
+    "UNC6384": "mustang-panda",
+    "UNC757": "fox-kitten",
+    "UPS Team": "apt3",
+    "USB Stealer": "usbstealer",
+    "Unidentified 111": "latrodectus",
+    "Unrecom": "jrat",
+    "VIPER": "sakula",
+    "Vanguard Panda": "volt-typhoon",
+    "Vasa Locker": "babuk",
+    "Velvet Chollima": "kimsuky",
+    "Venomous Bear": "turla",
+    "Violet Typhoon": "zirconium",
+    "Vixen Panda": "ke3chang",
+    "Voltzite": "volt-typhoon",
+    "Voodoo Bear": "sandworm-team",
+    "W32.Stuxnet": "stuxnet",
+    "WCE": "windows-credential-editor",
+    "WCry": "wannacry",
+    "WanaCry": "wannacry",
+    "WanaCrypt": "wannacry",
+    "WanaCrypt0r": "wannacry",
+    "Warzone": "warzonerat",
+    "Waterbug": "turla",
+    "WebMasters": "deep-panda",
+    "Whisper Spider": "silence",
+    "WhiteBear": "turla",
+    "Wicked Panda": "apt41",
+    "Win32/Diskcoder.D": "bad-rabbit",
+    "Win32/Industroyer": "industroyer",
+    "Win32/KillDisk.NBB": "killdisk",
+    "Win32/KillDisk.NBC": "killdisk",
+    "Win32/KillDisk.NBD": "killdisk",
+    "Win32/KillDisk.NBH": "killdisk",
+    "Win32/KillDisk.NBI": "killdisk",
+    "Win32/USBStealer": "usbstealer",
+    "Wipbot": "epic",
+    "WorldCupSec": "epic",
+    "X-Agent": "chopstick",
+    "X-Tunnel": "xtunnel",
+    "XAPS": "xtunnel",
+    "XENOTIME": "temp-veles",
+    "Xagent": "chopstick",
+    "YTTRIUM": "apt29",
+    "Yellow Liderc": "curium",
+    "ZEROCLEAR": "zerocleare",
+    "ZINC": "lazarus-group",
+    "Zekapab": "zebrocy",
+    "Zigzag Hail": "darkhotel",
+    "ZoxPNG": "zox",
+    "ZoxRPC": "zox",
+    "Zshlayer": "osx-shlayer",
+    "arp.exe": "arp",
+    "at.exe": "at",
+    "attrib.exe": "attrib",
+    "certutil.exe": "certutil",
+    "cmd.exe": "cmd",
+    "dfls": "sodamaster",
+    "dsquery.exe": "dsquery",
+    "esentutl.exe": "esentutl",
+    "ftp.exe": "ftp",
+    "jBiFrost": "jrat",
+    "jFrutas": "jrat",
+    "net.exe": "net",
+    "netsh.exe": "netsh",
+    "reg.exe": "reg",
+    "sKyWIper": "flame",
+    "schtasks.exe": "schtasks",
+    "webhp": "chopstick",
+    "wp_encrypt": "bitpaymer",
+    "xFrost": "trojan-karagany",
+    "xRAT": "quasarrat"
+  },
+  "keywords": {
+    "3para-rat": [
+      "3PARA RAT",
+      "malware"
+    ],
+    "4h-rat": [
+      "4H RAT",
+      "malware"
+    ],
+    "aadinternals": [
+      "AADInternals",
+      "tool"
+    ],
+    "abk": [
+      "ABK",
+      "malware"
+    ],
+    "acidpour": [
+      "AcidPour",
+      "malware"
+    ],
+    "acidrain": [
+      "AcidRain",
+      "malware"
+    ],
+    "action-rat": [
+      "Action RAT",
+      "malware"
+    ],
+    "adbupd": [
+      "adbupd",
+      "malware"
+    ],
+    "adfind": [
+      "AdFind",
+      "tool"
+    ],
+    "admin-338": [
+      "admin@338",
+      "actor"
+    ],
+    "advstoreshell": [
+      "ADVSTORESHELL",
+      "malware"
+    ],
+    "agent-btz": [
+      "Agent.btz",
+      "malware"
+    ],
+    "agent-tesla": [
+      "Agent Tesla",
+      "malware"
+    ],
+    "agrius": [
+      "Agrius",
+      "actor"
+    ],
+    "ajax-security-team": [
+      "Ajax Security Team",
+      "actor"
+    ],
+    "akira": [
+      "Akira",
+      "actor"
+    ],
+    "akira-v2": [
+      "Akira _v2",
+      "malware"
+    ],
+    "amadey": [
+      "Amadey",
+      "malware"
+    ],
+    "anchor": [
+      "Anchor",
+      "malware"
+    ],
+    "andariel": [
+      "Andariel",
+      "actor"
+    ],
+    "andromeda": [
+      "ANDROMEDA",
+      "malware"
+    ],
+    "aoqin-dragon": [
+      "Aoqin Dragon",
+      "actor"
+    ],
+    "apostle": [
+      "Apostle",
+      "malware"
+    ],
+    "applejeus": [
+      "AppleJeus",
+      "actor"
+    ],
+    "appleseed": [
+      "AppleSeed",
+      "malware"
+    ],
+    "apt-c-23": [
+      "APT-C-23",
+      "actor"
+    ],
+    "apt-c-36": [
+      "APT-C-36",
+      "actor"
+    ],
+    "apt1": [
+      "APT1",
+      "actor"
+    ],
+    "apt12": [
+      "APT12",
+      "actor"
+    ],
+    "apt16": [
+      "APT16",
+      "actor"
+    ],
+    "apt17": [
+      "APT17",
+      "actor"
+    ],
+    "apt18": [
+      "APT18",
+      "actor"
+    ],
+    "apt19": [
+      "APT19",
+      "actor"
+    ],
+    "apt28": [
+      "APT28",
+      "actor"
+    ],
+    "apt29": [
+      "APT29",
+      "actor"
+    ],
+    "apt3": [
+      "APT3",
+      "actor"
+    ],
+    "apt30": [
+      "APT30",
+      "actor"
+    ],
+    "apt32": [
+      "APT32",
+      "actor"
+    ],
+    "apt33": [
+      "APT33",
+      "actor"
+    ],
+    "apt37": [
+      "APT37",
+      "actor"
+    ],
+    "apt38": [
+      "APT38",
+      "actor"
+    ],
+    "apt39": [
+      "APT39",
+      "actor"
+    ],
+    "apt41": [
+      "APT41",
+      "actor"
+    ],
+    "apt42": [
+      "APT42",
+      "actor"
+    ],
+    "apt5": [
+      "APT5",
+      "actor"
+    ],
+    "aquatic-panda": [
+      "Aquatic Panda",
+      "actor"
+    ],
+    "aria-body": [
+      "Aria-body",
+      "malware"
+    ],
+    "arp": [
+      "Arp",
+      "tool"
+    ],
+    "aspxspy": [
+      "ASPXSpy",
+      "malware"
+    ],
+    "astaroth": [
+      "Astaroth",
+      "malware"
+    ],
+    "asyncrat": [
+      "AsyncRAT",
+      "tool"
+    ],
+    "at": [
+      "at",
+      "tool"
+    ],
+    "attor": [
+      "Attor",
+      "malware"
+    ],
+    "attrib": [
+      "attrib",
+      "tool"
+    ],
+    "auditcred": [
+      "AuditCred",
+      "malware"
+    ],
+    "auto-stealer": [
+      "AuTo Stealer",
+      "malware"
+    ],
+    "autoit-backdoor": [
+      "AutoIt backdoor",
+      "malware"
+    ],
+    "avaddon": [
+      "Avaddon",
+      "malware"
+    ],
+    "avenger": [
+      "Avenger",
+      "malware"
+    ],
+    "avoslocker": [
+      "AvosLocker",
+      "malware"
+    ],
+    "axiom": [
+      "Axiom",
+      "actor"
+    ],
+    "azorult": [
+      "Azorult",
+      "malware"
+    ],
+    "babuk": [
+      "Babuk",
+      "malware"
+    ],
+    "babyshark": [
+      "BabyShark",
+      "malware"
+    ],
+    "backconfig": [
+      "BackConfig",
+      "malware"
+    ],
+    "backdoor-oldrea": [
+      "Backdoor.Oldrea",
+      "malware"
+    ],
+    "backdoordiplomacy": [
+      "BackdoorDiplomacy",
+      "actor"
+    ],
+    "backspace": [
+      "BACKSPACE",
+      "malware"
+    ],
+    "bad-rabbit": [
+      "Bad Rabbit",
+      "malware"
+    ],
+    "badcall": [
+      "BADCALL",
+      "malware"
+    ],
+    "badflick": [
+      "BADFLICK",
+      "malware"
+    ],
+    "badhatch": [
+      "BADHATCH",
+      "malware"
+    ],
+    "badnews": [
+      "BADNEWS",
+      "malware"
+    ],
+    "badpatch": [
+      "BadPatch",
+      "malware"
+    ],
+    "bandook": [
+      "Bandook",
+      "malware"
+    ],
+    "bankshot": [
+      "Bankshot",
+      "malware"
+    ],
+    "bazar": [
+      "Bazar",
+      "malware"
+    ],
+    "bbk": [
+      "BBK",
+      "malware"
+    ],
+    "bbsrat": [
+      "BBSRAT",
+      "malware"
+    ],
+    "beavertail": [
+      "BeaverTail",
+      "malware"
+    ],
+    "bendybear": [
+      "BendyBear",
+      "malware"
+    ],
+    "bfg-agonizer": [
+      "BFG Agonizer",
+      "malware"
+    ],
+    "biscuit": [
+      "BISCUIT",
+      "malware"
+    ],
+    "bisonal": [
+      "Bisonal",
+      "malware"
+    ],
+    "bitpaymer": [
+      "BitPaymer",
+      "malware"
+    ],
+    "bitsadmin": [
+      "BITSAdmin",
+      "tool"
+    ],
+    "bitter": [
+      "BITTER",
+      "actor"
+    ],
+    "black-basta": [
+      "Black Basta",
+      "malware"
+    ],
+    "blackbyte": [
+      "BlackByte",
+      "actor"
+    ],
+    "blackbyte-2-0-ransomware": [
+      "BlackByte 2.0 Ransomware",
+      "malware"
+    ],
+    "blackbyte-ransomware": [
+      "BlackByte Ransomware",
+      "malware"
+    ],
+    "blackcat": [
+      "BlackCat",
+      "malware"
+    ],
+    "blackcoffee": [
+      "BLACKCOFFEE",
+      "malware"
+    ],
+    "blackenergy": [
+      "BlackEnergy",
+      "malware"
+    ],
+    "blackmould": [
+      "BlackMould",
+      "malware"
+    ],
+    "blackoasis": [
+      "BlackOasis",
+      "actor"
+    ],
+    "blacktech": [
+      "BlackTech",
+      "actor"
+    ],
+    "blindingcan": [
+      "BLINDINGCAN",
+      "malware"
+    ],
+    "bloodhound": [
+      "BloodHound",
+      "tool"
+    ],
+    "blue-mockingbird": [
+      "Blue Mockingbird",
+      "actor"
+    ],
+    "bluelight": [
+      "BLUELIGHT",
+      "malware"
+    ],
+    "boldmove": [
+      "BOLDMOVE",
+      "malware"
+    ],
+    "bonadan": [
+      "Bonadan",
+      "malware"
+    ],
+    "bondupdater": [
+      "BONDUPDATER",
+      "malware"
+    ],
+    "bookworm": [
+      "BOOKWORM",
+      "malware"
+    ],
+    "boombox": [
+      "BoomBox",
+      "malware"
+    ],
+    "boostwrite": [
+      "BOOSTWRITE",
+      "malware"
+    ],
+    "bootrash": [
+      "BOOTRASH",
+      "malware"
+    ],
+    "boxcaon": [
+      "BoxCaon",
+      "malware"
+    ],
+    "bpfdoor": [
+      "BPFDoor",
+      "malware"
+    ],
+    "brave-prince": [
+      "Brave Prince",
+      "malware"
+    ],
+    "briba": [
+      "Briba",
+      "malware"
+    ],
+    "bronze-butler": [
+      "BRONZE BUTLER",
+      "actor"
+    ],
+    "brute-ratel-c4": [
+      "Brute Ratel C4",
+      "tool"
+    ],
+    "bs2005": [
+      "BS2005",
+      "malware"
+    ],
+    "bubblewrap": [
+      "BUBBLEWRAP",
+      "malware"
+    ],
+    "build-downer": [
+      "build_downer",
+      "malware"
+    ],
+    "bumblebee": [
+      "Bumblebee",
+      "malware"
+    ],
+    "bundlore": [
+      "Bundlore",
+      "malware"
+    ],
+    "bushwalk": [
+      "BUSHWALK",
+      "malware"
+    ],
+    "cachedump": [
+      "Cachedump",
+      "tool"
+    ],
+    "caddywiper": [
+      "CaddyWiper",
+      "malware"
+    ],
+    "cadelspy": [
+      "Cadelspy",
+      "malware"
+    ],
+    "calendar": [
+      "CALENDAR",
+      "malware"
+    ],
+    "calisto": [
+      "Calisto",
+      "malware"
+    ],
+    "callme": [
+      "CallMe",
+      "malware"
+    ],
+    "cannon": [
+      "Cannon",
+      "malware"
+    ],
+    "canonstager": [
+      "CANONSTAGER",
+      "malware"
+    ],
+    "carbanak": [
+      "Carbanak",
+      "actor"
+    ],
+    "carberp": [
+      "Carberp",
+      "malware"
+    ],
+    "carbon": [
+      "Carbon",
+      "malware"
+    ],
+    "cardinal-rat": [
+      "Cardinal RAT",
+      "malware"
+    ],
+    "carrotball": [
+      "CARROTBALL",
+      "tool"
+    ],
+    "carrotbat": [
+      "CARROTBAT",
+      "malware"
+    ],
+    "castletap": [
+      "CASTLETAP",
+      "malware"
+    ],
+    "catchamas": [
+      "Catchamas",
+      "malware"
+    ],
+    "caterpillar-webshell": [
+      "Caterpillar WebShell",
+      "malware"
+    ],
+    "ccbkdr": [
+      "CCBkdr",
+      "malware"
+    ],
+    "ccf32": [
+      "ccf32",
+      "malware"
+    ],
+    "cd00r": [
+      "cd00r",
+      "malware"
+    ],
+    "certutil": [
+      "certutil",
+      "tool"
+    ],
+    "chaes": [
+      "Chaes",
+      "malware"
+    ],
+    "chaos": [
+      "Chaos",
+      "malware"
+    ],
+    "charmpower": [
+      "CharmPower",
+      "malware"
+    ],
+    "chches": [
+      "ChChes",
+      "malware"
+    ],
+    "cheerscrypt": [
+      "Cheerscrypt",
+      "malware"
+    ],
+    "cherry-picker": [
+      "Cherry Picker",
+      "malware"
+    ],
+    "chimera": [
+      "Chimera",
+      "actor"
+    ],
+    "chimneysweep": [
+      "CHIMNEYSWEEP",
+      "malware"
+    ],
+    "china-chopper": [
+      "China Chopper",
+      "malware"
+    ],
+    "chinoxy": [
+      "Chinoxy",
+      "malware"
+    ],
+    "chopstick": [
+      "CHOPSTICK",
+      "malware"
+    ],
+    "chrommme": [
+      "Chrommme",
+      "malware"
+    ],
+    "cinnamon-tempest": [
+      "Cinnamon Tempest",
+      "actor"
+    ],
+    "cipher-exe": [
+      "cipher.exe",
+      "tool"
+    ],
+    "claimloader": [
+      "CLAIMLOADER",
+      "malware"
+    ],
+    "clambling": [
+      "Clambling",
+      "malware"
+    ],
+    "cleaver": [
+      "Cleaver",
+      "actor"
+    ],
+    "clop": [
+      "Clop",
+      "malware"
+    ],
+    "cloudduke": [
+      "CloudDuke",
+      "malware"
+    ],
+    "cmd": [
+      "cmd",
+      "tool"
+    ],
+    "coathanger": [
+      "COATHANGER",
+      "malware"
+    ],
+    "cobalt-group": [
+      "Cobalt Group",
+      "actor"
+    ],
+    "cobalt-strike": [
+      "Cobalt Strike",
+      "malware"
+    ],
+    "cobian-rat": [
+      "Cobian RAT",
+      "malware"
+    ],
+    "cointicker": [
+      "CoinTicker",
+      "malware"
+    ],
+    "comnie": [
+      "Comnie",
+      "malware"
+    ],
+    "comrat": [
+      "ComRAT",
+      "malware"
+    ],
+    "conficker": [
+      "Conficker",
+      "malware"
+    ],
+    "confucius": [
+      "Confucius",
+      "actor"
+    ],
+    "connectwise": [
+      "ConnectWise",
+      "tool"
+    ],
+    "contagious-interview": [
+      "Contagious Interview",
+      "actor"
+    ],
+    "conti": [
+      "Conti",
+      "malware"
+    ],
+    "cookieminer": [
+      "CookieMiner",
+      "malware"
+    ],
+    "copykittens": [
+      "CopyKittens",
+      "actor"
+    ],
+    "coraldeck": [
+      "CORALDECK",
+      "malware"
+    ],
+    "coreshell": [
+      "CORESHELL",
+      "malware"
+    ],
+    "corklog": [
+      "CorKLOG",
+      "malware"
+    ],
+    "cosmicduke": [
+      "CosmicDuke",
+      "malware"
+    ],
+    "costabricks": [
+      "CostaBricks",
+      "malware"
+    ],
+    "covenant": [
+      "Covenant",
+      "tool"
+    ],
+    "cozycar": [
+      "CozyCar",
+      "malware"
+    ],
+    "crackmapexec": [
+      "CrackMapExec",
+      "tool"
+    ],
+    "creepydrive": [
+      "CreepyDrive",
+      "malware"
+    ],
+    "creepysnail": [
+      "CreepySnail",
+      "malware"
+    ],
+    "crimson": [
+      "Crimson",
+      "malware"
+    ],
+    "crossrat": [
+      "CrossRAT",
+      "malware"
+    ],
+    "crutch": [
+      "Crutch",
+      "malware"
+    ],
+    "cryptoistic": [
+      "Cryptoistic",
+      "malware"
+    ],
+    "cspy-downloader": [
+      "CSPY Downloader",
+      "tool"
+    ],
+    "cuba": [
+      "Cuba",
+      "malware"
+    ],
+    "cuckoo-stealer": [
+      "Cuckoo Stealer",
+      "malware"
+    ],
+    "curium": [
+      "CURIUM",
+      "actor"
+    ],
+    "cyclops-blink": [
+      "Cyclops Blink",
+      "malware"
+    ],
+    "dacls": [
+      "Dacls",
+      "malware"
+    ],
+    "daggerfly": [
+      "Daggerfly",
+      "actor"
+    ],
+    "danbot": [
+      "DanBot",
+      "malware"
+    ],
+    "dark-caracal": [
+      "Dark Caracal",
+      "actor"
+    ],
+    "darkcomet": [
+      "DarkComet",
+      "malware"
+    ],
+    "darkgate": [
+      "DarkGate",
+      "malware"
+    ],
+    "darkhotel": [
+      "Darkhotel",
+      "actor"
+    ],
+    "darkhydrus": [
+      "DarkHydrus",
+      "actor"
+    ],
+    "darktortilla": [
+      "DarkTortilla",
+      "malware"
+    ],
+    "darkvishnya": [
+      "DarkVishnya",
+      "actor"
+    ],
+    "darkwatchman": [
+      "DarkWatchman",
+      "malware"
+    ],
+    "daserf": [
+      "Daserf",
+      "malware"
+    ],
+    "dcsrv": [
+      "DCSrv",
+      "malware"
+    ],
+    "ddkong": [
+      "DDKONG",
+      "malware"
+    ],
+    "deadeye": [
+      "DEADEYE",
+      "malware"
+    ],
+    "deadwood": [
+      "DEADWOOD",
+      "malware"
+    ],
+    "dealerschoice": [
+      "DealersChoice",
+      "malware"
+    ],
+    "deathransom": [
+      "DEATHRANSOM",
+      "malware"
+    ],
+    "deep-panda": [
+      "Deep Panda",
+      "actor"
+    ],
+    "denis": [
+      "Denis",
+      "malware"
+    ],
+    "derusbi": [
+      "Derusbi",
+      "malware"
+    ],
+    "diavol": [
+      "Diavol",
+      "malware"
+    ],
+    "dipsind": [
+      "Dipsind",
+      "malware"
+    ],
+    "disco": [
+      "Disco",
+      "malware"
+    ],
+    "dnssystem": [
+      "DnsSystem",
+      "malware"
+    ],
+    "dogcall": [
+      "DOGCALL",
+      "malware"
+    ],
+    "dok": [
+      "Dok",
+      "malware"
+    ],
+    "doki": [
+      "Doki",
+      "malware"
+    ],
+    "donut": [
+      "Donut",
+      "tool"
+    ],
+    "down-new": [
+      "down_new",
+      "malware"
+    ],
+    "downdelph": [
+      "Downdelph",
+      "malware"
+    ],
+    "downpaper": [
+      "DownPaper",
+      "malware"
+    ],
+    "dragonfly": [
+      "Dragonfly",
+      "actor"
+    ],
+    "dragonok": [
+      "DragonOK",
+      "actor"
+    ],
+    "dratzarus": [
+      "DRATzarus",
+      "malware"
+    ],
+    "dridex": [
+      "Dridex",
+      "malware"
+    ],
+    "dropbook": [
+      "DropBook",
+      "malware"
+    ],
+    "drovorub": [
+      "Drovorub",
+      "malware"
+    ],
+    "dsquery": [
+      "dsquery",
+      "tool"
+    ],
+    "dtrack": [
+      "Dtrack",
+      "malware"
+    ],
+    "duqu": [
+      "Duqu",
+      "malware"
+    ],
+    "dustpan": [
+      "DUSTPAN",
+      "malware"
+    ],
+    "dusttrap": [
+      "DUSTTRAP",
+      "malware"
+    ],
+    "dustysky": [
+      "DustySky",
+      "malware"
+    ],
+    "dyre": [
+      "Dyre",
+      "malware"
+    ],
+    "earth-lusca": [
+      "Earth Lusca",
+      "actor"
+    ],
+    "ebury": [
+      "Ebury",
+      "malware"
+    ],
+    "eccentricbandwagon": [
+      "ECCENTRICBANDWAGON",
+      "malware"
+    ],
+    "ecipekac": [
+      "Ecipekac",
+      "malware"
+    ],
+    "egregor": [
+      "Egregor",
+      "malware"
+    ],
+    "ekans": [
+      "EKANS",
+      "malware"
+    ],
+    "elderwood": [
+      "Elderwood",
+      "actor"
+    ],
+    "elise": [
+      "Elise",
+      "malware"
+    ],
+    "elmer": [
+      "ELMER",
+      "malware"
+    ],
+    "embargo": [
+      "Embargo",
+      "malware"
+    ],
+    "ember-bear": [
+      "Ember Bear",
+      "actor"
+    ],
+    "emissary": [
+      "Emissary",
+      "malware"
+    ],
+    "emotet": [
+      "Emotet",
+      "malware"
+    ],
+    "empire": [
+      "Empire",
+      "tool"
+    ],
+    "envyscout": [
+      "EnvyScout",
+      "malware"
+    ],
+    "epic": [
+      "Epic",
+      "malware"
+    ],
+    "equation": [
+      "Equation",
+      "actor"
+    ],
+    "esentutl": [
+      "esentutl",
+      "tool"
+    ],
+    "evilbunny": [
+      "EvilBunny",
+      "malware"
+    ],
+    "evilgrab": [
+      "EvilGrab",
+      "malware"
+    ],
+    "evilnum": [
+      "Evilnum",
+      "actor"
+    ],
+    "exaramel-for-linux": [
+      "Exaramel for Linux",
+      "malware"
+    ],
+    "exaramel-for-windows": [
+      "Exaramel for Windows",
+      "malware"
+    ],
+    "exbyte": [
+      "Exbyte",
+      "malware"
+    ],
+    "exotic-lily": [
+      "EXOTIC LILY",
+      "actor"
+    ],
+    "expand": [
+      "Expand",
+      "tool"
+    ],
+    "explosive": [
+      "Explosive",
+      "malware"
+    ],
+    "fakem": [
+      "FakeM",
+      "malware"
+    ],
+    "fallchill": [
+      "FALLCHILL",
+      "malware"
+    ],
+    "fatduke": [
+      "FatDuke",
+      "malware"
+    ],
+    "felismus": [
+      "Felismus",
+      "malware"
+    ],
+    "felixroot": [
+      "FELIXROOT",
+      "malware"
+    ],
+    "ferocious": [
+      "Ferocious",
+      "malware"
+    ],
+    "ferocious-kitten": [
+      "Ferocious Kitten",
+      "actor"
+    ],
+    "fgdump": [
+      "Fgdump",
+      "tool"
+    ],
+    "fin10": [
+      "FIN10",
+      "actor"
+    ],
+    "fin13": [
+      "FIN13",
+      "actor"
+    ],
+    "fin4": [
+      "FIN4",
+      "actor"
+    ],
+    "fin5": [
+      "FIN5",
+      "actor"
+    ],
+    "fin6": [
+      "FIN6",
+      "actor"
+    ],
+    "fin7": [
+      "FIN7",
+      "actor"
+    ],
+    "fin8": [
+      "FIN8",
+      "actor"
+    ],
+    "final1stspy": [
+      "Final1stspy",
+      "malware"
+    ],
+    "finfisher": [
+      "FinFisher",
+      "malware"
+    ],
+    "fivehands": [
+      "FIVEHANDS",
+      "malware"
+    ],
+    "flagpro": [
+      "Flagpro",
+      "malware"
+    ],
+    "flame": [
+      "Flame",
+      "malware"
+    ],
+    "flashflood": [
+      "FLASHFLOOD",
+      "malware"
+    ],
+    "flawedammyy": [
+      "FlawedAmmyy",
+      "malware"
+    ],
+    "flawedgrace": [
+      "FlawedGrace",
+      "malware"
+    ],
+    "flipside": [
+      "FLIPSIDE",
+      "malware"
+    ],
+    "foggyweb": [
+      "FoggyWeb",
+      "malware"
+    ],
+    "forfiles": [
+      "Forfiles",
+      "tool"
+    ],
+    "fox-kitten": [
+      "Fox Kitten",
+      "actor"
+    ],
+    "framesting": [
+      "FRAMESTING",
+      "malware"
+    ],
+    "frameworkpos": [
+      "FrameworkPOS",
+      "malware"
+    ],
+    "frp": [
+      "FRP",
+      "tool"
+    ],
+    "fruitfly": [
+      "FruitFly",
+      "malware"
+    ],
+    "ftp": [
+      "ftp",
+      "tool"
+    ],
+    "funnydream": [
+      "FunnyDream",
+      "malware"
+    ],
+    "fyanti": [
+      "FYAnti",
+      "malware"
+    ],
+    "fysbis": [
+      "Fysbis",
+      "malware"
+    ],
+    "gallium": [
+      "GALLIUM",
+      "actor"
+    ],
+    "gallmaker": [
+      "Gallmaker",
+      "actor"
+    ],
+    "gamaredon-group": [
+      "Gamaredon Group",
+      "actor"
+    ],
+    "gazer": [
+      "Gazer",
+      "malware"
+    ],
+    "gcman": [
+      "GCMAN",
+      "actor"
+    ],
+    "gelsemium": [
+      "Gelsemium",
+      "malware"
+    ],
+    "geminiduke": [
+      "GeminiDuke",
+      "malware"
+    ],
+    "get2": [
+      "Get2",
+      "malware"
+    ],
+    "gh0st-rat": [
+      "gh0st RAT",
+      "malware"
+    ],
+    "glasstoken": [
+      "GLASSTOKEN",
+      "malware"
+    ],
+    "glooxmail": [
+      "GLOOXMAIL",
+      "malware"
+    ],
+    "gobear": [
+      "GoBear",
+      "malware"
+    ],
+    "gold-dragon": [
+      "Gold Dragon",
+      "malware"
+    ],
+    "gold-southfield": [
+      "GOLD SOUTHFIELD",
+      "actor"
+    ],
+    "goldenspy": [
+      "GoldenSpy",
+      "malware"
+    ],
+    "goldfinder": [
+      "GoldFinder",
+      "malware"
+    ],
+    "goldmax": [
+      "GoldMax",
+      "malware"
+    ],
+    "gomir": [
+      "Gomir",
+      "malware"
+    ],
+    "goopy": [
+      "Goopy",
+      "malware"
+    ],
+    "gootloader": [
+      "Gootloader",
+      "malware"
+    ],
+    "gorgon-group": [
+      "Gorgon Group",
+      "actor"
+    ],
+    "grandoreiro": [
+      "Grandoreiro",
+      "malware"
+    ],
+    "gravityrat": [
+      "GravityRAT",
+      "malware"
+    ],
+    "green-lambert": [
+      "Green Lambert",
+      "malware"
+    ],
+    "greyenergy": [
+      "GreyEnergy",
+      "malware"
+    ],
+    "griffon": [
+      "GRIFFON",
+      "malware"
+    ],
+    "grimagent": [
+      "GrimAgent",
+      "malware"
+    ],
+    "group5": [
+      "Group5",
+      "actor"
+    ],
+    "gsecdump": [
+      "gsecdump",
+      "tool"
+    ],
+    "guloader": [
+      "GuLoader",
+      "malware"
+    ],
+    "h1n1": [
+      "H1N1",
+      "malware"
+    ],
+    "hacking-team-uefi-rootkit": [
+      "Hacking Team UEFI Rootkit",
+      "malware"
+    ],
+    "hafnium": [
+      "HAFNIUM",
+      "actor"
+    ],
+    "halfbaked": [
+      "HALFBAKED",
+      "malware"
+    ],
+    "hammertoss": [
+      "HAMMERTOSS",
+      "malware"
+    ],
+    "hancitor": [
+      "Hancitor",
+      "malware"
+    ],
+    "hannotog": [
+      "Hannotog",
+      "malware"
+    ],
+    "happywork": [
+      "HAPPYWORK",
+      "malware"
+    ],
+    "hardrain": [
+      "HARDRAIN",
+      "malware"
+    ],
+    "havij": [
+      "Havij",
+      "tool"
+    ],
+    "havoc": [
+      "Havoc",
+      "malware"
+    ],
+    "hawkball": [
+      "HAWKBALL",
+      "malware"
+    ],
+    "hcdloader": [
+      "hcdLoader",
+      "malware"
+    ],
+    "hdoor": [
+      "HDoor",
+      "malware"
+    ],
+    "hellokitty": [
+      "HELLOKITTY",
+      "malware"
+    ],
+    "helminth": [
+      "Helminth",
+      "malware"
+    ],
+    "hermeticwiper": [
+      "HermeticWiper",
+      "malware"
+    ],
+    "hermeticwizard": [
+      "HermeticWizard",
+      "malware"
+    ],
+    "hexane": [
+      "HEXANE",
+      "actor"
+    ],
+    "hexeval-loader": [
+      "HexEval Loader",
+      "malware"
+    ],
+    "heyoka-backdoor": [
+      "Heyoka Backdoor",
+      "malware"
+    ],
+    "hi-zor": [
+      "Hi-Zor",
+      "malware"
+    ],
+    "hiddenwasp": [
+      "HiddenWasp",
+      "malware"
+    ],
+    "hidedrv": [
+      "HIDEDRV",
+      "malware"
+    ],
+    "higaisa": [
+      "Higaisa",
+      "actor"
+    ],
+    "hikit": [
+      "Hikit",
+      "malware"
+    ],
+    "hildegard": [
+      "Hildegard",
+      "malware"
+    ],
+    "hiupan": [
+      "HIUPAN",
+      "malware"
+    ],
+    "homefry": [
+      "HOMEFRY",
+      "malware"
+    ],
+    "hoplight": [
+      "HOPLIGHT",
+      "malware"
+    ],
+    "hotcroissant": [
+      "HotCroissant",
+      "malware"
+    ],
+    "htran": [
+      "HTRAN",
+      "tool"
+    ],
+    "httpbrowser": [
+      "HTTPBrowser",
+      "malware"
+    ],
+    "httpclient": [
+      "httpclient",
+      "malware"
+    ],
+    "hui-loader": [
+      "HUI Loader",
+      "malware"
+    ],
+    "hydraq": [
+      "Hydraq",
+      "malware"
+    ],
+    "hyperbro": [
+      "HyperBro",
+      "malware"
+    ],
+    "hyperstack": [
+      "HyperStack",
+      "malware"
+    ],
+    "iceapple": [
+      "IceApple",
+      "malware"
+    ],
+    "icedid": [
+      "IcedID",
+      "malware"
+    ],
+    "ifconfig": [
+      "ifconfig",
+      "tool"
+    ],
+    "ikitten": [
+      "iKitten",
+      "malware"
+    ],
+    "imaploader": [
+      "IMAPLoader",
+      "malware"
+    ],
+    "imminent-monitor": [
+      "Imminent Monitor",
+      "tool"
+    ],
+    "impacket": [
+      "Impacket",
+      "tool"
+    ],
+    "inc-ransom": [
+      "INC Ransom",
+      "actor"
+    ],
+    "inc-ransomware": [
+      "INC Ransomware",
+      "malware"
+    ],
+    "inception": [
+      "Inception",
+      "actor"
+    ],
+    "indigozebra": [
+      "IndigoZebra",
+      "actor"
+    ],
+    "indrik-spider": [
+      "Indrik Spider",
+      "actor"
+    ],
+    "industroyer": [
+      "Industroyer",
+      "malware"
+    ],
+    "industroyer2": [
+      "Industroyer2",
+      "malware"
+    ],
+    "innaputrat": [
+      "InnaputRAT",
+      "malware"
+    ],
+    "invisibleferret": [
+      "InvisibleFerret",
+      "malware"
+    ],
+    "invisimole": [
+      "InvisiMole",
+      "malware"
+    ],
+    "invoke-psimage": [
+      "Invoke-PSImage",
+      "tool"
+    ],
+    "ipconfig": [
+      "ipconfig",
+      "tool"
+    ],
+    "ipsec-helper": [
+      "IPsec Helper",
+      "malware"
+    ],
+    "ironnetinjector": [
+      "IronNetInjector",
+      "tool"
+    ],
+    "isminjector": [
+      "ISMInjector",
+      "malware"
+    ],
+    "ixeshe": [
+      "Ixeshe",
+      "malware"
+    ],
+    "j-magic": [
+      "J-magic",
+      "malware"
+    ],
+    "janicab": [
+      "Janicab",
+      "malware"
+    ],
+    "javali": [
+      "Javali",
+      "malware"
+    ],
+    "jcry": [
+      "JCry",
+      "malware"
+    ],
+    "jhuhugit": [
+      "JHUHUGIT",
+      "malware"
+    ],
+    "jpin": [
+      "JPIN",
+      "malware"
+    ],
+    "jrat": [
+      "jRAT",
+      "malware"
+    ],
+    "jss-loader": [
+      "JSS Loader",
+      "malware"
+    ],
+    "jumbledpath": [
+      "JumbledPath",
+      "malware"
+    ],
+    "kapeka": [
+      "Kapeka",
+      "malware"
+    ],
+    "karae": [
+      "KARAE",
+      "malware"
+    ],
+    "kasidet": [
+      "Kasidet",
+      "malware"
+    ],
+    "kazuar": [
+      "Kazuar",
+      "malware"
+    ],
+    "ke3chang": [
+      "Ke3chang",
+      "actor"
+    ],
+    "kerrdown": [
+      "Kerrdown",
+      "malware"
+    ],
+    "kessel": [
+      "Kessel",
+      "malware"
+    ],
+    "kevin": [
+      "Kevin",
+      "malware"
+    ],
+    "keyboy": [
+      "KeyBoy",
+      "malware"
+    ],
+    "keydnap": [
+      "Keydnap",
+      "malware"
+    ],
+    "keymarble": [
+      "KEYMARBLE",
+      "malware"
+    ],
+    "keyplug": [
+      "KEYPLUG",
+      "malware"
+    ],
+    "kgh-spy": [
+      "KGH_SPY",
+      "malware"
+    ],
+    "killdisk": [
+      "KillDisk",
+      "malware"
+    ],
+    "kimsuky": [
+      "Kimsuky",
+      "actor"
+    ],
+    "kinsing": [
+      "Kinsing",
+      "malware"
+    ],
+    "kivars": [
+      "Kivars",
+      "malware"
+    ],
+    "koadic": [
+      "Koadic",
+      "tool"
+    ],
+    "kobalos": [
+      "Kobalos",
+      "malware"
+    ],
+    "koctopus": [
+      "KOCTOPUS",
+      "malware"
+    ],
+    "komplex": [
+      "Komplex",
+      "malware"
+    ],
+    "komprogo": [
+      "KOMPROGO",
+      "malware"
+    ],
+    "konni": [
+      "KONNI",
+      "malware"
+    ],
+    "kopiluwak": [
+      "KOPILUWAK",
+      "malware"
+    ],
+    "kwampirs": [
+      "Kwampirs",
+      "malware"
+    ],
+    "lapsus": [
+      "LAPSUS$",
+      "actor"
+    ],
+    "latrodectus": [
+      "Latrodectus",
+      "malware"
+    ],
+    "lazagne": [
+      "LaZagne",
+      "tool"
+    ],
+    "lazarus-group": [
+      "Lazarus Group",
+      "actor"
+    ],
+    "lazyscripter": [
+      "LazyScripter",
+      "actor"
+    ],
+    "leafminer": [
+      "Leafminer",
+      "actor"
+    ],
+    "leviathan": [
+      "Leviathan",
+      "actor"
+    ],
+    "lightneuron": [
+      "LightNeuron",
+      "malware"
+    ],
+    "lightspy": [
+      "LightSpy",
+      "malware"
+    ],
+    "lightwire": [
+      "LIGHTWIRE",
+      "malware"
+    ],
+    "line-dancer": [
+      "Line Dancer",
+      "malware"
+    ],
+    "line-runner": [
+      "Line Runner",
+      "malware"
+    ],
+    "linfo": [
+      "Linfo",
+      "malware"
+    ],
+    "linux-rabbit": [
+      "Linux Rabbit",
+      "malware"
+    ],
+    "liteduke": [
+      "LiteDuke",
+      "malware"
+    ],
+    "litepower": [
+      "LitePower",
+      "malware"
+    ],
+    "littlelamb-wooltea": [
+      "LITTLELAMB.WOOLTEA",
+      "malware"
+    ],
+    "lizar": [
+      "Lizar",
+      "malware"
+    ],
+    "lockbit-2-0": [
+      "LockBit 2.0",
+      "malware"
+    ],
+    "lockbit-3-0": [
+      "LockBit 3.0",
+      "malware"
+    ],
+    "lockergoga": [
+      "LockerGoga",
+      "malware"
+    ],
+    "lofise": [
+      "LoFiSe",
+      "malware"
+    ],
+    "lojax": [
+      "LoJax",
+      "malware"
+    ],
+    "lokibot": [
+      "Lokibot",
+      "malware"
+    ],
+    "lookback": [
+      "LookBack",
+      "malware"
+    ],
+    "lotus-blossom": [
+      "Lotus Blossom",
+      "actor"
+    ],
+    "loudminer": [
+      "LoudMiner",
+      "malware"
+    ],
+    "lowball": [
+      "LOWBALL",
+      "malware"
+    ],
+    "lslsass": [
+      "Lslsass",
+      "tool"
+    ],
+    "lucifer": [
+      "Lucifer",
+      "malware"
+    ],
+    "luminousmoth": [
+      "LuminousMoth",
+      "actor"
+    ],
+    "lumma-stealer": [
+      "Lumma Stealer",
+      "malware"
+    ],
+    "lunarloader": [
+      "LunarLoader",
+      "malware"
+    ],
+    "lunarmail": [
+      "LunarMail",
+      "malware"
+    ],
+    "lunarweb": [
+      "LunarWeb",
+      "malware"
+    ],
+    "lurid": [
+      "Lurid",
+      "malware"
+    ],
+    "machete": [
+      "Machete",
+      "actor"
+    ],
+    "macma": [
+      "MacMa",
+      "malware"
+    ],
+    "macos-osaminer": [
+      "macOS.OSAMiner",
+      "malware"
+    ],
+    "macspy": [
+      "MacSpy",
+      "malware"
+    ],
+    "mafalda": [
+      "Mafalda",
+      "malware"
+    ],
+    "magic-hound": [
+      "Magic Hound",
+      "actor"
+    ],
+    "magicrat": [
+      "MagicRAT",
+      "malware"
+    ],
+    "mailsniper": [
+      "MailSniper",
+      "tool"
+    ],
+    "malteiro": [
+      "Malteiro",
+      "actor"
+    ],
+    "mango": [
+      "Mango",
+      "malware"
+    ],
+    "manjusaka": [
+      "Manjusaka",
+      "malware"
+    ],
+    "markirat": [
+      "MarkiRAT",
+      "malware"
+    ],
+    "matryoshka": [
+      "Matryoshka",
+      "malware"
+    ],
+    "maze": [
+      "Maze",
+      "malware"
+    ],
+    "mcmd": [
+      "MCMD",
+      "tool"
+    ],
+    "mechaflounder": [
+      "MechaFlounder",
+      "malware"
+    ],
+    "medusa": [
+      "MEDUSA",
+      "malware"
+    ],
+    "medusa-group": [
+      "Medusa Group",
+      "actor"
+    ],
+    "medusa-ransomware": [
+      "Medusa Ransomware",
+      "malware"
+    ],
+    "meek": [
+      "meek",
+      "tool"
+    ],
+    "megacortex": [
+      "MegaCortex",
+      "malware"
+    ],
+    "megazord": [
+      "Megazord",
+      "malware"
+    ],
+    "melcoz": [
+      "Melcoz",
+      "malware"
+    ],
+    "menupass": [
+      "menuPass",
+      "actor"
+    ],
+    "messagetap": [
+      "MESSAGETAP",
+      "malware"
+    ],
+    "metador": [
+      "Metador",
+      "actor"
+    ],
+    "metamain": [
+      "metaMain",
+      "malware"
+    ],
+    "metamorfo": [
+      "Metamorfo",
+      "malware"
+    ],
+    "meteor": [
+      "Meteor",
+      "malware"
+    ],
+    "mgbot": [
+      "MgBot",
+      "malware"
+    ],
+    "micropsia": [
+      "Micropsia",
+      "malware"
+    ],
+    "milan": [
+      "Milan",
+      "malware"
+    ],
+    "mimikatz": [
+      "Mimikatz",
+      "tool"
+    ],
+    "mimipenguin": [
+      "MimiPenguin",
+      "tool"
+    ],
+    "miner-c": [
+      "Miner-C",
+      "malware"
+    ],
+    "miniduke": [
+      "MiniDuke",
+      "malware"
+    ],
+    "miragefox": [
+      "MirageFox",
+      "malware"
+    ],
+    "mis-type": [
+      "Mis-Type",
+      "malware"
+    ],
+    "misdat": [
+      "Misdat",
+      "malware"
+    ],
+    "mispadu": [
+      "Mispadu",
+      "malware"
+    ],
+    "mivast": [
+      "Mivast",
+      "malware"
+    ],
+    "moafee": [
+      "Moafee",
+      "actor"
+    ],
+    "mobileorder": [
+      "MobileOrder",
+      "malware"
+    ],
+    "mofang": [
+      "Mofang",
+      "actor"
+    ],
+    "molenet": [
+      "MoleNet",
+      "malware"
+    ],
+    "molerats": [
+      "Molerats",
+      "actor"
+    ],
+    "moneybird": [
+      "Moneybird",
+      "malware"
+    ],
+    "mongall": [
+      "Mongall",
+      "malware"
+    ],
+    "moonstone-sleet": [
+      "Moonstone Sleet",
+      "actor"
+    ],
+    "moonwind": [
+      "MoonWind",
+      "malware"
+    ],
+    "mopsled": [
+      "MOPSLED",
+      "malware"
+    ],
+    "more-eggs": [
+      "More_eggs",
+      "malware"
+    ],
+    "mori": [
+      "Mori",
+      "malware"
+    ],
+    "moses-staff": [
+      "Moses Staff",
+      "actor"
+    ],
+    "mosquito": [
+      "Mosquito",
+      "malware"
+    ],
+    "moustachedbouncer": [
+      "MoustachedBouncer",
+      "actor"
+    ],
+    "muddywater": [
+      "MuddyWater",
+      "actor"
+    ],
+    "multilayer-wiper": [
+      "MultiLayer Wiper",
+      "malware"
+    ],
+    "murkytop": [
+      "MURKYTOP",
+      "malware"
+    ],
+    "mustang-panda": [
+      "Mustang Panda",
+      "actor"
+    ],
+    "mustard-tempest": [
+      "Mustard Tempest",
+      "actor"
+    ],
+    "mythic": [
+      "Mythic",
+      "tool"
+    ],
+    "naid": [
+      "Naid",
+      "malware"
+    ],
+    "naikon": [
+      "Naikon",
+      "actor"
+    ],
+    "nanhaishu": [
+      "NanHaiShu",
+      "malware"
+    ],
+    "nanocore": [
+      "NanoCore",
+      "malware"
+    ],
+    "nativezone": [
+      "NativeZone",
+      "malware"
+    ],
+    "navrat": [
+      "NavRAT",
+      "malware"
+    ],
+    "nbtscan": [
+      "NBTscan",
+      "tool"
+    ],
+    "nbtstat": [
+      "nbtstat",
+      "tool"
+    ],
+    "ndiskmonitor": [
+      "NDiskMonitor",
+      "malware"
+    ],
+    "nebulae": [
+      "Nebulae",
+      "malware"
+    ],
+    "neo-regeorg": [
+      "Neo-reGeorg",
+      "malware"
+    ],
+    "neodymium": [
+      "NEODYMIUM",
+      "actor"
+    ],
+    "neoichor": [
+      "Neoichor",
+      "malware"
+    ],
+    "nerex": [
+      "Nerex",
+      "malware"
+    ],
+    "net": [
+      "Net",
+      "tool"
+    ],
+    "net-crawler": [
+      "Net Crawler",
+      "malware"
+    ],
+    "neteagle": [
+      "NETEAGLE",
+      "malware"
+    ],
+    "netsh": [
+      "netsh",
+      "tool"
+    ],
+    "netstat": [
+      "netstat",
+      "tool"
+    ],
+    "nettraveler": [
+      "NetTraveler",
+      "malware"
+    ],
+    "netwalker": [
+      "Netwalker",
+      "malware"
+    ],
+    "netwire": [
+      "NETWIRE",
+      "malware"
+    ],
+    "nglite": [
+      "NGLite",
+      "malware"
+    ],
+    "ngrok": [
+      "ngrok",
+      "tool"
+    ],
+    "nicecurl": [
+      "NICECURL",
+      "malware"
+    ],
+    "nidiran": [
+      "Nidiran",
+      "malware"
+    ],
+    "nightclub": [
+      "NightClub",
+      "malware"
+    ],
+    "nightdoor": [
+      "Nightdoor",
+      "malware"
+    ],
+    "ninja": [
+      "Ninja",
+      "malware"
+    ],
+    "njrat": [
+      "njRAT",
+      "malware"
+    ],
+    "nkabuse": [
+      "NKAbuse",
+      "malware"
+    ],
+    "nltest": [
+      "Nltest",
+      "tool"
+    ],
+    "nokki": [
+      "NOKKI",
+      "malware"
+    ],
+    "nomadic-octopus": [
+      "Nomadic Octopus",
+      "actor"
+    ],
+    "notpetya": [
+      "NotPetya",
+      "malware"
+    ],
+    "nppspy": [
+      "NPPSPY",
+      "tool"
+    ],
+    "obliquerat": [
+      "ObliqueRAT",
+      "malware"
+    ],
+    "oceansalt": [
+      "OceanSalt",
+      "malware"
+    ],
+    "octopus": [
+      "Octopus",
+      "malware"
+    ],
+    "odagent": [
+      "ODAgent",
+      "malware"
+    ],
+    "oilbooster": [
+      "OilBooster",
+      "malware"
+    ],
+    "oilcheck": [
+      "OilCheck",
+      "malware"
+    ],
+    "oilrig": [
+      "OilRig",
+      "actor"
+    ],
+    "okrum": [
+      "Okrum",
+      "malware"
+    ],
+    "oldbait": [
+      "OLDBAIT",
+      "malware"
+    ],
+    "olympic-destroyer": [
+      "Olympic Destroyer",
+      "malware"
+    ],
+    "onionduke": [
+      "OnionDuke",
+      "malware"
+    ],
+    "oopsie": [
+      "OopsIE",
+      "malware"
+    ],
+    "orangeworm": [
+      "Orangeworm",
+      "actor"
+    ],
+    "orz": [
+      "Orz",
+      "malware"
+    ],
+    "osinfo": [
+      "OSInfo",
+      "malware"
+    ],
+    "osx-oceanlotus-d": [
+      "OSX_OCEANLOTUS.D",
+      "malware"
+    ],
+    "osx-shlayer": [
+      "OSX/Shlayer",
+      "malware"
+    ],
+    "out1": [
+      "Out1",
+      "tool"
+    ],
+    "outsteel": [
+      "OutSteel",
+      "malware"
+    ],
+    "owaauth": [
+      "OwaAuth",
+      "malware"
+    ],
+    "p-a-s-webshell": [
+      "P.A.S. Webshell",
+      "malware"
+    ],
+    "p2p-zeus": [
+      "P2P ZeuS",
+      "malware"
+    ],
+    "p8rat": [
+      "P8RAT",
+      "malware"
+    ],
+    "pacemaker": [
+      "PACEMAKER",
+      "malware"
+    ],
+    "pacu": [
+      "Pacu",
+      "tool"
+    ],
+    "paklog": [
+      "PAKLOG",
+      "malware"
+    ],
+    "pandora": [
+      "Pandora",
+      "malware"
+    ],
+    "pasam": [
+      "Pasam",
+      "malware"
+    ],
+    "pass-the-hash-toolkit": [
+      "Pass-The-Hash Toolkit",
+      "tool"
+    ],
+    "patchwork": [
+      "Patchwork",
+      "actor"
+    ],
+    "pay2key": [
+      "Pay2Key",
+      "malware"
+    ],
+    "pcexter": [
+      "Pcexter",
+      "malware"
+    ],
+    "pcshare": [
+      "PcShare",
+      "tool"
+    ],
+    "peirates": [
+      "Peirates",
+      "tool"
+    ],
+    "penquin": [
+      "Penquin",
+      "malware"
+    ],
+    "peppy": [
+      "Peppy",
+      "malware"
+    ],
+    "phoreal": [
+      "PHOREAL",
+      "malware"
+    ],
+    "pikabot": [
+      "Pikabot",
+      "malware"
+    ],
+    "pillowmint": [
+      "Pillowmint",
+      "malware"
+    ],
+    "pinchduke": [
+      "PinchDuke",
+      "malware"
+    ],
+    "ping": [
+      "Ping",
+      "tool"
+    ],
+    "pingpull": [
+      "PingPull",
+      "malware"
+    ],
+    "pipemon": [
+      "PipeMon",
+      "malware"
+    ],
+    "pisloader": [
+      "Pisloader",
+      "malware"
+    ],
+    "pitstop": [
+      "PITSTOP",
+      "malware"
+    ],
+    "pittytiger": [
+      "PittyTiger",
+      "actor"
+    ],
+    "plaintee": [
+      "PLAINTEE",
+      "malware"
+    ],
+    "platinum": [
+      "PLATINUM",
+      "actor"
+    ],
+    "play": [
+      "Play",
+      "actor"
+    ],
+    "playcrypt": [
+      "Playcrypt",
+      "malware"
+    ],
+    "plead": [
+      "PLEAD",
+      "malware"
+    ],
+    "plugx": [
+      "PlugX",
+      "malware"
+    ],
+    "pngdowner": [
+      "pngdowner",
+      "malware"
+    ],
+    "poetrat": [
+      "PoetRAT",
+      "malware"
+    ],
+    "poisonivy": [
+      "PoisonIvy",
+      "malware"
+    ],
+    "polonium": [
+      "POLONIUM",
+      "actor"
+    ],
+    "polyglotduke": [
+      "PolyglotDuke",
+      "malware"
+    ],
+    "pony": [
+      "Pony",
+      "malware"
+    ],
+    "pooraim": [
+      "POORAIM",
+      "malware"
+    ],
+    "poseidon-group": [
+      "Poseidon Group",
+      "actor"
+    ],
+    "poshc2": [
+      "PoshC2",
+      "tool"
+    ],
+    "poshspy": [
+      "POSHSPY",
+      "malware"
+    ],
+    "power-loader": [
+      "Power Loader",
+      "malware"
+    ],
+    "powerduke": [
+      "PowerDuke",
+      "malware"
+    ],
+    "powerexchange": [
+      "PowerExchange",
+      "malware"
+    ],
+    "powerless": [
+      "PowerLess",
+      "malware"
+    ],
+    "powerpunch": [
+      "PowerPunch",
+      "malware"
+    ],
+    "powershower": [
+      "PowerShower",
+      "malware"
+    ],
+    "powersource": [
+      "POWERSOURCE",
+      "malware"
+    ],
+    "powersploit": [
+      "PowerSploit",
+      "tool"
+    ],
+    "powerstallion": [
+      "PowerStallion",
+      "malware"
+    ],
+    "powerstats": [
+      "POWERSTATS",
+      "malware"
+    ],
+    "powerton": [
+      "POWERTON",
+      "malware"
+    ],
+    "powgoop": [
+      "PowGoop",
+      "malware"
+    ],
+    "powruner": [
+      "POWRUNER",
+      "malware"
+    ],
+    "prestige": [
+      "Prestige",
+      "malware"
+    ],
+    "prikormka": [
+      "Prikormka",
+      "malware"
+    ],
+    "prolock": [
+      "ProLock",
+      "malware"
+    ],
+    "promethium": [
+      "PROMETHIUM",
+      "actor"
+    ],
+    "proton": [
+      "Proton",
+      "malware"
+    ],
+    "proxysvc": [
+      "Proxysvc",
+      "malware"
+    ],
+    "ps1": [
+      "PS1",
+      "malware"
+    ],
+    "psexec": [
+      "PsExec",
+      "tool"
+    ],
+    "psylo": [
+      "Psylo",
+      "malware"
+    ],
+    "pteranodon": [
+      "Pteranodon",
+      "malware"
+    ],
+    "pubload": [
+      "PUBLOAD",
+      "malware"
+    ],
+    "pulsecheck": [
+      "PULSECHECK",
+      "malware"
+    ],
+    "punchbuggy": [
+      "PUNCHBUGGY",
+      "malware"
+    ],
+    "punchtrack": [
+      "PUNCHTRACK",
+      "malware"
+    ],
+    "pupy": [
+      "Pupy",
+      "tool"
+    ],
+    "putter-panda": [
+      "Putter Panda",
+      "actor"
+    ],
+    "pwdump": [
+      "pwdump",
+      "tool"
+    ],
+    "pydcrypt": [
+      "PyDCrypt",
+      "malware"
+    ],
+    "pysa": [
+      "Pysa",
+      "malware"
+    ],
+    "qakbot": [
+      "QakBot",
+      "malware"
+    ],
+    "qilin": [
+      "Qilin",
+      "malware"
+    ],
+    "quadagent": [
+      "QUADAGENT",
+      "malware"
+    ],
+    "quasarrat": [
+      "QuasarRAT",
+      "tool"
+    ],
+    "quick-assist": [
+      "Quick Assist",
+      "tool"
+    ],
+    "quietcanary": [
+      "QUIETCANARY",
+      "malware"
+    ],
+    "quietexit": [
+      "QUIETEXIT",
+      "malware"
+    ],
+    "quietsieve": [
+      "QuietSieve",
+      "malware"
+    ],
+    "raccoon-stealer": [
+      "Raccoon Stealer",
+      "malware"
+    ],
+    "ragnar-locker": [
+      "Ragnar Locker",
+      "malware"
+    ],
+    "raindrop": [
+      "Raindrop",
+      "malware"
+    ],
+    "rainyday": [
+      "RainyDay",
+      "malware"
+    ],
+    "ramsay": [
+      "Ramsay",
+      "malware"
+    ],
+    "rancor": [
+      "Rancor",
+      "actor"
+    ],
+    "ransomhub": [
+      "RansomHub",
+      "malware"
+    ],
+    "rapidpulse": [
+      "RAPIDPULSE",
+      "malware"
+    ],
+    "rarstone": [
+      "RARSTONE",
+      "malware"
+    ],
+    "raspberry-robin": [
+      "Raspberry Robin",
+      "malware"
+    ],
+    "ratankba": [
+      "RATANKBA",
+      "malware"
+    ],
+    "rawdisk": [
+      "RawDisk",
+      "tool"
+    ],
+    "rawpos": [
+      "RawPOS",
+      "malware"
+    ],
+    "rclone": [
+      "Rclone",
+      "tool"
+    ],
+    "rcsession": [
+      "RCSession",
+      "malware"
+    ],
+    "rdat": [
+      "RDAT",
+      "malware"
+    ],
+    "rdfsniffer": [
+      "RDFSNIFFER",
+      "malware"
+    ],
+    "reaver": [
+      "Reaver",
+      "malware"
+    ],
+    "redcurl": [
+      "RedCurl",
+      "actor"
+    ],
+    "redecho": [
+      "RedEcho",
+      "actor"
+    ],
+    "redleaves": [
+      "RedLeaves",
+      "malware"
+    ],
+    "redline-stealer": [
+      "RedLine Stealer",
+      "malware"
+    ],
+    "reg": [
+      "Reg",
+      "tool"
+    ],
+    "regduke": [
+      "RegDuke",
+      "malware"
+    ],
+    "regeorg": [
+      "reGeorg",
+      "malware"
+    ],
+    "regin": [
+      "Regin",
+      "malware"
+    ],
+    "remcos": [
+      "Remcos",
+      "tool"
+    ],
+    "remexi": [
+      "Remexi",
+      "malware"
+    ],
+    "remotecmd": [
+      "RemoteCMD",
+      "malware"
+    ],
+    "remoteutilities": [
+      "RemoteUtilities",
+      "tool"
+    ],
+    "remsec": [
+      "Remsec",
+      "malware"
+    ],
+    "reptile": [
+      "REPTILE",
+      "malware"
+    ],
+    "responder": [
+      "Responder",
+      "tool"
+    ],
+    "revenge-rat": [
+      "Revenge RAT",
+      "malware"
+    ],
+    "revil": [
+      "REvil",
+      "malware"
+    ],
+    "rgdoor": [
+      "RGDoor",
+      "malware"
+    ],
+    "rifdoor": [
+      "Rifdoor",
+      "malware"
+    ],
+    "riflespine": [
+      "RIFLESPINE",
+      "malware"
+    ],
+    "riptide": [
+      "RIPTIDE",
+      "malware"
+    ],
+    "rising-sun": [
+      "Rising Sun",
+      "malware"
+    ],
+    "roadsweep": [
+      "ROADSWEEP",
+      "malware"
+    ],
+    "roadtools": [
+      "ROADTools",
+      "tool"
+    ],
+    "robbinhood": [
+      "RobbinHood",
+      "malware"
+    ],
+    "rockboot": [
+      "ROCKBOOT",
+      "malware"
+    ],
+    "rocke": [
+      "Rocke",
+      "actor"
+    ],
+    "roguerobin": [
+      "RogueRobin",
+      "malware"
+    ],
+    "rokrat": [
+      "ROKRAT",
+      "malware"
+    ],
+    "rotajakiro": [
+      "RotaJakiro",
+      "malware"
+    ],
+    "route": [
+      "route",
+      "tool"
+    ],
+    "rover": [
+      "Rover",
+      "malware"
+    ],
+    "royal": [
+      "Royal",
+      "malware"
+    ],
+    "rtm": [
+      "RTM",
+      "actor"
+    ],
+    "rubeus": [
+      "Rubeus",
+      "tool"
+    ],
+    "ruler": [
+      "Ruler",
+      "tool"
+    ],
+    "runningrat": [
+      "RunningRAT",
+      "malware"
+    ],
+    "ryuk": [
+      "Ryuk",
+      "malware"
+    ],
+    "s-type": [
+      "S-Type",
+      "malware"
+    ],
+    "sagerunex": [
+      "Sagerunex",
+      "malware"
+    ],
+    "saint-bear": [
+      "Saint Bear",
+      "actor"
+    ],
+    "saint-bot": [
+      "Saint Bot",
+      "malware"
+    ],
+    "sakula": [
+      "Sakula",
+      "malware"
+    ],
+    "salt-typhoon": [
+      "Salt Typhoon",
+      "actor"
+    ],
+    "samplecheck5000": [
+      "SampleCheck5000",
+      "malware"
+    ],
+    "samsam": [
+      "SamSam",
+      "malware"
+    ],
+    "samurai": [
+      "Samurai",
+      "malware"
+    ],
+    "sandworm-team": [
+      "Sandworm Team",
+      "actor"
+    ],
+    "sardonic": [
+      "Sardonic",
+      "malware"
+    ],
+    "scarlet-mimic": [
+      "Scarlet Mimic",
+      "actor"
+    ],
+    "scattered-spider": [
+      "Scattered Spider",
+      "actor"
+    ],
+    "schtasks": [
+      "schtasks",
+      "tool"
+    ],
+    "sdbbot": [
+      "SDBbot",
+      "malware"
+    ],
+    "sdelete": [
+      "SDelete",
+      "tool"
+    ],
+    "sea-turtle": [
+      "Sea Turtle",
+      "actor"
+    ],
+    "seaduke": [
+      "SeaDuke",
+      "malware"
+    ],
+    "seasalt": [
+      "Seasalt",
+      "malware"
+    ],
+    "seasharpee": [
+      "SEASHARPEE",
+      "malware"
+    ],
+    "servhelper": [
+      "ServHelper",
+      "malware"
+    ],
+    "seth-locker": [
+      "Seth-Locker",
+      "malware"
+    ],
+    "shadowpad": [
+      "ShadowPad",
+      "malware"
+    ],
+    "shamoon": [
+      "Shamoon",
+      "malware"
+    ],
+    "shark": [
+      "Shark",
+      "malware"
+    ],
+    "sharpdisco": [
+      "SharpDisco",
+      "malware"
+    ],
+    "sharpstage": [
+      "SharpStage",
+      "malware"
+    ],
+    "sharpstats": [
+      "SHARPSTATS",
+      "malware"
+    ],
+    "shimrat": [
+      "ShimRat",
+      "malware"
+    ],
+    "shimratreporter": [
+      "ShimRatReporter",
+      "tool"
+    ],
+    "shipshape": [
+      "SHIPSHAPE",
+      "malware"
+    ],
+    "shotput": [
+      "SHOTPUT",
+      "malware"
+    ],
+    "shrinklocker": [
+      "ShrinkLocker",
+      "malware"
+    ],
+    "shutterspeed": [
+      "SHUTTERSPEED",
+      "malware"
+    ],
+    "sibot": [
+      "Sibot",
+      "malware"
+    ],
+    "sidecopy": [
+      "SideCopy",
+      "actor"
+    ],
+    "sidetwist": [
+      "SideTwist",
+      "malware"
+    ],
+    "sidewinder": [
+      "Sidewinder",
+      "actor"
+    ],
+    "silence": [
+      "Silence",
+      "actor"
+    ],
+    "silent-librarian": [
+      "Silent Librarian",
+      "actor"
+    ],
+    "silenttrinity": [
+      "SILENTTRINITY",
+      "tool"
+    ],
+    "siloscape": [
+      "Siloscape",
+      "malware"
+    ],
+    "silverterrier": [
+      "SilverTerrier",
+      "actor"
+    ],
+    "skeleton-key": [
+      "Skeleton Key",
+      "malware"
+    ],
+    "skidmap": [
+      "Skidmap",
+      "malware"
+    ],
+    "slightpulse": [
+      "SLIGHTPULSE",
+      "malware"
+    ],
+    "sliver": [
+      "Sliver",
+      "tool"
+    ],
+    "slothfulmedia": [
+      "SLOTHFULMEDIA",
+      "malware"
+    ],
+    "slowdrift": [
+      "SLOWDRIFT",
+      "malware"
+    ],
+    "slowpulse": [
+      "SLOWPULSE",
+      "malware"
+    ],
+    "small-sieve": [
+      "Small Sieve",
+      "malware"
+    ],
+    "smoke-loader": [
+      "Smoke Loader",
+      "malware"
+    ],
+    "smokedham": [
+      "SMOKEDHAM",
+      "malware"
+    ],
+    "snappytcp": [
+      "SnappyTCP",
+      "malware"
+    ],
+    "snip3": [
+      "Snip3",
+      "malware"
+    ],
+    "snugride": [
+      "SNUGRIDE",
+      "malware"
+    ],
+    "socgholish": [
+      "SocGholish",
+      "malware"
+    ],
+    "socksbot": [
+      "Socksbot",
+      "malware"
+    ],
+    "sodamaster": [
+      "SodaMaster",
+      "malware"
+    ],
+    "solar": [
+      "Solar",
+      "malware"
+    ],
+    "sombrat": [
+      "SombRAT",
+      "malware"
+    ],
+    "sorefang": [
+      "SoreFang",
+      "malware"
+    ],
+    "soundbite": [
+      "SOUNDBITE",
+      "malware"
+    ],
+    "sowbug": [
+      "Sowbug",
+      "actor"
+    ],
+    "spaceship": [
+      "SPACESHIP",
+      "malware"
+    ],
+    "spark": [
+      "Spark",
+      "malware"
+    ],
+    "speakup": [
+      "SpeakUp",
+      "malware"
+    ],
+    "spica": [
+      "Spica",
+      "malware"
+    ],
+    "spicyomelette": [
+      "SpicyOmelette",
+      "malware"
+    ],
+    "splatcloak": [
+      "SplatCloak",
+      "malware"
+    ],
+    "splatdropper": [
+      "SplatDropper",
+      "malware"
+    ],
+    "spwebmember": [
+      "spwebmember",
+      "tool"
+    ],
+    "sqlmap": [
+      "sqlmap",
+      "tool"
+    ],
+    "sqlrat": [
+      "SQLRat",
+      "malware"
+    ],
+    "squirrelwaffle": [
+      "Squirrelwaffle",
+      "malware"
+    ],
+    "sslmm": [
+      "SslMM",
+      "malware"
+    ],
+    "star-blizzard": [
+      "Star Blizzard",
+      "actor"
+    ],
+    "starloader": [
+      "Starloader",
+      "malware"
+    ],
+    "starproxy": [
+      "StarProxy",
+      "malware"
+    ],
+    "starwhale": [
+      "STARWHALE",
+      "malware"
+    ],
+    "staticplugin": [
+      "STATICPLUGIN",
+      "malware"
+    ],
+    "steadypulse": [
+      "STEADYPULSE",
+      "malware"
+    ],
+    "stealbit": [
+      "StealBit",
+      "malware"
+    ],
+    "stealth-falcon": [
+      "Stealth Falcon",
+      "actor"
+    ],
+    "stonedrill": [
+      "StoneDrill",
+      "malware"
+    ],
+    "storm-0501": [
+      "Storm-0501",
+      "actor"
+    ],
+    "storm-1811": [
+      "Storm-1811",
+      "actor"
+    ],
+    "streamex": [
+      "StreamEx",
+      "malware"
+    ],
+    "strelastealer": [
+      "StrelaStealer",
+      "malware"
+    ],
+    "strider": [
+      "Strider",
+      "actor"
+    ],
+    "strifewater": [
+      "StrifeWater",
+      "malware"
+    ],
+    "strongpity": [
+      "StrongPity",
+      "malware"
+    ],
+    "stuxnet": [
+      "Stuxnet",
+      "malware"
+    ],
+    "suckfly": [
+      "Suckfly",
+      "actor"
+    ],
+    "sugardump": [
+      "SUGARDUMP",
+      "malware"
+    ],
+    "sugarush": [
+      "SUGARUSH",
+      "malware"
+    ],
+    "sunburst": [
+      "SUNBURST",
+      "malware"
+    ],
+    "sunspot": [
+      "SUNSPOT",
+      "malware"
+    ],
+    "supernova": [
+      "SUPERNOVA",
+      "malware"
+    ],
+    "svcready": [
+      "SVCReady",
+      "malware"
+    ],
+    "sykipot": [
+      "Sykipot",
+      "malware"
+    ],
+    "synack": [
+      "SynAck",
+      "malware"
+    ],
+    "synful-knock": [
+      "SYNful Knock",
+      "malware"
+    ],
+    "sys10": [
+      "Sys10",
+      "malware"
+    ],
+    "syscon": [
+      "SYSCON",
+      "malware"
+    ],
+    "systeminfo": [
+      "Systeminfo",
+      "tool"
+    ],
+    "sysupdate": [
+      "SysUpdate",
+      "malware"
+    ],
+    "t9000": [
+      "T9000",
+      "malware"
+    ],
+    "ta2541": [
+      "TA2541",
+      "actor"
+    ],
+    "ta459": [
+      "TA459",
+      "actor"
+    ],
+    "ta505": [
+      "TA505",
+      "actor"
+    ],
+    "ta551": [
+      "TA551",
+      "actor"
+    ],
+    "ta577": [
+      "TA577",
+      "actor"
+    ],
+    "ta578": [
+      "TA578",
+      "actor"
+    ],
+    "taidoor": [
+      "Taidoor",
+      "malware"
+    ],
+    "taintedscribe": [
+      "TAINTEDSCRIBE",
+      "malware"
+    ],
+    "tajmahal": [
+      "TajMahal",
+      "malware"
+    ],
+    "tamecat": [
+      "TAMECAT",
+      "malware"
+    ],
+    "tarrask": [
+      "Tarrask",
+      "malware"
+    ],
+    "tasklist": [
+      "Tasklist",
+      "tool"
+    ],
+    "tdtess": [
+      "TDTESS",
+      "malware"
+    ],
+    "teamtnt": [
+      "TeamTNT",
+      "actor"
+    ],
+    "teardrop": [
+      "TEARDROP",
+      "malware"
+    ],
+    "temp-veles": [
+      "TEMP.Veles",
+      "actor"
+    ],
+    "textmate": [
+      "TEXTMATE",
+      "malware"
+    ],
+    "the-white-company": [
+      "The White Company",
+      "actor"
+    ],
+    "thiefquest": [
+      "ThiefQuest",
+      "malware"
+    ],
+    "thincrust": [
+      "THINCRUST",
+      "malware"
+    ],
+    "threat-group-1314": [
+      "Threat Group-1314",
+      "actor"
+    ],
+    "threat-group-3390": [
+      "Threat Group-3390",
+      "actor"
+    ],
+    "threatneedle": [
+      "ThreatNeedle",
+      "malware"
+    ],
+    "thrip": [
+      "Thrip",
+      "actor"
+    ],
+    "tinyturla": [
+      "TinyTurla",
+      "malware"
+    ],
+    "tinytyphon": [
+      "TINYTYPHON",
+      "malware"
+    ],
+    "tinyzbot": [
+      "TinyZBot",
+      "malware"
+    ],
+    "toddycat": [
+      "ToddyCat",
+      "actor"
+    ],
+    "tomiris": [
+      "Tomiris",
+      "malware"
+    ],
+    "toneshell": [
+      "TONESHELL",
+      "malware"
+    ],
+    "tonto-team": [
+      "Tonto Team",
+      "actor"
+    ],
+    "tor": [
+      "Tor",
+      "tool"
+    ],
+    "torisma": [
+      "Torisma",
+      "malware"
+    ],
+    "trailblazer": [
+      "TrailBlazer",
+      "malware"
+    ],
+    "translatext": [
+      "TRANSLATEXT",
+      "malware"
+    ],
+    "transparent-tribe": [
+      "Transparent Tribe",
+      "actor"
+    ],
+    "trickbot": [
+      "TrickBot",
+      "malware"
+    ],
+    "trojan-karagany": [
+      "Trojan.Karagany",
+      "malware"
+    ],
+    "trojan-mebromi": [
+      "Trojan.Mebromi",
+      "malware"
+    ],
+    "troll-stealer": [
+      "Troll Stealer",
+      "malware"
+    ],
+    "tropic-trooper": [
+      "Tropic Trooper",
+      "actor"
+    ],
+    "truvasys": [
+      "Truvasys",
+      "malware"
+    ],
+    "tscookie": [
+      "TSCookie",
+      "malware"
+    ],
+    "turian": [
+      "Turian",
+      "malware"
+    ],
+    "turla": [
+      "Turla",
+      "actor"
+    ],
+    "turnedup": [
+      "TURNEDUP",
+      "malware"
+    ],
+    "typeframe": [
+      "TYPEFRAME",
+      "malware"
+    ],
+    "uacme": [
+      "UACMe",
+      "tool"
+    ],
+    "uboatrat": [
+      "UBoatRAT",
+      "malware"
+    ],
+    "umbreon": [
+      "Umbreon",
+      "malware"
+    ],
+    "unc3886": [
+      "UNC3886",
+      "actor"
+    ],
+    "unknown-logger": [
+      "Unknown Logger",
+      "malware"
+    ],
+    "uppercut": [
+      "UPPERCUT",
+      "malware"
+    ],
+    "upstyle": [
+      "UPSTYLE",
+      "malware"
+    ],
+    "uroburos": [
+      "Uroburos",
+      "malware"
+    ],
+    "ursnif": [
+      "Ursnif",
+      "malware"
+    ],
+    "usbferry": [
+      "USBferry",
+      "malware"
+    ],
+    "usbstealer": [
+      "USBStealer",
+      "malware"
+    ],
+    "valak": [
+      "Valak",
+      "malware"
+    ],
+    "vaporrage": [
+      "VaporRage",
+      "malware"
+    ],
+    "vasport": [
+      "Vasport",
+      "malware"
+    ],
+    "vbshower": [
+      "VBShower",
+      "malware"
+    ],
+    "velvet-ant": [
+      "Velvet Ant",
+      "actor"
+    ],
+    "vermin": [
+      "VERMIN",
+      "malware"
+    ],
+    "versamem": [
+      "VersaMem",
+      "malware"
+    ],
+    "virtualpie": [
+      "VIRTUALPIE",
+      "malware"
+    ],
+    "virtualpita": [
+      "VIRTUALPITA",
+      "malware"
+    ],
+    "volatile-cedar": [
+      "Volatile Cedar",
+      "actor"
+    ],
+    "volgmer": [
+      "Volgmer",
+      "malware"
+    ],
+    "volt-typhoon": [
+      "Volt Typhoon",
+      "actor"
+    ],
+    "vpnfilter": [
+      "VPNFilter",
+      "malware"
+    ],
+    "wannacry": [
+      "WannaCry",
+      "malware"
+    ],
+    "warpwire": [
+      "WARPWIRE",
+      "malware"
+    ],
+    "warzonerat": [
+      "WarzoneRAT",
+      "malware"
+    ],
+    "wastedlocker": [
+      "WastedLocker",
+      "malware"
+    ],
+    "water-galura": [
+      "Water Galura",
+      "actor"
+    ],
+    "waterbear": [
+      "Waterbear",
+      "malware"
+    ],
+    "webc2": [
+      "WEBC2",
+      "malware"
+    ],
+    "wellmail": [
+      "WellMail",
+      "malware"
+    ],
+    "wellmess": [
+      "WellMess",
+      "malware"
+    ],
+    "wevtutil": [
+      "Wevtutil",
+      "tool"
+    ],
+    "whispergate": [
+      "WhisperGate",
+      "malware"
+    ],
+    "whitefly": [
+      "Whitefly",
+      "actor"
+    ],
+    "wiarp": [
+      "Wiarp",
+      "malware"
+    ],
+    "windigo": [
+      "Windigo",
+      "actor"
+    ],
+    "windows-credential-editor": [
+      "Windows Credential Editor",
+      "tool"
+    ],
+    "windshield": [
+      "WINDSHIELD",
+      "malware"
+    ],
+    "windshift": [
+      "Windshift",
+      "actor"
+    ],
+    "windtail": [
+      "WindTail",
+      "malware"
+    ],
+    "winerack": [
+      "WINERACK",
+      "malware"
+    ],
+    "winexe": [
+      "Winexe",
+      "tool"
+    ],
+    "wingbird": [
+      "Wingbird",
+      "malware"
+    ],
+    "winmm": [
+      "WinMM",
+      "malware"
+    ],
+    "winnti-for-linux": [
+      "Winnti for Linux",
+      "malware"
+    ],
+    "winnti-for-windows": [
+      "Winnti for Windows",
+      "malware"
+    ],
+    "winnti-group": [
+      "Winnti Group",
+      "actor"
+    ],
+    "winter-vivern": [
+      "Winter Vivern",
+      "actor"
+    ],
+    "wiper": [
+      "Wiper",
+      "malware"
+    ],
+    "wirefire": [
+      "WIREFIRE",
+      "malware"
+    ],
+    "wirte": [
+      "WIRTE",
+      "actor"
+    ],
+    "wizard-spider": [
+      "Wizard Spider",
+      "actor"
+    ],
+    "woody-rat": [
+      "Woody RAT",
+      "malware"
+    ],
+    "xagentosx": [
+      "XAgentOSX",
+      "malware"
+    ],
+    "xbash": [
+      "Xbash",
+      "malware"
+    ],
+    "xcaon": [
+      "xCaon",
+      "malware"
+    ],
+    "xcmd": [
+      "xCmd",
+      "tool"
+    ],
+    "xcsset": [
+      "XCSSET",
+      "malware"
+    ],
+    "xloader": [
+      "XLoader",
+      "malware"
+    ],
+    "xorindex-loader": [
+      "XORIndex Loader",
+      "malware"
+    ],
+    "xtunnel": [
+      "XTunnel",
+      "malware"
+    ],
+    "yahoyah": [
+      "YAHOYAH",
+      "malware"
+    ],
+    "yty": [
+      "yty",
+      "malware"
+    ],
+    "zebrocy": [
+      "Zebrocy",
+      "malware"
+    ],
+    "zeroaccess": [
+      "Zeroaccess",
+      "malware"
+    ],
+    "zerocleare": [
+      "ZeroCleare",
+      "malware"
+    ],
+    "zerot": [
+      "ZeroT",
+      "malware"
+    ],
+    "zeus-panda": [
+      "Zeus Panda",
+      "malware"
+    ],
+    "zipline": [
+      "ZIPLINE",
+      "malware"
+    ],
+    "zirconium": [
+      "ZIRCONIUM",
+      "actor"
+    ],
+    "zlib": [
+      "ZLib",
+      "malware"
+    ],
+    "zox": [
+      "Zox",
+      "malware"
+    ],
+    "zwshell": [
+      "zwShell",
+      "malware"
+    ],
+    "zxshell": [
+      "ZxShell",
+      "malware"
+    ],
+    "zxxz": [
+      "ZxxZ",
+      "malware"
+    ]
+  }
+}

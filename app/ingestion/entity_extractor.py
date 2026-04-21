@@ -3,11 +3,16 @@
 Extracts CVE IDs, vendor/product names, and threat actor/malware/tool names
 from article text fields. No NLP — purely regex and seed-list matching.
 """
+import json
+import logging
 import re
 from decimal import Decimal
+from pathlib import Path
 from typing import Optional
 
 from app.ingestion.normalizer import NormalizedArticle, strip_html, _extract_cve_ids
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Seed lists — normalized_key → display name
@@ -147,8 +152,12 @@ PRODUCT_KEYWORDS: dict[str, str] = {
     "wing-ftp": "Wing FTP",
 }
 
+# ---------------------------------------------------------------------------
+# Baseline seed list — used as fallback when data/threat_keywords.json is absent
+# ---------------------------------------------------------------------------
+
 # normalized_key → (display_name, entity_type)
-THREAT_KEYWORDS: dict[str, tuple[str, str]] = {
+_BASELINE_KEYWORDS: dict[str, tuple[str, str]] = {
     # Malware families
     "lockbit": ("LockBit", "malware"),
     "alphv": ("ALPHV", "malware"),
@@ -200,6 +209,44 @@ THREAT_KEYWORDS: dict[str, tuple[str, str]] = {
     "impacket": ("Impacket", "tool"),
 }
 
+_BASELINE_ALIASES: dict[str, str] = {}
+
+# ---------------------------------------------------------------------------
+# File-based loader — loads from data/threat_keywords.json when available
+# ---------------------------------------------------------------------------
+
+_DATA_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "threat_keywords.json"
+
+
+def _load_threat_data() -> tuple[dict[str, tuple[str, str]], dict[str, str]]:
+    """Load threat keywords and alias table from data/threat_keywords.json.
+
+    When the file exists, its data is merged with the baseline so that entries
+    present in the baseline but absent from the file are always available.
+    Falls back to the baseline entirely if the file is missing or unreadable.
+    """
+    if _DATA_FILE.exists():
+        try:
+            with open(_DATA_FILE) as f:
+                data = json.load(f)
+            # File data takes precedence; baseline fills any gaps
+            keywords: dict[str, tuple[str, str]] = {**_BASELINE_KEYWORDS}
+            keywords.update({k: tuple(v) for k, v in data["keywords"].items()})
+            aliases: dict[str, str] = {**_BASELINE_ALIASES}
+            aliases.update(data.get("aliases", {}))
+            logger.debug(
+                "Loaded %d keywords, %d aliases from %s",
+                len(keywords), len(aliases), _DATA_FILE,
+            )
+            return keywords, aliases
+        except Exception:
+            logger.warning("Failed to load %s, falling back to baseline", _DATA_FILE, exc_info=True)
+    return _BASELINE_KEYWORDS, _BASELINE_ALIASES
+
+
+# Load at module init — replaced by file data when available
+THREAT_KEYWORDS, _THREAT_ALIASES = _load_threat_data()
+
 # Pre-compiled patterns for keyword matching
 # Short names (<=3 chars) use case-sensitive matching to avoid false positives
 _VENDOR_PATTERNS: list[tuple[str, str, re.Pattern]] = []
@@ -216,6 +263,12 @@ _THREAT_PATTERNS: list[tuple[str, str, str, re.Pattern]] = []
 for _key, (_name, _etype) in THREAT_KEYWORDS.items():
     _flags = 0 if len(_name) <= 3 else re.IGNORECASE
     _THREAT_PATTERNS.append((_key, _name, _etype, re.compile(r"\b" + re.escape(_name) + r"\b", _flags)))
+
+# Pre-compiled alias patterns built from loaded alias table
+_ALIAS_PATTERNS: list[tuple[str, re.Pattern]] = [
+    (canonical_key, re.compile(r"\b" + re.escape(display_text) + r"\b", re.IGNORECASE))
+    for display_text, canonical_key in _THREAT_ALIASES.items()
+]
 
 
 def _normalize_key(name: str) -> str:
@@ -303,5 +356,16 @@ def extract_entities(article: NormalizedArticle) -> list[dict]:
                 "name": name,
                 "normalized_key": key,
             }
+
+    # Alias loop — maps alternative names to canonical keys (e.g. "Midnight Blizzard" → "apt29")
+    for canonical_key, pattern in _ALIAS_PATTERNS:
+        if canonical_key not in seen and pattern.search(combined):
+            if canonical_key in THREAT_KEYWORDS:
+                name, etype = THREAT_KEYWORDS[canonical_key]
+                seen[canonical_key] = {
+                    "type": etype,
+                    "name": name,
+                    "normalized_key": canonical_key,
+                }
 
     return list(seen.values())
