@@ -124,6 +124,7 @@ _CLUSTERS_MAPPING = {
             "tags":           {"type": "keyword"},
             "article_count":  {"type": "integer"},
             "cve_ids":        {"type": "keyword"},
+            "seed_cve_ids":   {"type": "keyword"},
             "entity_keys":    {"type": "keyword"},
             "timeline": {
                 "type": "nested",
