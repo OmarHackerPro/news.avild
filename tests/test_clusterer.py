@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from app.ingestion.clusterer import _signal_keys
+from app.ingestion.clusterer import _signal_keys, cluster_article
 
 
 @pytest.fixture
@@ -99,7 +99,11 @@ async def test_cluster_article_cve_match_merges():
 
         mock_cve.return_value = "cluster-existing"
 
-        await cluster_article(article, "test-article-001", ["fortinet", "fortios"])
+        entities = [
+            {"normalized_key": "fortinet", "type": "vendor"},
+            {"normalized_key": "fortios", "type": "product"},
+        ]
+        await cluster_article(article, "test-article-001", entities)
 
         mock_cve.assert_awaited_once_with(["CVE-2026-1234"])
         mock_merge.assert_awaited_once()
@@ -133,3 +137,45 @@ def test_signal_keys_all_vendors_returns_empty():
         {"normalized_key": "google", "type": "vendor"},
     ]
     assert _signal_keys(entities) == []
+
+
+# ---------------------------------------------------------------------------
+# cluster_article — CVE cap (roundup articles skip CVE lookup)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_cluster_article_skips_cve_lookup_for_roundup():
+    """Articles with >3 CVEs skip CVE-based cluster matching."""
+    entities = [
+        {"normalized_key": f"cve-2024-{i:04d}", "type": "cve"} for i in range(5)
+    ]
+    article = {"slug": "patch-tuesday", "title": "Patch Tuesday", "published_at": "2024-01-01T00:00:00Z"}
+
+    with patch("app.ingestion.clusterer.find_cluster_by_cve", new_callable=AsyncMock) as mock_cve, \
+         patch("app.ingestion.clusterer.find_cluster_by_entities", new_callable=AsyncMock, return_value=None), \
+         patch("app.ingestion.clusterer.find_cluster_by_mlt", new_callable=AsyncMock, return_value=None), \
+         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock):
+        await cluster_article(article, "patch-tuesday", entities)
+        mock_cve.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# cluster_article — vendor entities excluded from entity matching
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_cluster_article_excludes_vendors_from_entity_matching():
+    """Vendor entities are excluded from signal_keys used for cluster matching."""
+    entities = [
+        {"normalized_key": "microsoft", "type": "vendor"},
+        {"normalized_key": "google", "type": "vendor"},
+    ]
+    article = {"slug": "generic-article", "title": "Generic Article", "published_at": "2024-01-01T00:00:00Z"}
+
+    with patch("app.ingestion.clusterer.find_cluster_by_entities", new_callable=AsyncMock, return_value=None) as mock_entities, \
+         patch("app.ingestion.clusterer.find_cluster_by_cve", new_callable=AsyncMock, return_value=None), \
+         patch("app.ingestion.clusterer.find_cluster_by_mlt", new_callable=AsyncMock, return_value=None), \
+         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock):
+        await cluster_article(article, "generic-article", entities)
+        # Should be called with empty signal_keys (vendors excluded)
+        mock_entities.assert_awaited_once_with([])

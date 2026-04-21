@@ -348,7 +348,7 @@ async def merge_into_cluster(
 async def cluster_article(
     article: NormalizedArticle,
     slug: str,
-    entity_keys: list[str],
+    entities: list[dict],
 ) -> None:
     """Assign an article to a cluster (existing or new).
 
@@ -357,19 +357,28 @@ async def cluster_article(
       2. Entity overlap (2+ shared keys)
       3. Narrative similarity (MLT fallback)
       4. Create new cluster
+
+    ``entities`` is a list of entity dicts with 'normalized_key' and 'type'.
+    All entity keys are stored in the cluster; only high-signal keys
+    (non-vendor types) are used for matching to avoid false merges.
+    Roundup articles (> _MAX_ARTICLE_CVES_FOR_MATCHING CVEs) skip CVE lookup.
     """
+    entity_keys = [e["normalized_key"] for e in entities]
+    signal_keys = _signal_keys(entities)
+
     cve_ids = article.get("cve_ids") or []
     cluster_id: Optional[str] = None
 
-    # 1. CVE overlap
-    if cve_ids:
+    # 1. CVE overlap — skip if article is a roundup (too many CVEs)
+    cve_signal_ids = [k for k in signal_keys if k.startswith("cve-")]
+    if cve_ids and len(cve_ids) <= _MAX_ARTICLE_CVES_FOR_MATCHING:
         cluster_id = await find_cluster_by_cve(cve_ids)
         if cluster_id:
             logger.debug("CVE match for '%s' → cluster %s", slug, cluster_id)
 
-    # 2. Entity overlap (need 2+ keys to be meaningful)
-    if not cluster_id and len(entity_keys) >= 2:
-        cluster_id = await find_cluster_by_entities(entity_keys)
+    # 2. Entity overlap — use signal_keys (vendors excluded) for matching
+    if not cluster_id:
+        cluster_id = await find_cluster_by_entities(signal_keys)
         if cluster_id:
             logger.debug("Entity match for '%s' → cluster %s", slug, cluster_id)
 
@@ -381,7 +390,7 @@ async def cluster_article(
         if cluster_id:
             logger.debug("MLT match for '%s' → cluster %s", slug, cluster_id)
 
-    # 4. Merge or create
+    # 4. Merge or create — always pass all entity_keys (not just signal_keys)
     if cluster_id:
         raw_cvss = article.get("cvss_score")
         await merge_into_cluster(

@@ -106,18 +106,21 @@ async def _scroll_articles(source: str | None) -> list[dict]:
     return results
 
 
-async def _get_entity_keys_for_slug(slug: str) -> list[str]:
-    """Look up entity normalized_keys linked to an article slug."""
+async def _get_entities_for_slug(slug: str) -> list[dict]:
+    """Look up entities linked to an article slug, returning dicts with normalized_key and type."""
     client = get_os_client()
     resp = await client.search(
         index=INDEX_ENTITIES,
         body={
             "query": {"term": {"article_ids": slug}},
             "size": 200,
-            "_source": ["normalized_key"],
+            "_source": ["normalized_key", "type"],
         },
     )
-    return [hit["_source"]["normalized_key"] for hit in resp["hits"]["hits"]]
+    return [
+        {"normalized_key": hit["_source"]["normalized_key"], "type": hit["_source"].get("type", "unknown")}
+        for hit in resp["hits"]["hits"]
+    ]
 
 
 async def main(args: argparse.Namespace) -> None:
@@ -149,19 +152,19 @@ async def main(args: argparse.Namespace) -> None:
             "published_at": src.get("published_at"),
         }
 
-        entity_keys = await _get_entity_keys_for_slug(slug)
+        entities = await _get_entities_for_slug(slug)
 
         if args.dry_run:
             cve_label = f"CVEs={article_dict['cve_ids']}" if article_dict["cve_ids"] else "no CVEs"
             logger.info(
                 "[DRY RUN] %d/%d %s — %d entities, %s",
-                i, len(unclustered), slug[:50], len(entity_keys), cve_label,
+                i, len(unclustered), slug[:50], len(entities), cve_label,
             )
             totals["processed"] += 1
             continue
 
         try:
-            await cluster_article(article_dict, slug, entity_keys)
+            await cluster_article(article_dict, slug, entities)
             totals["processed"] += 1
         except Exception:
             logger.exception("Failed to cluster %s", slug[:50])

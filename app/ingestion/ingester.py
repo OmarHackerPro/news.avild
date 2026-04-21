@@ -308,8 +308,7 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient, *, update
 
                 # Clustering — always attempt, even without entities
                 try:
-                    entity_keys = [e["normalized_key"] for e in entities]
-                    await cluster_article(article, article["slug"], entity_keys)
+                    await cluster_article(article, article["slug"], entities)
                 except Exception:
                     logger.exception(
                         "[%s] Clustering failed for '%s'",
