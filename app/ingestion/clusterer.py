@@ -184,12 +184,19 @@ async def find_cluster_by_mlt(
                 }
             },
             "size": 1,
-            "_source": False,
+            "_source": ["entity_keys", "article_count"],
         },
     )
 
     hits = resp["hits"]["hits"]
     if hits and hits[0]["_score"] >= _MLT_SCORE_THRESHOLD:
+        src = hits[0]["_source"]
+        entity_keys = src.get("entity_keys") or []
+        article_count = src.get("article_count", 1)
+        # Reject "naked series" clusters: no named-entity anchor and already grown
+        # large via pure text similarity (ISC Stormcast, weekly newsletters, etc.)
+        if not entity_keys and article_count >= 3:
+            return None
         return hits[0]["_id"]
     return None
 

@@ -27,6 +27,15 @@ STIX_URL = (
 _DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "data" / "threat_keywords.json"
 
 
+# Display names that would produce constant false positives because they are common
+# English words, standard protocol names, or OS built-in commands that appear in
+# nearly every security article without indicating a specific threat.
+# "at"  — English preposition: \bat\b fires on every sentence
+# "net" — Windows net.exe: \bnet\b fires on .NET Framework, internet references
+# "ftp" — File Transfer Protocol: appears in URLs and generic protocol descriptions
+_SKIP_NAMES: frozenset[str] = frozenset({"at", "net", "ftp"})
+
+
 def _normalize(name: str) -> str:
     key = name.lower()
     key = re.sub(r"[^a-z0-9]+", "-", key)
@@ -45,7 +54,7 @@ def _build_threat_data(stix: dict) -> dict:
 
         obj_type = obj.get("type")
         name = obj.get("name", "").strip()
-        if not name:
+        if not name or name.lower() in _SKIP_NAMES:
             continue
 
         if obj_type == "intrusion-set":
