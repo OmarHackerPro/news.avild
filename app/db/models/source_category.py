@@ -12,7 +12,7 @@ class SourceCategory(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("feed_sources.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("feed_sources.id", ondelete="CASCADE"), nullable=False, index=True
     )
     category_label: Mapped[str] = mapped_column(String(255), nullable=False)
     ingest: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")

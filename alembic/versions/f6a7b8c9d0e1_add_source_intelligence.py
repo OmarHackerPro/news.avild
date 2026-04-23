@@ -63,6 +63,7 @@ def upgrade() -> None:
         ),
         sa.UniqueConstraint("source_id", "category_label", name="uq_source_categories"),
     )
+    op.create_index("ix_source_categories_source_id", "source_categories", ["source_id"])
 
     # ------------------------------------------------------------------
     # 3. Seed credibility weights for known high-signal sources
@@ -82,6 +83,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_index("ix_source_categories_source_id", table_name="source_categories")
     op.drop_table("source_categories")
     op.drop_column("feed_sources", "extract_cvss")
     op.drop_column("feed_sources", "extract_cves")
