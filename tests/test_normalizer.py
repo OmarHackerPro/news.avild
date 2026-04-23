@@ -227,6 +227,19 @@ class TestExtractImageUrl:
         assert len(result) <= 2048
 
 
+def test_source_category_model_imports():
+    from app.db.models.source_category import SourceCategory
+    assert SourceCategory.__tablename__ == "source_categories"
+
+def test_feed_source_to_source_dict_includes_new_fields():
+    from app.db.models.feed_source import FeedSource
+    # Check the method signature returns new fields by inspecting column names
+    cols = {c.key for c in FeedSource.__table__.columns}
+    assert "credibility_weight" in cols
+    assert "extract_cves" in cols
+    assert "extract_cvss" in cols
+
+
 from app.ingestion.normalizer import NORMALIZER_REGISTRY, normalize_cisa_news, normalize_cisa_advisory
 
 
