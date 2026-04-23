@@ -219,7 +219,7 @@ async def _tag_article(client, slug: str, cluster_id: str) -> None:
 # ---------------------------------------------------------------------------
 
 async def create_cluster(
-    article: NormalizedArticle, entity_keys: list[str],
+    article: NormalizedArticle, entity_keys: list[str], credibility_weight: float = 1.0,
 ) -> str:
     """Create a new cluster seeded from a single article. Returns cluster _id."""
     now = datetime.now(timezone.utc).isoformat()
@@ -237,6 +237,7 @@ async def create_cluster(
         entity_keys=entity_keys,
         state="new",
         latest_at=now,
+        max_credibility_weight=credibility_weight,
     )
 
     doc = {
@@ -248,6 +249,7 @@ async def create_cluster(
         "confidence": score_data["confidence"],
         "top_factors": score_data["top_factors"],
         "max_cvss": max_cvss,
+        "max_credibility_weight": credibility_weight,
         "article_ids": [slug],
         "article_count": 1,
         "cve_ids": cve_ids,
@@ -290,6 +292,7 @@ async def merge_into_cluster(
     title: str = "",
     published_at: str = "",
     cvss_score: Optional[float] = None,
+    credibility_weight: float = 1.0,
 ) -> None:
     """Merge an article into an existing cluster via scripted update."""
     now = datetime.now(timezone.utc).isoformat()
@@ -334,6 +337,10 @@ async def merge_into_cluster(
                 ctx._source.max_cvss = params.cvss_score;
             }
         }
+        // Track max credibility_weight seen across all member articles
+        if (ctx._source.max_credibility_weight == null || params.credibility_weight > ctx._source.max_credibility_weight) {
+            ctx._source.max_credibility_weight = params.credibility_weight;
+        }
         ctx._source.latest_at = params.now;
         ctx._source.updated_at = params.now;
         if (ctx._source.article_count >= 3) {
@@ -358,6 +365,7 @@ async def merge_into_cluster(
                     "entity_keys": entity_keys,
                     "cve_ids": cve_ids,
                     "cvss_score": cvss_score,
+                    "credibility_weight": credibility_weight,
                     "now": now,
                 },
             },
@@ -398,6 +406,7 @@ async def cluster_article(
     signal_keys = _signal_keys(entities)
 
     cve_ids = article.get("cve_ids") or []
+    credibility_weight = float(article.get("credibility_weight") or 1.0)
     cluster_id: Optional[str] = None
 
     # 1. CVE overlap — skip if article is a roundup (too many CVEs)
@@ -429,6 +438,7 @@ async def cluster_article(
             title=article.get("title", ""),
             published_at=article.get("published_at", ""),
             cvss_score=float(raw_cvss) if raw_cvss is not None else None,
+            credibility_weight=credibility_weight,
         )
     else:
-        await create_cluster(article, entity_keys)
+        await create_cluster(article, entity_keys, credibility_weight)
