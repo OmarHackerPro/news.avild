@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -17,6 +17,15 @@ class FeedSource(Base):
     default_severity: Mapped[str | None] = mapped_column(String(50), nullable=True)
     normalizer_key: Mapped[str] = mapped_column(
         String(50), nullable=False, server_default="generic"
+    )
+    credibility_weight: Mapped[float] = mapped_column(
+        Float, nullable=False, server_default="1.0"
+    )
+    extract_cves: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
+    extract_cvss: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
     )
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="true"
@@ -51,4 +60,7 @@ class FeedSource(Base):
             "default_category": self.default_category,
             "default_severity": self.default_severity,
             "normalizer": self.normalizer_key,
+            "credibility_weight": self.credibility_weight,
+            "extract_cves": self.extract_cves,
+            "extract_cvss": self.extract_cvss,
         }
