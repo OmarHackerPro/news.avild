@@ -108,6 +108,8 @@
     var card = document.createElement('article');
     card.className = 'news-card';
     card.setAttribute('data-cluster-id', cluster.id || '');
+    if (severity) card.setAttribute('data-severity', severity);
+    if (cluster.state) card.setAttribute('data-state', cluster.state);
     card.style.animationDelay = (index % 12) * 0.03 + 's';
 
     var t = (window.CyberNews && window.CyberNews.t) ? window.CyberNews.t.bind(window.CyberNews) : function(k) { return k; };
@@ -222,6 +224,11 @@
       });
 
       offset += items.length;
+
+      // Re-apply client-side severity/state filter to newly rendered cards
+      if (typeof window.applyClientSideFilter === 'function') {
+        window.applyClientSideFilter();
+      }
 
       // Translate newly added cards if a non-English language is active
       var activeLang = window.currentLanguage || 'en';
