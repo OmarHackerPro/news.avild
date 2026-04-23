@@ -5,7 +5,7 @@
 (function() {
   var partialsBase = '/static/partials/';
   var jsBase = '/static/js/';
-  var jsVersion = '4';
+  var jsVersion = '7';
 
   function fetchHtml(path) {
     return fetch(partialsBase + path).then(function(r) {
@@ -84,7 +84,7 @@
         'features/priority-filter.js',
         'core/translator.js',
         'features/news-grid.js',
-        'features/cluster-drawer.js?v=3',
+        'features/cluster-drawer.js?v=4',
         'features/news-modal.js',
         'features/share-modal.js',
         'features/breaking.js',

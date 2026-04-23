@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import (
     admin, auth, clusters, digest, entities, exports, feed, feeds, news,
-    preferences, rss, search, sources,
+    preferences, rss, search, sources, translate,
 )
 from app.core.config import settings
 from app.db.opensearch import close_os_client, ensure_indexes
@@ -88,6 +88,7 @@ app.include_router(digest.router, prefix="/api")
 app.include_router(exports.router, prefix="/api")
 app.include_router(clusters.router, prefix="/api")
 app.include_router(feed.router, prefix="/api")
+app.include_router(translate.router, prefix="/api")
 
 
 @app.get("/health", tags=["health"], summary="Health check")
