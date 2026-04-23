@@ -1,11 +1,12 @@
 """Cluster scoring and explainability.
 
-Computes a 0-100 importance score for a cluster from five factors:
+Computes a 0-100 importance score for a cluster from six factors:
   1. CVSS severity   — max CVSS of member articles          (0-30 pts)
   2. Coverage        — number of unique articles            (0-25 pts)
   3. Recency         — time since the cluster last updated  (0-20 pts)
   4. CVE / Entities  — number of known CVEs or entities     (0-15 pts)
   5. State bonus     — cluster maturity                     (0-10 pts)
+  6. Source credibility — max credibility_weight of member articles (0-15 pts)
 
 Also populates `confidence` ("low" / "medium" / "high") and a
 `top_factors` list of up to 5 contributing factors with their point
@@ -28,6 +29,7 @@ def compute_cluster_score(
     entity_keys: list[str],
     state: str,
     latest_at: str,
+    max_credibility_weight: float = 1.0,
 ) -> dict:
     """Return {score, confidence, top_factors} — pure, no I/O."""
     factors: list[dict] = []
@@ -113,6 +115,24 @@ def compute_cluster_score(
     total += state_pts
 
     # ------------------------------------------------------------------
+    # 6. Source credibility component (0-15 pts)
+    # ------------------------------------------------------------------
+    if max_credibility_weight >= 1.5:
+        cred_pts = 15.0
+    elif max_credibility_weight >= 1.2:
+        cred_pts = 10.0
+    elif max_credibility_weight >= 1.0:
+        cred_pts = 5.0
+    else:
+        cred_pts = 0.0
+    factors.append({
+        "factor": "source_credibility",
+        "label": f"Source weight {max_credibility_weight:.1f}",
+        "points": cred_pts,
+    })
+    total += cred_pts
+
+    # ------------------------------------------------------------------
     # Finalise
     # ------------------------------------------------------------------
     factors.sort(key=lambda f: f["points"], reverse=True)
@@ -146,6 +166,7 @@ async def rescore_cluster(cluster_id: str) -> None:
         entity_keys=src.get("entity_keys") or [],
         state=src.get("state", "new"),
         latest_at=src.get("latest_at") or src.get("created_at", ""),
+        max_credibility_weight=float(src.get("max_credibility_weight") or 1.0),
     )
 
     await client.update(
