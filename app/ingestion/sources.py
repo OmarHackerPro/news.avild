@@ -1,4 +1,4 @@
-from typing import Optional, TypedDict
+from typing import NotRequired, Optional, TypedDict
 
 
 class FeedSource(TypedDict):
@@ -8,6 +8,9 @@ class FeedSource(TypedDict):
     default_category: str   # research | deep-dives | beginner | dark-web | breaking
     default_severity: Optional[str]
     normalizer: str         # key into NORMALIZER_REGISTRY in normalizer.py
+    credibility_weight: NotRequired[float]   # score multiplier; default 1.0
+    extract_cves: NotRequired[bool]          # extract CVE IDs from advisory HTML
+    extract_cvss: NotRequired[bool]          # extract CVSS score from advisory HTML
 
 
 # Seed data — used by scripts/seed_sources.py and migration 5b2c3d4e6f7a.
