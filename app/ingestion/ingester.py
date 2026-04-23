@@ -16,7 +16,7 @@ from app.db.session import AsyncSessionLocal
 from app.ingestion.clusterer import cluster_article
 from app.ingestion.entity_extractor import extract_entities
 from app.ingestion.entity_store import store_article_entities
-from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle
+from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle, normalize_article
 from app.ingestion.sources import FeedSource
 
 logger = logging.getLogger(__name__)
@@ -259,14 +259,19 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient, *, update
     stats["fetched"] = len(entries)
     logger.info("[%s] Fetched %d entries.", name, len(entries))
 
-    normalizer_fn = NORMALIZER_REGISTRY.get(source["normalizer"])
-    if normalizer_fn is None:
+    flags = NORMALIZER_REGISTRY.get(source["normalizer"])
+    if flags is None:
         logger.error("[%s] Unknown normalizer '%s' — skipping.", name, source["normalizer"])
         return stats
 
     for entry in entries:
         try:
-            article = normalizer_fn(entry, source)
+            handler = flags.get("_handler")
+            if handler:
+                article = handler(entry, source)
+            else:
+                merged_source = {**source, **{k: v for k, v in flags.items() if not k.startswith("_")}}
+                article = normalize_article(entry, merged_source)
             if article is None:
                 logger.debug(
                     "[%s] Skipped entry (normalizer returned None): %s",

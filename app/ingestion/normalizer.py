@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timezone
 from decimal import Decimal
 from html.parser import HTMLParser
-from typing import Callable, Optional
+from typing import Optional
 
 import feedparser
 
@@ -292,6 +292,7 @@ def normalize_cisa_news(
         type=source["default_type"],
         category=source["default_category"],
         source_url=link[:2048],
+        credibility_weight=source.get("credibility_weight", 1.0),
     )
 
 
