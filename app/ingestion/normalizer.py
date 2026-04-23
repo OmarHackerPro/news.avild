@@ -174,8 +174,11 @@ def _extract_cvss_vector(html: str) -> Optional[str]:
 
 
 def _extract_advisory_id(url: str) -> Optional[str]:
-    """Extract CISA advisory ID from URL (e.g. 'ICSA-26-057-05', 'AA25-099A')."""
-    m = re.search(r"/((?:icsa|icsma|aa|ics)-[\d\w-]+)(?:\?|$|/)", url, re.IGNORECASE)
+    """Extract CISA advisory ID from URL (e.g. 'ICSA-26-057-05', 'AA25-099A').
+
+    Handles both hyphenated prefixes (icsa-26-...) and year-embedded prefixes (aa25-...).
+    """
+    m = re.search(r"/((?:icsa|icsma|aa|ics)\d*-[\d\w-]+)(?:\?|$|/)", url, re.IGNORECASE)
     return m.group(1).upper() if m else None
 
 
@@ -348,17 +351,109 @@ def normalize_cisa_advisory(
     )
 
 
+def normalize_article(
+    entry: feedparser.FeedParserDict,
+    source: dict,
+) -> Optional[NormalizedArticle]:
+    """Config-driven normalizer — reads extract_cves/extract_cvss flags from source dict.
+
+    Replaces the per-source class hierarchy for all sources except cisa_news
+    (which uses its own minimal function due to that feed's empty content).
+    source dict must have: name, url, default_type, default_category, default_severity.
+    Optional: credibility_weight (default 1.0), extract_cves (default False), extract_cvss (default False).
+    """
+    title = (entry.get("title") or "").strip()
+    link = (entry.get("link") or "").strip()
+
+    if not title or not link:
+        return None
+
+    guid = (entry.get("id") or link).strip()
+
+    # Content body: prefer content:encoded / Atom <content>, fall back to summary
+    content_list = entry.get("content") or []
+    content_value = (content_list[0].get("value") if content_list else "") or ""
+    raw_desc = entry.get("summary") or entry.get("description") or ""
+
+    if content_value:
+        content_html = content_value or None
+        desc_text = (
+            _strip_wp_footer(strip_html(raw_desc).strip())
+            or strip_html(content_value).strip()
+            or title
+        )
+        summary_text = _strip_wp_footer(strip_html(content_value).strip())[:2000] or None
+    elif raw_desc:
+        content_html = raw_desc or None
+        desc_text = _strip_wp_footer(strip_html(raw_desc).strip()) or title
+        summary_text = _strip_wp_footer(strip_html(raw_desc).strip())[:2000] or None
+    else:
+        content_html = None
+        desc_text = title
+        summary_text = None
+
+    tags = _extract_tags(entry)
+    image_url = _extract_image_url(entry, content_html)
+
+    article = NormalizedArticle(
+        slug=build_slug(title, guid),
+        guid=guid,
+        source_name=source["name"],
+        title=title[:500],
+        author=(entry.get("author") or "").strip() or None,
+        desc=desc_text,
+        content_html=content_html,
+        summary=summary_text,
+        content_source="rss" if content_html else None,
+        image_url=image_url[:2048] if image_url else None,
+        tags=tags,
+        keywords=[],
+        published_at=_parse_date(entry),
+        severity=source["default_severity"],
+        type=source["default_type"],
+        category=source["default_category"],
+        source_url=link[:2048],
+        cve_ids=[],
+        credibility_weight=source.get("credibility_weight", 1.0),
+    )
+
+    # Conditional: extract CVE IDs from advisory content
+    if source.get("extract_cves"):
+        tag_text = " ".join(tags)
+        cve_source = f"{title} {content_html or ''} {tag_text}"
+        article["cve_ids"] = _extract_cve_ids(cve_source)
+
+    # Conditional: extract CVSS score + advisory metadata
+    if source.get("extract_cvss"):
+        cvss = _extract_cvss_score(content_html or "")
+        if cvss is not None:
+            article["cvss_score"] = cvss
+        raw_metadata: dict = {}
+        advisory_id = _extract_advisory_id(link)
+        if advisory_id:
+            raw_metadata["advisory_id"] = advisory_id
+        cvss_vector = _extract_cvss_vector(content_html or "")
+        if cvss_vector:
+            raw_metadata["cvss_vector"] = cvss_vector
+        if raw_metadata:
+            article["raw_metadata"] = raw_metadata
+
+    return article
+
+
 # ---------------------------------------------------------------------------
-# Registry — string key → callable
+# Registry — string key → flag dict (or _handler for special cases).
 # Keeps FeedSource as pure serializable data (no Callable references there).
+# Ingester dispatch: if "_handler" present → call handler(entry, source);
+#                    otherwise → normalize_article(entry, {**source, **flags})
 # ---------------------------------------------------------------------------
 
-NORMALIZER_REGISTRY: dict[str, Callable] = {
-    "generic":          normalize_generic,
-    "thn":              normalize_generic,
-    "bleepingcomputer": normalize_generic,
-    "securityweek":     normalize_generic,
-    "krebs":            normalize_generic,
-    "cisa_news":        normalize_cisa_news,
-    "cisa_advisory":    normalize_cisa_advisory,
+NORMALIZER_REGISTRY: dict[str, dict] = {
+    "generic":          {},
+    "thn":              {},
+    "bleepingcomputer": {},
+    "securityweek":     {},
+    "krebs":            {},
+    "cisa_advisory":    {"extract_cves": True, "extract_cvss": True},
+    "cisa_news":        {"_handler": normalize_cisa_news},
 }

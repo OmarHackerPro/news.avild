@@ -240,18 +240,135 @@ def test_feed_source_to_source_dict_includes_new_fields():
     assert "extract_cvss" in cols
 
 
-from app.ingestion.normalizer import NORMALIZER_REGISTRY, normalize_cisa_news, normalize_cisa_advisory
+from app.ingestion.normalizer import NORMALIZER_REGISTRY, normalize_cisa_news, normalize_article
+
+
+class TestNormalizeArticle:
+    def _make_source(self, **overrides) -> dict:
+        defaults = {
+            "name": "TestFeed",
+            "url": "https://example.com/feed",
+            "default_type": "news",
+            "default_category": "breaking",
+            "default_severity": None,
+            "normalizer": "generic",
+            "credibility_weight": 1.0,
+            "extract_cves": False,
+            "extract_cvss": False,
+        }
+        defaults.update(overrides)
+        return defaults
+
+    def test_returns_article_with_credibility_weight(self):
+        entry = {
+            "title": "Test Article",
+            "link": "https://example.com/article",
+            "id": "https://example.com/article",
+            "summary": "text",
+        }
+        result = normalize_article(entry, self._make_source(credibility_weight=1.5))
+        assert result is not None
+        assert result["credibility_weight"] == 1.5
+
+    def test_credibility_weight_defaults_to_1(self):
+        source = self._make_source()
+        source.pop("credibility_weight")
+        entry = {
+            "title": "Test Article",
+            "link": "https://example.com/article",
+            "id": "https://example.com/article",
+            "summary": "text",
+        }
+        result = normalize_article(entry, source)
+        assert result is not None
+        assert result["credibility_weight"] == 1.0
+
+    def test_does_not_extract_cves_when_flag_false(self):
+        entry = {
+            "title": "Patch for CVE-2026-1234",
+            "link": "https://example.com/article",
+            "id": "https://example.com/article",
+            "summary": "<p>Fixes CVE-2026-1234</p>",
+        }
+        result = normalize_article(entry, self._make_source(extract_cves=False))
+        assert result is not None
+        assert result.get("cve_ids") in ([], None)
+
+    def test_extracts_cves_when_flag_true(self):
+        entry = {
+            "title": "Advisory",
+            "link": "https://example.com/article",
+            "id": "https://example.com/article",
+            "summary": "<p>Fixes CVE-2026-1234 and CVE-2026-5678</p>",
+        }
+        result = normalize_article(entry, self._make_source(extract_cves=True))
+        assert result is not None
+        assert "CVE-2026-1234" in result["cve_ids"]
+        assert "CVE-2026-5678" in result["cve_ids"]
+
+    def test_does_not_extract_cvss_when_flag_false(self):
+        entry = {
+            "title": "Advisory",
+            "link": "https://example.com/article",
+            "id": "https://example.com/article",
+            "summary": "Base Score: 9.8",
+        }
+        result = normalize_article(entry, self._make_source(extract_cvss=False))
+        assert result is not None
+        assert result.get("cvss_score") is None
+
+    def test_extracts_cvss_when_flag_true(self):
+        entry = {
+            "title": "Advisory",
+            "link": "https://example.com/article",
+            "id": "https://example.com/article",
+            "summary": "CVSS v3.1 Base Score: 9.8",
+        }
+        result = normalize_article(entry, self._make_source(extract_cvss=True))
+        assert result is not None
+        assert float(result["cvss_score"]) == 9.8
+
+    def test_extracts_advisory_id_into_raw_metadata_when_flag_true(self):
+        entry = {
+            "title": "Advisory",
+            "link": "https://www.cisa.gov/advisories/aa25-099A",
+            "id": "https://www.cisa.gov/advisories/aa25-099A",
+            "summary": "content",
+        }
+        result = normalize_article(entry, self._make_source(extract_cvss=True))
+        assert result is not None
+        assert result.get("raw_metadata", {}).get("advisory_id") == "AA25-099A"
+
+    def test_returns_none_for_missing_title(self):
+        entry = {"link": "https://example.com/article"}
+        assert normalize_article(entry, self._make_source()) is None
+
+    def test_returns_none_for_missing_link(self):
+        entry = {"title": "Test"}
+        assert normalize_article(entry, self._make_source()) is None
 
 
 class TestNormalizerRegistry:
-    def test_all_keys_resolve(self):
-        expected_keys = {"generic", "thn", "bleepingcomputer", "securityweek", "krebs", "cisa_news", "cisa_advisory"}
-        assert set(NORMALIZER_REGISTRY.keys()) == expected_keys
+    def test_all_keys_present(self):
+        expected = {
+            "generic", "thn", "bleepingcomputer", "securityweek",
+            "krebs", "cisa_news", "cisa_advisory",
+        }
+        assert set(NORMALIZER_REGISTRY.keys()) == expected
 
-    def test_aliases_point_to_generic(self):
+    def test_flag_entries_are_dicts(self):
+        for key in ("generic", "thn", "bleepingcomputer", "securityweek", "krebs", "cisa_advisory"):
+            assert isinstance(NORMALIZER_REGISTRY[key], dict), f"{key} must be a dict"
+
+    def test_cisa_advisory_has_extraction_flags(self):
+        flags = NORMALIZER_REGISTRY["cisa_advisory"]
+        assert flags.get("extract_cves") is True
+        assert flags.get("extract_cvss") is True
+
+    def test_cisa_news_has_handler(self):
+        assert "_handler" in NORMALIZER_REGISTRY["cisa_news"]
+        assert callable(NORMALIZER_REGISTRY["cisa_news"]["_handler"])
+
+    def test_generic_flags_are_empty(self):
         for key in ("generic", "thn", "bleepingcomputer", "securityweek", "krebs"):
-            assert NORMALIZER_REGISTRY[key] is normalize_generic
-
-    def test_cisa_normalizers_are_distinct(self):
-        assert NORMALIZER_REGISTRY["cisa_news"] is normalize_cisa_news
-        assert NORMALIZER_REGISTRY["cisa_advisory"] is normalize_cisa_advisory
+            assert NORMALIZER_REGISTRY[key] == {}
