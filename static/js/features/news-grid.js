@@ -286,13 +286,13 @@
       if (titleEl && origTitle) {
         titleEl.style.opacity = '0.5';
         window.Translator.translateOne(origTitle, lang).then(function (tx) {
-          titleEl.textContent = tx;
+          titleEl.textContent = tx || origTitle;
           titleEl.style.opacity = '';
         });
       }
       if (descEl && origDesc) {
         window.Translator.translateOne(origDesc, lang).then(function (tx) {
-          descEl.textContent = tx;
+          descEl.textContent = tx || origDesc;
         });
       }
     });

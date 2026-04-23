@@ -34,6 +34,44 @@
     } catch (e) { return isoStr; }
   }
 
+  // ── Translation helpers ────────────────────────────────────────────────
+  // Wrap translatable text in a <span data-drawer-tx> so it can be retranslated
+  // later (e.g. when the user switches language while the drawer is open).
+  function tx(text) {
+    return '<span data-drawer-tx>' + esc(text) + '</span>';
+  }
+
+  function currentLang() {
+    return window.currentLanguage || 'en';
+  }
+
+  function canTranslate() {
+    var lang = currentLang();
+    return lang && lang !== 'en' && window.Translator && window.Translator.isSupported(lang);
+  }
+
+  function applyDrawerTranslations() {
+    if (!drawer) return;
+    var lang = currentLang();
+    var nodes = drawer.querySelectorAll('[data-drawer-tx]');
+    nodes.forEach(function (n) {
+      var orig = n.getAttribute('data-drawer-orig');
+      if (orig === null) {
+        orig = n.textContent;
+        n.setAttribute('data-drawer-orig', orig);
+      }
+      if (!canTranslate()) {
+        n.textContent = orig;
+        return;
+      }
+      window.Translator.translateOne(orig, lang).then(function (translated) {
+        if (n.getAttribute('data-drawer-orig') === orig) {
+          n.textContent = translated || orig;
+        }
+      });
+    });
+  }
+
   // ── DOM creation ───────────────────────────────────────────────────────
   var backdrop, drawer, drawerBody, fullLink, resizeHandle;
 
@@ -71,7 +109,7 @@
     fullLink.className = 'cluster-drawer-full-link';
     fullLink.target = '_blank';
     fullLink.rel = 'noopener';
-    fullLink.innerHTML = '<i class="fas fa-external-link-alt"></i> Open full page';
+    fullLink.innerHTML = '<i class="fas fa-external-link-alt"></i> ' + tx('Open full page');
 
     var closeBtn = document.createElement('button');
     closeBtn.className = 'cluster-drawer-close';
@@ -120,6 +158,11 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') close();
     });
+
+    // Retranslate drawer contents when the user switches language
+    window.addEventListener('cybernews:languageChange', function () {
+      if (drawer && drawer.classList.contains('is-open')) applyDrawerTranslations();
+    });
   }
 
   // ── State helpers ───────────────────────────────────────────────────────
@@ -127,39 +170,42 @@
     drawerBody.innerHTML =
       '<div class="cluster-drawer-state">' +
         '<div class="cluster-drawer-spinner"></div>' +
-        '<p class="cluster-drawer-state-msg">Loading&hellip;</p>' +
+        '<p class="cluster-drawer-state-msg">' + tx('Loading…') + '</p>' +
       '</div>';
+    applyDrawerTranslations();
   }
 
   function showError(msg) {
     drawerBody.innerHTML =
       '<div class="cluster-drawer-state">' +
         '<div class="cluster-state-icon"><i class="fas fa-exclamation-triangle"></i></div>' +
-        '<p class="cluster-drawer-state-title">Failed to load</p>' +
-        '<p class="cluster-drawer-state-msg">' + esc(msg) + '</p>' +
+        '<p class="cluster-drawer-state-title">' + tx('Failed to load') + '</p>' +
+        '<p class="cluster-drawer-state-msg">' + tx(msg || '') + '</p>' +
       '</div>';
+    applyDrawerTranslations();
   }
 
   function showNotFound() {
     drawerBody.innerHTML =
       '<div class="cluster-drawer-state">' +
         '<div class="cluster-state-icon"><i class="fas fa-search"></i></div>' +
-        '<p class="cluster-drawer-state-title">Cluster not found</p>' +
-        '<p class="cluster-drawer-state-msg">This cluster may have been removed.</p>' +
+        '<p class="cluster-drawer-state-title">' + tx('Cluster not found') + '</p>' +
+        '<p class="cluster-drawer-state-msg">' + tx('This cluster may have been removed.') + '</p>' +
       '</div>';
+    applyDrawerTranslations();
   }
 
   // ── Render ──────────────────────────────────────────────────────────────
   function renderCluster(cluster) {
     // Badges
     var stateLabels = { 'new': 'New', developing: 'Developing', confirmed: 'Confirmed', resolved: 'Resolved' };
-    var stateLabel = stateLabels[cluster.state] || esc(cluster.state);
-    var badgesHtml = '<span class="cluster-state cluster-state-' + esc(cluster.state) + '">' + stateLabel + '</span>';
+    var stateLabel = stateLabels[cluster.state] || (cluster.state || '');
+    var badgesHtml = '<span class="cluster-state cluster-state-' + esc(cluster.state) + '">' + tx(stateLabel) + '</span>';
 
     if (cluster.confidence) {
       var confIcons = { high: 'fas fa-shield-alt', medium: 'fas fa-adjust', low: 'fas fa-question-circle' };
       var icon = confIcons[cluster.confidence] || 'fas fa-circle';
-      badgesHtml += '<span class="cluster-confidence"><i class="' + icon + '"></i> ' + esc(cluster.confidence) + ' confidence</span>';
+      badgesHtml += '<span class="cluster-confidence"><i class="' + icon + '"></i> ' + tx(cluster.confidence + ' confidence') + '</span>';
     }
     if (cluster.categories && cluster.categories.length > 0) {
       cluster.categories.forEach(function (cat) {
@@ -167,23 +213,26 @@
       });
     }
 
-    // Meta
+    // Meta (labels are translated, values — dates / numbers — stay as-is)
     var metaParts = [];
-    if (cluster.earliest_at) metaParts.push('<span><i class="far fa-clock"></i> First seen ' + esc(formatDate(cluster.earliest_at)) + '</span>');
-    if (cluster.latest_at)   metaParts.push('<span><i class="fas fa-sync-alt"></i> Updated ' + esc(timeAgo(cluster.latest_at)) + '</span>');
-    if (cluster.score != null) metaParts.push('<span><i class="fas fa-fire"></i> Score ' + Number(cluster.score).toFixed(1) + '</span>');
+    if (cluster.earliest_at) metaParts.push('<span><i class="far fa-clock"></i> ' + tx('First seen') + ' ' + esc(formatDate(cluster.earliest_at)) + '</span>');
+    if (cluster.latest_at)   metaParts.push('<span><i class="fas fa-sync-alt"></i> ' + tx('Updated') + ' ' + esc(timeAgo(cluster.latest_at)) + '</span>');
+    if (cluster.score != null) metaParts.push('<span><i class="fas fa-fire"></i> ' + tx('Score') + ' ' + Number(cluster.score).toFixed(1) + '</span>');
     var articleCount = cluster.articles ? cluster.articles.length : 0;
-    if (articleCount > 0) metaParts.push('<span><i class="fas fa-layer-group"></i> ' + articleCount + ' source' + (articleCount !== 1 ? 's' : '') + '</span>');
+    if (articleCount > 0) {
+      var srcLabel = articleCount !== 1 ? 'sources' : 'source';
+      metaParts.push('<span><i class="fas fa-layer-group"></i> ' + articleCount + ' ' + tx(srcLabel) + '</span>');
+    }
 
     // Summary
     var summaryHtml = cluster.summary
-      ? '<p class="cluster-summary-text">' + esc(cluster.summary) + '</p>'
-      : '<p class="cluster-empty-state">Summary not yet available — analysis in progress.</p>';
+      ? '<p class="cluster-summary-text">' + tx(cluster.summary) + '</p>'
+      : '<p class="cluster-empty-state">' + tx('Summary not yet available — analysis in progress.') + '</p>';
 
     // Why it matters
     var whyHtml = cluster.why_it_matters
-      ? '<p class="cluster-why-text">' + esc(cluster.why_it_matters) + '</p>'
-      : '<p class="cluster-empty-state">Impact analysis not yet available — check back soon.</p>';
+      ? '<p class="cluster-why-text">' + tx(cluster.why_it_matters) + '</p>'
+      : '<p class="cluster-empty-state">' + tx('Impact analysis not yet available — check back soon.') + '</p>';
 
     // Tags (cap at 8 to avoid overwhelming the drawer)
     var tagsSection = '';
@@ -191,10 +240,10 @@
       var visibleTags = cluster.tags.slice(0, 8);
       var hiddenCount = cluster.tags.length - visibleTags.length;
       var tagBadges = visibleTags.map(function (t) { return '<span class="cluster-tag">' + esc(t) + '</span>'; }).join('');
-      if (hiddenCount > 0) tagBadges += '<span class="cluster-tag" style="color:var(--text-muted)">+' + hiddenCount + ' more</span>';
+      if (hiddenCount > 0) tagBadges += '<span class="cluster-tag" style="color:var(--text-muted)">+' + hiddenCount + ' ' + tx('more') + '</span>';
       tagsSection =
         '<div class="cluster-section">' +
-          '<div class="cluster-section-title"><i class="fas fa-tags"></i> Tags</div>' +
+          '<div class="cluster-section-title"><i class="fas fa-tags"></i> ' + tx('Tags') + '</div>' +
           '<div class="cluster-tags">' + tagBadges + '</div>' +
         '</div>';
     }
@@ -202,12 +251,12 @@
     // Sources
     var articles = cluster.articles || [];
     var sourcesHtml = articles.length === 0
-      ? '<p class="cluster-empty-state">No source articles available.</p>'
+      ? '<p class="cluster-empty-state">' + tx('No source articles available.') + '</p>'
       : articles.map(function (a) {
           var url = a.source_url || '#';
           return '<a class="cluster-source-item" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' +
             '<div class="cluster-source-body">' +
-              '<div class="cluster-source-title">' + esc(a.title || 'Untitled') + '</div>' +
+              '<div class="cluster-source-title">' + tx(a.title || 'Untitled') + '</div>' +
               (a.source_name ? '<div class="cluster-source-name">' + esc(a.source_name) + '</div>' : '') +
             '</div>' +
             '<div class="cluster-source-time"><i class="far fa-clock"></i> ' + esc(timeAgo(a.published_at)) + '</div>' +
@@ -217,22 +266,24 @@
     drawerBody.innerHTML =
       '<div class="cluster-header">' +
         '<div class="cluster-badges">' + badgesHtml + '</div>' +
-        '<h2 class="cluster-title">' + esc(cluster.label || 'Untitled cluster') + '</h2>' +
+        '<h2 class="cluster-title">' + tx(cluster.label || 'Untitled cluster') + '</h2>' +
         '<div class="cluster-meta-row">' + metaParts.join('') + '</div>' +
       '</div>' +
       '<div class="cluster-section">' +
-        '<div class="cluster-section-title"><i class="fas fa-align-left"></i> TL;DR</div>' +
+        '<div class="cluster-section-title"><i class="fas fa-align-left"></i> ' + tx('TL;DR') + '</div>' +
         summaryHtml +
       '</div>' +
       '<div class="cluster-section">' +
-        '<div class="cluster-section-title"><i class="fas fa-exclamation-circle"></i> Why it matters</div>' +
+        '<div class="cluster-section-title"><i class="fas fa-exclamation-circle"></i> ' + tx('Why it matters') + '</div>' +
         whyHtml +
       '</div>' +
       tagsSection +
       '<div class="cluster-section">' +
-        '<div class="cluster-section-title"><i class="fas fa-newspaper"></i> Sources <span style="font-size:0.85rem;font-weight:400;color:var(--text-muted);margin-left:0.3rem;">(' + articles.length + ')</span></div>' +
+        '<div class="cluster-section-title"><i class="fas fa-newspaper"></i> ' + tx('Sources') + ' <span style="font-size:0.85rem;font-weight:400;color:var(--text-muted);margin-left:0.3rem;">(' + articles.length + ')</span></div>' +
         '<div class="cluster-sources-list">' + sourcesHtml + '</div>' +
       '</div>';
+
+    applyDrawerTranslations();
   }
 
   // ── Public API ──────────────────────────────────────────────────────────
