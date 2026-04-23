@@ -11,6 +11,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.feed_source import FeedSource as FeedSourceModel
+from app.db.models.source_category import SourceCategory
 from app.db.opensearch import INDEX_NEWS, INDEX_SNAPSHOTS, get_os_client, NEWS_MAPPING
 from app.db.session import AsyncSessionLocal
 from app.ingestion.clusterer import cluster_article
@@ -203,11 +204,60 @@ async def mark_source_failure(session: AsyncSession, source_id: int) -> None:
     )
 
 
+async def get_source_category_map(
+    session: AsyncSession, source_id: int
+) -> dict[str, dict]:
+    """Return {category_label: {ingest, priority_modifier}} for one source.
+
+    Returns empty dict if no categories are classified yet (allow-all default).
+    """
+    from sqlalchemy import select as sa_select
+    result = await session.execute(
+        sa_select(SourceCategory).where(SourceCategory.source_id == source_id)
+    )
+    rows = result.scalars().all()
+    return {
+        row.category_label: {
+            "ingest": row.ingest,
+            "priority_modifier": row.priority_modifier,
+        }
+        for row in rows
+    }
+
+
+def _effective_credibility(
+    article_tags: list[str],
+    base_weight: float,
+    category_map: dict[str, dict],
+) -> tuple[float, bool]:
+    """Return (effective_weight, should_ingest) based on article category tags.
+
+    - If any tag maps to ingest=False, returns (base_weight, False).
+    - Otherwise returns (base_weight + sum(priority_modifiers), True).
+    Unknown tags (not in category_map) default to ingest=True, modifier=0.
+    """
+    total_modifier = 0.0
+    for tag in article_tags:
+        decision = category_map.get(tag)
+        if decision is None:
+            continue
+        if not decision["ingest"]:
+            return base_weight, False
+        total_modifier += decision["priority_modifier"]
+    return base_weight + total_modifier, True
+
+
 # ---------------------------------------------------------------------------
 # Per-source ingestion
 # ---------------------------------------------------------------------------
 
-async def ingest_source(source: FeedSource, client: httpx.AsyncClient, *, update: bool = False) -> dict:
+async def ingest_source(
+    source: FeedSource,
+    client: httpx.AsyncClient,
+    *,
+    update: bool = False,
+    category_map: dict[str, dict] | None = None,
+) -> dict:
     """Fetch, parse, normalize, and store all entries for one FeedSource.
 
     Returns stats: {"fetched": int, "inserted": int, "skipped": int, "errors": int}
@@ -264,6 +314,8 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient, *, update
         logger.error("[%s] Unknown normalizer '%s' — skipping.", name, source["normalizer"])
         return stats
 
+    _cat_map = category_map or {}
+
     for entry in entries:
         try:
             handler = flags.get("_handler")
@@ -279,6 +331,25 @@ async def ingest_source(source: FeedSource, client: httpx.AsyncClient, *, update
                 )
                 stats["errors"] += 1
                 continue
+
+            # Category filter: check article tags against source_categories
+            if _cat_map:
+                article_tags = article.get("tags") or []
+                effective_weight, should_ingest = _effective_credibility(
+                    article_tags,
+                    source.get("credibility_weight", 1.0),
+                    _cat_map,
+                )
+                if not should_ingest:
+                    logger.debug(
+                        "[%s] Skipped entry (category filtered): %s",
+                        name, article.get("title", "<no title>"),
+                    )
+                    stats["skipped"] += 1
+                    continue
+                article["credibility_weight"] = effective_weight
+            else:
+                article["credibility_weight"] = source.get("credibility_weight", 1.0)
 
             inserted = await (overwrite_article if update else upsert_article)(article)
             if inserted:
@@ -342,8 +413,19 @@ CONCURRENCY = 20  # max feeds fetched in parallel per batch
 async def _ingest_one(src, client: httpx.AsyncClient, *, update: bool = False) -> None:
     """Ingest a single source and update its operational state."""
     source_dict = src.to_source_dict()
+
+    # Load category decisions for this source
+    category_map: dict[str, dict] = {}
     try:
-        stats = await ingest_source(source_dict, client, update=update)
+        async with AsyncSessionLocal() as session:
+            category_map = await get_source_category_map(session, src.id)
+        if category_map:
+            logger.debug("[%s] Loaded %d category rules", src.name, len(category_map))
+    except Exception:
+        logger.exception("[%s] Failed to load category map — proceeding without filtering", src.name)
+
+    try:
+        stats = await ingest_source(source_dict, client, update=update, category_map=category_map)
         logger.info(
             "[%s] Done - fetched=%d inserted=%d skipped=%d errors=%d",
             src.name,
