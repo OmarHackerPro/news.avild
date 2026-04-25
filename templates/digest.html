@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="google" content="notranslate">
+  <meta name="description" content="Subscribe to news.avild.com email digest — daily or weekly curated cybersecurity updates delivered to your inbox.">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Email Digest — news.avild.com</title>
+  <link rel="stylesheet" href="/static/css/main/main.css">
+  <link rel="stylesheet" href="/static/css/layout/navbar.css?v=3">
+  <link rel="stylesheet" href="/static/css/pages/digest.css">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  <style>
+    .navbar { display: flex !important; flex-direction: column !important; }
+    .nav-bottom { display: flex !important; align-items: center !important; position: relative !important; visibility: visible !important; opacity: 1 !important; min-height: 48px !important; }
+    .nav-brand { flex-shrink: 0 !important; }
+    .nav-links { display: flex !important; visibility: visible !important; position: absolute !important; left: 50% !important; transform: translateX(-50%) !important; overflow-x: visible !important; gap: 0.35rem !important; flex: 0 0 auto !important; white-space: nowrap !important; pointer-events: auto !important; }
+  </style>
+  <script>
+    (function() {
+      try {
+        if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('theme-light');
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-bottom">
+      <a href="/" class="nav-brand">
+        <span class="brand-logo-box"><i class="fas fa-shield-alt brand-icon"></i></span>
+        <span class="brand-text"><span class="brand-avild">avild</span><span class="brand-news">.news</span></span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="/"><i class="fas fa-home nav-link-icon"></i> Home</a></li>
+        <li><a href="/search"><i class="fas fa-search nav-link-icon"></i> Search</a></li>
+        <li><a href="/preferences"><i class="fas fa-layer-group nav-link-icon"></i> My Stack</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="layout">
+    <div class="content-area digest-page">
+      <header class="digest-header">
+        <h1><i class="fas fa-envelope-open-text"></i> Email Digest</h1>
+        <p class="digest-subtitle">Get curated cybersecurity updates delivered to your Gmail inbox.</p>
+      </header>
+
+      <section class="digest-status-card" id="digestStatusCard" hidden>
+        <div class="digest-status-body">
+          <div class="digest-status-icon"><i class="fas fa-circle-check"></i></div>
+          <div class="digest-status-text">
+            <p class="digest-status-label">You are subscribed</p>
+            <p class="digest-status-email" id="digestStatusEmail"></p>
+            <p class="digest-status-meta" id="digestStatusMeta"></p>
+          </div>
+        </div>
+        <button type="button" class="digest-btn digest-btn-danger" id="digestUnsubscribeBtn">
+          <i class="fas fa-user-slash"></i> Unsubscribe
+        </button>
+      </section>
+
+      <section class="digest-section" aria-labelledby="subscribe-title">
+        <h2 id="subscribe-title" class="digest-section-title"><i class="fas fa-paper-plane"></i> Subscribe</h2>
+        <form id="digestForm" class="digest-form" novalidate>
+          <div class="digest-field">
+            <label for="digestEmail">Your email address</label>
+            <div class="digest-email-row">
+              <i class="fas fa-envelope digest-email-icon"></i>
+              <input
+                type="email"
+                id="digestEmail"
+                name="email"
+                placeholder="you@gmail.com"
+                autocomplete="email"
+                required
+              >
+            </div>
+            <p class="digest-field-error" id="digestEmailError" hidden>
+              <i class="fas fa-exclamation-circle"></i>
+              <span>Please enter a valid email address.</span>
+            </p>
+          </div>
+
+          <div class="digest-field">
+            <label>Frequency</label>
+            <div class="digest-radio-group" role="radiogroup">
+              <label class="digest-radio">
+                <input type="radio" name="frequency" value="daily" checked>
+                <span class="digest-radio-chip"><i class="far fa-clock"></i> Daily</span>
+              </label>
+              <label class="digest-radio">
+                <input type="radio" name="frequency" value="weekly">
+                <span class="digest-radio-chip"><i class="far fa-calendar"></i> Weekly</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="digest-field">
+            <label>Topics to include</label>
+            <div class="digest-chip-group">
+              <label class="digest-check">
+                <input type="checkbox" name="topics" value="breaking" checked>
+                <span class="digest-check-chip">Breaking</span>
+              </label>
+              <label class="digest-check">
+                <input type="checkbox" name="topics" value="threat-intel" checked>
+                <span class="digest-check-chip">Threat Intel</span>
+              </label>
+              <label class="digest-check">
+                <input type="checkbox" name="topics" value="malware" checked>
+                <span class="digest-check-chip">Malware</span>
+              </label>
+              <label class="digest-check">
+                <input type="checkbox" name="topics" value="apt">
+                <span class="digest-check-chip">APT</span>
+              </label>
+              <label class="digest-check">
+                <input type="checkbox" name="topics" value="breaches">
+                <span class="digest-check-chip">Breaches</span>
+              </label>
+              <label class="digest-check">
+                <input type="checkbox" name="topics" value="pentest">
+                <span class="digest-check-chip">Pentest</span>
+              </label>
+              <label class="digest-check">
+                <input type="checkbox" name="topics" value="bug-bounty">
+                <span class="digest-check-chip">Bug Bounty</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="digest-field">
+            <label for="digestMinSeverity">Minimum severity</label>
+            <select id="digestMinSeverity" name="minSeverity">
+              <option value="all">All severities</option>
+              <option value="low">Low and above</option>
+              <option value="medium" selected>Medium and above</option>
+              <option value="high">High and above</option>
+              <option value="critical">Critical only</option>
+            </select>
+          </div>
+
+          <div class="digest-form-actions">
+            <button type="submit" class="digest-btn digest-btn-primary" id="digestSubscribeBtn">
+              <i class="fas fa-bell"></i> <span id="digestSubscribeLabel">Subscribe</span>
+            </button>
+            <button type="button" class="digest-btn digest-btn-secondary" id="digestPreviewBtn">
+              <i class="fas fa-eye"></i> Preview digest
+            </button>
+          </div>
+
+          <p class="digest-toast" id="digestToast" hidden role="status"></p>
+        </form>
+      </section>
+
+      <section class="digest-section" aria-labelledby="preview-title">
+        <h2 id="preview-title" class="digest-section-title"><i class="fas fa-eye"></i> Preview</h2>
+        <p class="digest-section-help">Here's a rough preview of what your digest email will look like based on your current selections.</p>
+
+        <div class="digest-preview" id="digestPreview">
+          <div class="digest-preview-frame">
+            <header class="digest-preview-header">
+              <div class="digest-preview-brand">
+                <span class="digest-preview-logo"><i class="fas fa-shield-alt"></i></span>
+                <span><strong>avild</strong>.news</span>
+              </div>
+              <span class="digest-preview-badge" id="digestPreviewBadge">Daily Digest</span>
+            </header>
+            <div class="digest-preview-subject">
+              <span class="digest-preview-subject-label">Subject</span>
+              <span id="digestPreviewSubject">Your daily security digest — 3 stories to read</span>
+            </div>
+            <ul class="digest-preview-articles" id="digestPreviewArticles">
+              <li class="digest-preview-article">
+                <span class="digest-preview-sev sev-critical">Critical</span>
+                <div>
+                  <p class="digest-preview-title">Zero-day exploited in widely used VPN appliance</p>
+                  <p class="digest-preview-meta">Threat Intel · 2h ago</p>
+                </div>
+              </li>
+              <li class="digest-preview-article">
+                <span class="digest-preview-sev sev-high">High</span>
+                <div>
+                  <p class="digest-preview-title">New ransomware family targets healthcare sector</p>
+                  <p class="digest-preview-meta">Malware · 5h ago</p>
+                </div>
+              </li>
+              <li class="digest-preview-article">
+                <span class="digest-preview-sev sev-medium">Medium</span>
+                <div>
+                  <p class="digest-preview-title">Major breach disclosed — 4M records exposed</p>
+                  <p class="digest-preview-meta">Breaches · 9h ago</p>
+                </div>
+              </li>
+            </ul>
+            <footer class="digest-preview-footer">
+              <span>You're receiving this because you subscribed to <span id="digestPreviewEmailEcho">your email</span>.</span>
+            </footer>
+          </div>
+        </div>
+      </section>
+
+      <p class="digest-disclaimer">
+        <i class="fas fa-info-circle"></i>
+        Frontend preview only — subscription state is stored locally in your browser and is not yet wired to a mailing service.
+      </p>
+    </div>
+  </main>
+
+  <script src="/static/js/components/theme.js"></script>
+  <script src="/static/js/features/digest-page.js"></script>
+  <script src="/static/js/components/auth.js"></script>
+</body>
+</html>
