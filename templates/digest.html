@@ -57,12 +57,17 @@
             <p class="digest-status-meta" id="digestStatusMeta"></p>
           </div>
         </div>
-        <button type="button" class="digest-btn digest-btn-danger" id="digestUnsubscribeBtn">
-          <i class="fas fa-user-slash"></i> Unsubscribe
-        </button>
+        <div class="digest-status-actions">
+          <button type="button" class="digest-btn digest-btn-secondary" id="digestEditBtn">
+            <i class="fas fa-pen"></i> Edit
+          </button>
+          <button type="button" class="digest-btn digest-btn-danger" id="digestUnsubscribeBtn">
+            <i class="fas fa-user-slash"></i> Unsubscribe
+          </button>
+        </div>
       </section>
 
-      <section class="digest-section" aria-labelledby="subscribe-title">
+      <section class="digest-section" id="digestSubscribeSection" aria-labelledby="subscribe-title">
         <h2 id="subscribe-title" class="digest-section-title"><i class="fas fa-paper-plane"></i> Subscribe</h2>
         <form id="digestForm" class="digest-form" novalidate>
           <div class="digest-field">
@@ -150,13 +155,16 @@
             <button type="button" class="digest-btn digest-btn-secondary" id="digestPreviewBtn">
               <i class="fas fa-eye"></i> Preview digest
             </button>
+            <button type="button" class="digest-btn digest-btn-ghost" id="digestCancelEditBtn" hidden>
+              Cancel
+            </button>
           </div>
 
           <p class="digest-toast" id="digestToast" hidden role="status"></p>
         </form>
       </section>
 
-      <section class="digest-section" aria-labelledby="preview-title">
+      <section class="digest-section" id="digestPreviewSection" aria-labelledby="preview-title">
         <h2 id="preview-title" class="digest-section-title"><i class="fas fa-eye"></i> Preview</h2>
         <p class="digest-section-help">Here's a rough preview of what your digest email will look like based on your current selections.</p>
 
