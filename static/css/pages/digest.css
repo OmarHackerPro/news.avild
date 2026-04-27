@@ -316,6 +316,23 @@ select#digestMinSeverity:focus {
   border-color: #ef4444;
 }
 
+.digest-btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: transparent;
+}
+
+.digest-btn-ghost:hover {
+  color: var(--text);
+  background: var(--bg-elevated);
+}
+
+.digest-status-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 /* Toast */
 .digest-toast {
   margin: 0.25rem 0 0;
