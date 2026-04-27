@@ -6,6 +6,7 @@ INDEX_NEWS = "news_articles"
 INDEX_SNAPSHOTS = "raw_feed_snapshots"
 INDEX_CLUSTERS = "clusters"
 INDEX_ENTITIES = "entities"
+INDEX_NVD_CACHE = "nvd_cache"
 
 _client: AsyncOpenSearch | None = None
 
@@ -112,6 +113,7 @@ _CLUSTERS_MAPPING = {
             "score":          {"type": "half_float"},
             "confidence":     {"type": "keyword"},
             "max_cvss":       {"type": "half_float"},
+            "cisa_kev":       {"type": "boolean"},
             "max_credibility_weight": {"type": "half_float"},
             "top_factors": {
                 "type": "nested",
@@ -180,6 +182,15 @@ _ENTITIES_MAPPING = {
             "aliases":        {"type": "keyword"},
             "description":    {"type": "text", "analyzer": "english"},
             "cvss_score":     {"type": "half_float"},
+            "cvss_severity":  {"type": "keyword"},
+            "cvss_vector":    {"type": "keyword"},
+            "cwe_ids":        {"type": "keyword"},
+            "vuln_status":    {"type": "keyword"},
+            "cisa_kev":       {"type": "boolean"},
+            "nvd_last_modified": {
+                "type": "date",
+                "format": "date_optional_time||epoch_millis",
+            },
             "article_ids":    {"type": "keyword"},
             "article_count":  {"type": "integer"},
             "first_seen": {
@@ -190,6 +201,24 @@ _ENTITIES_MAPPING = {
                 "type": "date",
                 "format": "strict_date_time||strict_date_time_no_millis",
             },
+        },
+    },
+}
+
+
+_NVD_CACHE_MAPPING = {
+    "settings": {
+        "number_of_shards": 1,
+        "number_of_replicas": 0,
+        "refresh_interval": "30s",
+    },
+    "mappings": {
+        "dynamic": "strict",
+        "properties": {
+            "cve_id":           {"type": "keyword"},
+            "fetched_at":       {"type": "date", "format": "date_optional_time||epoch_millis"},
+            "nvd_last_modified": {"type": "date", "format": "date_optional_time||epoch_millis"},
+            "nvd_raw":          {"type": "object", "enabled": False},
         },
     },
 }
@@ -233,6 +262,7 @@ async def ensure_indexes() -> None:
         (INDEX_SNAPSHOTS, _SNAPSHOTS_MAPPING),
         (INDEX_CLUSTERS, _CLUSTERS_MAPPING),
         (INDEX_ENTITIES, _ENTITIES_MAPPING),
+        (INDEX_NVD_CACHE, _NVD_CACHE_MAPPING),
     ]:
         try:
             if not await client.indices.exists(index=index):

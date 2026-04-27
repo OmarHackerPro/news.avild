@@ -219,14 +219,19 @@ async def _tag_article(client, slug: str, cluster_id: str) -> None:
 # ---------------------------------------------------------------------------
 
 async def create_cluster(
-    article: NormalizedArticle, entity_keys: list[str], credibility_weight: float = 1.0,
+    article: NormalizedArticle,
+    entity_keys: list[str],
+    credibility_weight: float = 1.0,
+    entity_max_cvss: Optional[float] = None,
+    cisa_kev: bool = False,
 ) -> str:
     """Create a new cluster seeded from a single article. Returns cluster _id."""
     now = datetime.now(timezone.utc).isoformat()
     slug = article["slug"]
 
     cve_ids = article.get("cve_ids") or []
-    max_cvss = article.get("cvss_score")
+    # Prefer NVD-authoritative CVSS from entity lookup over article-level field
+    max_cvss = entity_max_cvss if entity_max_cvss is not None else article.get("cvss_score")
     if max_cvss is not None:
         max_cvss = float(max_cvss)
 
@@ -238,6 +243,8 @@ async def create_cluster(
         state="new",
         latest_at=now,
         max_credibility_weight=credibility_weight,
+        unique_source_count=1,
+        cisa_kev=cisa_kev,
     )
 
     doc = {
@@ -249,6 +256,7 @@ async def create_cluster(
         "confidence": score_data["confidence"],
         "top_factors": score_data["top_factors"],
         "max_cvss": max_cvss,
+        "cisa_kev": cisa_kev,
         "max_credibility_weight": credibility_weight,
         "article_ids": [slug],
         "article_count": 1,
@@ -293,6 +301,7 @@ async def merge_into_cluster(
     published_at: str = "",
     cvss_score: Optional[float] = None,
     credibility_weight: float = 1.0,
+    cisa_kev: bool = False,
 ) -> None:
     """Merge an article into an existing cluster via scripted update."""
     now = datetime.now(timezone.utc).isoformat()
@@ -337,6 +346,10 @@ async def merge_into_cluster(
                 ctx._source.max_cvss = params.cvss_score;
             }
         }
+        // Latch cisa_kev — once true, stays true
+        if (params.cisa_kev) {
+            ctx._source.cisa_kev = true;
+        }
         // Track max credibility_weight seen across all member articles
         if (ctx._source.max_credibility_weight == null || params.credibility_weight > ctx._source.max_credibility_weight) {
             ctx._source.max_credibility_weight = params.credibility_weight;
@@ -365,6 +378,7 @@ async def merge_into_cluster(
                     "entity_keys": entity_keys,
                     "cve_ids": cve_ids,
                     "cvss_score": cvss_score,
+                    "cisa_kev": cisa_kev,
                     "credibility_weight": credibility_weight,
                     "now": now,
                 },
@@ -409,6 +423,17 @@ async def cluster_article(
     credibility_weight = float(article.get("credibility_weight") or 1.0)
     cluster_id: Optional[str] = None
 
+    # Derive CVSS and CISA KEV from NVD-enriched CVE entities when available
+    entity_max_cvss: Optional[float] = None
+    entity_cisa_kev = False
+    for e in entities:
+        if e.get("type") == "cve":
+            score = e.get("cvss_score")
+            if score is not None and (entity_max_cvss is None or score > entity_max_cvss):
+                entity_max_cvss = float(score)
+            if e.get("cisa_kev"):
+                entity_cisa_kev = True
+
     # 1. CVE overlap — skip if article is a roundup (too many CVEs)
     if cve_ids and len(cve_ids) <= _MAX_ARTICLE_CVES_FOR_MATCHING:
         cluster_id = await find_cluster_by_cve(cve_ids)
@@ -431,7 +456,8 @@ async def cluster_article(
 
     # 4. Merge or create — always pass all entity_keys (not just signal_keys)
     if cluster_id:
-        raw_cvss = article.get("cvss_score")
+        # Prefer entity CVSS; fall back to article-level field
+        raw_cvss = entity_max_cvss if entity_max_cvss is not None else article.get("cvss_score")
         await merge_into_cluster(
             cluster_id, slug, entity_keys, cve_ids,
             source_name=article.get("source_name", ""),
@@ -439,6 +465,11 @@ async def cluster_article(
             published_at=article.get("published_at", ""),
             cvss_score=float(raw_cvss) if raw_cvss is not None else None,
             credibility_weight=credibility_weight,
+            cisa_kev=entity_cisa_kev,
         )
     else:
-        await create_cluster(article, entity_keys, credibility_weight)
+        await create_cluster(
+            article, entity_keys, credibility_weight,
+            entity_max_cvss=entity_max_cvss,
+            cisa_kev=entity_cisa_kev,
+        )

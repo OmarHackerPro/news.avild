@@ -1,16 +1,20 @@
 """Cluster scoring and explainability.
 
 Computes a 0-100 importance score for a cluster from six factors:
-  1. CVSS severity   — max CVSS of member articles          (0-30 pts)
-  2. Coverage        — number of unique articles            (0-25 pts)
-  3. Recency         — time since the cluster last updated  (0-20 pts)
-  4. CVE / Entities  — number of known CVEs or entities     (0-15 pts)
-  5. State bonus     — cluster maturity                     (0-10 pts)
+  1. CVSS severity      — max CVSS from NVD-enriched CVE entities  (0-30 pts)
+  2. Coverage           — unique source count                       (0-25 pts)
+  3. Recency            — time since the cluster last updated       (0-20 pts)
+  4. CVE / Entities     — number of known CVEs or entities         (0-15 pts)
+  5. State bonus        — cluster maturity                         (0-10 pts)
   6. Source credibility — max credibility_weight of member articles (0-15 pts)
+  7. CISA KEV           — any CVE in CISA Known Exploited Vulns    (+20 pts)
 
-Also populates `confidence` ("low" / "medium" / "high") and a
-`top_factors` list of up to 5 contributing factors with their point
-contributions, sorted by descending impact.
+Max raw points = 135, clamped to 100.
+
+Confidence reflects data completeness, not just score:
+  high   — has CVSS + ≥2 unique sources + named entities
+  medium — has ≥2 unique sources OR (has CVSS and entities)
+  low    — everything else
 """
 import logging
 from datetime import datetime, timezone
@@ -30,6 +34,8 @@ def compute_cluster_score(
     state: str,
     latest_at: str,
     max_credibility_weight: float = 1.0,
+    unique_source_count: int = 0,
+    cisa_kev: bool = False,
 ) -> dict:
     """Return {score, confidence, top_factors} — pure, no I/O."""
     factors: list[dict] = []
@@ -48,12 +54,13 @@ def compute_cluster_score(
         total += cvss_pts
 
     # ------------------------------------------------------------------
-    # 2. Coverage component (0-25 pts)
+    # 2. Coverage component (0-25 pts) — unique sources, not article count
     # ------------------------------------------------------------------
-    coverage_pts = round(min(article_count, 10) / 10.0 * 25.0, 1)
+    coverage_n = unique_source_count if unique_source_count > 0 else article_count
+    coverage_pts = round(min(coverage_n, 10) / 10.0 * 25.0, 1)
     factors.append({
         "factor": "coverage",
-        "label": f"{article_count} article{'s' if article_count != 1 else ''}",
+        "label": f"{coverage_n} source{'s' if coverage_n != 1 else ''}",
         "points": coverage_pts,
     })
     total += coverage_pts
@@ -133,15 +140,32 @@ def compute_cluster_score(
     total += cred_pts
 
     # ------------------------------------------------------------------
+    # 7. CISA KEV bonus (+20 pts flat)
+    # ------------------------------------------------------------------
+    if cisa_kev:
+        factors.append({
+            "factor": "cisa_kev",
+            "label": "CISA Known Exploited",
+            "points": 20.0,
+        })
+        total += 20.0
+
+    # ------------------------------------------------------------------
     # Finalise
     # ------------------------------------------------------------------
     factors.sort(key=lambda f: f["points"], reverse=True)
     top_factors = factors[:5]
 
     score = round(min(total, 100.0), 1)
-    if score >= 75:
+
+    # Confidence = data completeness, not score threshold
+    has_cvss = max_cvss is not None
+    has_sources = (unique_source_count >= 2) or (article_count >= 2)
+    has_entities = bool(entity_keys)
+
+    if has_cvss and has_sources and has_entities:
         confidence = "high"
-    elif score >= 45:
+    elif has_sources or (has_cvss and has_entities):
         confidence = "medium"
     else:
         confidence = "low"
@@ -159,6 +183,9 @@ async def rescore_cluster(cluster_id: str) -> None:
         return
 
     src = resp["_source"]
+    timeline = src.get("timeline") or []
+    unique_source_count = len({e.get("source_name", "") for e in timeline if e.get("source_name")})
+
     score_data = compute_cluster_score(
         article_count=src.get("article_count", 1),
         max_cvss=src.get("max_cvss"),
@@ -167,6 +194,8 @@ async def rescore_cluster(cluster_id: str) -> None:
         state=src.get("state", "new"),
         latest_at=src.get("latest_at") or src.get("created_at", ""),
         max_credibility_weight=float(src.get("max_credibility_weight") or 1.0),
+        unique_source_count=unique_source_count,
+        cisa_kev=bool(src.get("cisa_kev", False)),
     )
 
     await client.update(

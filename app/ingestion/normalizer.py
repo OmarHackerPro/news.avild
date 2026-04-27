@@ -455,6 +455,7 @@ NORMALIZER_REGISTRY: dict[str, dict] = {
     "bleepingcomputer": {},
     "securityweek":     {},
     "krebs":            {},
+    "securelist":       {"extract_cves": True},
     "cisa_advisory":    {"extract_cves": True, "extract_cvss": True},
     "cisa_news":        {"_handler": normalize_cisa_news},
 }

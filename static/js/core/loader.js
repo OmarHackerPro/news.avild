@@ -61,6 +61,13 @@
         document.body.appendChild(main);
       }
 
+      try {
+        if (localStorage.getItem('newsletter_dismissed') === '1') {
+          var nc = document.getElementById('newsletterCard');
+          if (nc) nc.style.display = 'none';
+        }
+      } catch(e) {}
+
       var modalsWrap = document.createElement('div');
       modalsWrap.innerHTML = modalsHtml;
       while (modalsWrap.firstChild) document.body.appendChild(modalsWrap.firstChild);

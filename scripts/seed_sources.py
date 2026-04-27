@@ -42,6 +42,9 @@ async def seed_sources(*, dry_run: bool = False) -> None:
             "default_category": s["default_category"],
             "default_severity": s["default_severity"],
             "normalizer_key": s["normalizer"],
+            "credibility_weight": s.get("credibility_weight", 1.0),
+            "extract_cves": s.get("extract_cves", False),
+            "extract_cvss": s.get("extract_cvss", False),
         }
         for s in SEED_SOURCES
     ]

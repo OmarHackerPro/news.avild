@@ -160,4 +160,14 @@ SEED_SOURCES: list[FeedSource] = [
         default_severity=None,
         normalizer="generic",
     ),
+    FeedSource(
+        name="Securelist",
+        url="https://securelist.com/feed/",
+        default_type="report",
+        default_category="research",
+        default_severity=None,
+        normalizer="securelist",
+        credibility_weight=1.2,
+        extract_cves=True,
+    ),
 ]
