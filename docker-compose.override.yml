@@ -1,0 +1,17 @@
+# Dev overrides — automatically merged by Docker Compose.
+# Mounts local source into containers so edits are live without rebuilding.
+services:
+  backend:
+    environment:
+      DEBUG: "true"
+    volumes:
+      - ./app:/app/app
+      - ./main.py:/app/main.py
+      - ./scripts:/app/scripts
+      - avatar_uploads:/app/static/uploads/avatars
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    volumes:
+      - ./templates:/usr/share/nginx/html
+      - ./static:/usr/share/nginx/html/static

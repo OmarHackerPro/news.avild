@@ -98,18 +98,23 @@ async def _scroll_articles(source: str | None) -> list[dict]:
 
 
 async def _get_entities_for_slug(slug: str) -> list[dict]:
-    """Look up entities linked to an article slug, returning dicts with normalized_key and type."""
+    """Look up entities linked to an article slug, including NVD fields for CVEs."""
     client = get_os_client()
     resp = await client.search(
         index=INDEX_ENTITIES,
         body={
             "query": {"term": {"article_ids": slug}},
             "size": 200,
-            "_source": ["normalized_key", "type"],
+            "_source": ["normalized_key", "type", "cvss_score", "cisa_kev"],
         },
     )
     return [
-        {"normalized_key": hit["_source"]["normalized_key"], "type": hit["_source"].get("type", "unknown")}
+        {
+            "normalized_key": hit["_source"]["normalized_key"],
+            "type": hit["_source"].get("type", "unknown"),
+            "cvss_score": hit["_source"].get("cvss_score"),
+            "cisa_kev": hit["_source"].get("cisa_kev", False),
+        }
         for hit in resp["hits"]["hits"]
     ]
 

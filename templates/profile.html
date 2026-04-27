@@ -131,7 +131,7 @@
           <div class="profile-section">
             <label for="newPassword">New password <span class="auth-hint">(leave blank to keep current)</span></label>
             <div class="password-wrap">
-              <input type="password" id="newPassword" name="new_password" placeholder="••••••••" autocomplete="new-password" maxlength="72">
+              <input type="password" id="newPassword" name="new_password" autocomplete="new-password" maxlength="72">
               <button type="button" class="password-toggle" id="pwToggle" aria-label="Show password"><i class="fas fa-eye" id="pwIcon"></i></button>
             </div>
           </div>
@@ -158,10 +158,15 @@
         var img = document.getElementById('avatarImg');
         var container = document.getElementById('avatarContainer');
         if (url) {
+          img.onerror = function() {
+            img.onerror = null;
+            container.classList.remove('has-image');
+          };
           img.src = AuthHelpers.avatarUrl(url);
           img.alt = 'Profile picture';
           container.classList.add('has-image');
         } else {
+          img.onerror = null;
           img.src = '';
           img.alt = '';
           container.classList.remove('has-image');

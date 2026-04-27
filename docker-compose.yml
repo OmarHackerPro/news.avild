@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile.frontend
     ports:
       - "80:80"
+    volumes:
+      - avatar_uploads:/usr/share/nginx/html/static/uploads/avatars
     depends_on:
       - backend
 

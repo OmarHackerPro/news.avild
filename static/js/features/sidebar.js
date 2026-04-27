@@ -1,18 +1,29 @@
 /**
- * Sidebar: newsletter close, frequency buttons (Daily/Weekly), email subscribe
+ * Sidebar: newsletter close (persisted), frequency buttons, email subscribe
  */
 (function() {
   'use strict';
-  var sidebarClose = document.querySelector('.sidebar-close');
-  var newsletterCard = document.querySelector('.newsletter-card');
-  if (sidebarClose && newsletterCard) {
-    sidebarClose.addEventListener('click', function() {
-      newsletterCard.classList.add('hidden');
+  var DISMISSED_KEY = 'newsletter_dismissed';
+  var card = document.getElementById('newsletterCard');
+
+  // Hide permanently if already dismissed
+  if (card) {
+    try {
+      if (localStorage.getItem(DISMISSED_KEY) === '1') {
+        card.style.display = 'none';
+      }
+    } catch (e) {}
+  }
+
+  var closeBtn = document.getElementById('newsletterClose');
+  if (closeBtn && card) {
+    closeBtn.addEventListener('click', function() {
+      card.style.display = 'none';
+      try { localStorage.setItem(DISMISSED_KEY, '1'); } catch (e) {}
     });
   }
 
   var freqButtons = document.querySelectorAll('.freq-btn');
-  var newsletterInput = document.querySelector('.newsletter-input');
   freqButtons.forEach(function(btn) {
     btn.addEventListener('click', function() {
       freqButtons.forEach(function(b) { b.classList.remove('active'); });
@@ -20,6 +31,7 @@
     });
   });
 
+  var newsletterInput = document.querySelector('.newsletter-input');
   if (newsletterInput) {
     newsletterInput.addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
@@ -27,10 +39,7 @@
         var activeFreqBtn = document.querySelector('.freq-btn.active');
         var frequency = activeFreqBtn ? activeFreqBtn.textContent.trim().toLowerCase() : 'daily';
         if (email && email.indexOf('@') !== -1) {
-          alert('Thank you for subscribing! You will receive ' + frequency + ' security digests at ' + email);
-          this.value = '';
-        } else {
-          alert('Please enter a valid email address');
+          window.location.href = '/digest';
         }
       }
     });

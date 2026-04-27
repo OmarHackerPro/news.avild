@@ -640,17 +640,13 @@
     "ZoxRPC": "zox",
     "Zshlayer": "osx-shlayer",
     "arp.exe": "arp",
-    "at.exe": "at",
     "attrib.exe": "attrib",
     "certutil.exe": "certutil",
-    "cmd.exe": "cmd",
     "dfls": "sodamaster",
     "dsquery.exe": "dsquery",
     "esentutl.exe": "esentutl",
-    "ftp.exe": "ftp",
     "jBiFrost": "jrat",
     "jFrutas": "jrat",
-    "net.exe": "net",
     "netsh.exe": "netsh",
     "reg.exe": "reg",
     "sKyWIper": "flame",
@@ -863,10 +859,6 @@
     ],
     "asyncrat": [
       "AsyncRAT",
-      "tool"
-    ],
-    "at": [
-      "at",
       "tool"
     ],
     "attor": [
@@ -1300,10 +1292,6 @@
     "cloudduke": [
       "CloudDuke",
       "malware"
-    ],
-    "cmd": [
-      "cmd",
-      "tool"
     ],
     "coathanger": [
       "COATHANGER",
@@ -1848,10 +1836,6 @@
     "fruitfly": [
       "FruitFly",
       "malware"
-    ],
-    "ftp": [
-      "ftp",
-      "tool"
     ],
     "funnydream": [
       "FunnyDream",
@@ -2812,10 +2796,6 @@
     "nerex": [
       "Nerex",
       "malware"
-    ],
-    "net": [
-      "Net",
-      "tool"
     ],
     "net-crawler": [
       "Net Crawler",

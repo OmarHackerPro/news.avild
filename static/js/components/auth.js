@@ -26,24 +26,24 @@
     if (user && user.name) {
       link.href = '/profile';
       link.setAttribute('aria-label', 'Account: ' + user.name);
-      if (nameEl) { nameEl.textContent = user.name; nameEl.hidden = false; }
+      if (nameEl) { nameEl.textContent = user.name; nameEl.removeAttribute('hidden'); }
 
       var hasPic = typeof user.profile_picture === 'string' && user.profile_picture.trim().length > 0;
       if (hasPic && avatarWrap && avatarImg) {
         avatarImg.src = avatarUrl(user.profile_picture);
-        avatarImg.alt   = user.name;
-        avatarWrap.hidden = false;
-        if (iconEl) iconEl.hidden = true;
+        avatarImg.alt = user.name;
+        avatarWrap.removeAttribute('hidden');
+        if (iconEl) { iconEl.setAttribute('hidden', ''); iconEl.style.display = 'none'; }
       } else {
-        if (avatarWrap) avatarWrap.hidden = true;
-        if (iconEl)     iconEl.hidden     = false;
+        if (avatarWrap) avatarWrap.setAttribute('hidden', '');
+        if (iconEl)     { iconEl.removeAttribute('hidden'); iconEl.style.display = ''; }
       }
     } else {
       link.href = '/login';
       link.setAttribute('aria-label', 'Log in or account');
-      if (nameEl)     { nameEl.textContent = ''; nameEl.hidden = true; }
-      if (avatarWrap) avatarWrap.hidden = true;
-      if (iconEl)     iconEl.hidden     = false;
+      if (nameEl)     { nameEl.textContent = ''; nameEl.setAttribute('hidden', ''); }
+      if (avatarWrap) avatarWrap.setAttribute('hidden', '');
+      if (iconEl)     { iconEl.removeAttribute('hidden'); iconEl.style.display = ''; }
     }
   }
 

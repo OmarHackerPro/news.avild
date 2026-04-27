@@ -33,7 +33,8 @@ _DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "data" / "threat_keyw
 # "at"  — English preposition: \bat\b fires on every sentence
 # "net" — Windows net.exe: \bnet\b fires on .NET Framework, internet references
 # "ftp" — File Transfer Protocol: appears in URLs and generic protocol descriptions
-_SKIP_NAMES: frozenset[str] = frozenset({"at", "net", "ftp"})
+# "cmd" — Windows cmd.exe: \bcmd\b fires on generic "run cmd", "via cmd" phrasing
+_SKIP_NAMES: frozenset[str] = frozenset({"at", "net", "ftp", "cmd"})
 
 
 def _normalize(name: str) -> str:
