@@ -24,11 +24,17 @@ async def embed_text(text: str) -> list[float] | None:
 
 async def embed_batch(texts: list[str]) -> list[list[float] | None]:
     """Embed a list of texts. Returns list of same length; None entries on failure."""
+    if not texts:
+        return []
     async with httpx.AsyncClient(timeout=_BATCH_TIMEOUT) as client:
         try:
             resp = await client.post(f"{_EMBEDDER_URL}/embed/batch", json={"texts": texts})
             resp.raise_for_status()
-            return resp.json()["embeddings"]
+            result = resp.json()["embeddings"]
+            if len(result) != len(texts):
+                logger.warning("embed_batch length mismatch: sent %d, got %d", len(texts), len(result))
+                return [None] * len(texts)
+            return result
         except Exception as exc:
             logger.warning("embed_batch failed: %s", exc)
             return [None] * len(texts)
