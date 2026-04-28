@@ -35,6 +35,9 @@ class TestNormalizeGeneric:
         assert "Full article body" in result["summary"]
         assert result["desc"] == "Short teaser text"
         assert result["content_source"] == "rss"
+        assert result["body_source"] == "content"
+        assert result["body_quality"] in {"partial", "full"}
+        assert result["is_teaser"] is False
 
     def test_falls_back_to_summary_when_no_content(self):
         """When no content:encoded, use summary for everything."""
@@ -49,6 +52,7 @@ class TestNormalizeGeneric:
         assert result["content_html"] == "<p>Only a summary here</p>"
         assert result["summary"] == "Only a summary here"
         assert result["desc"] == "Only a summary here"
+        assert result["body_source"] == "summary"
 
     def test_strips_wp_footer_from_desc_and_summary(self):
         entry = {
@@ -150,6 +154,22 @@ class TestNormalizeGeneric:
         result = normalize_generic(entry, _make_source())
         assert result is not None
         assert result["content_source"] is None
+        assert result["body_quality"] == "empty"
+        assert result["body_source"] == "none"
+        assert result["is_teaser"] is False
+
+    def test_marks_teaser_summary_entries(self):
+        entry = {
+            "title": "Bleeping-style teaser",
+            "link": "https://example.com/article",
+            "id": "https://example.com/article",
+            "summary": "Short teaser body that ends with [...]",
+        }
+        result = normalize_generic(entry, _make_source())
+        assert result is not None
+        assert result["body_quality"] == "teaser"
+        assert result["body_source"] == "summary"
+        assert result["is_teaser"] is True
 
 
 class TestStripWpFooter:
@@ -240,7 +260,12 @@ def test_feed_source_to_source_dict_includes_new_fields():
     assert "extract_cvss" in cols
 
 
-from app.ingestion.normalizer import NORMALIZER_REGISTRY, normalize_cisa_news, normalize_article
+from app.ingestion.normalizer import (
+    NORMALIZER_REGISTRY,
+    normalize_cisa_news,
+    normalize_article,
+    normalize_with_registry,
+)
 
 
 class TestNormalizeArticle:
@@ -283,7 +308,7 @@ class TestNormalizeArticle:
         assert result is not None
         assert result["credibility_weight"] == 1.0
 
-    def test_does_not_extract_cves_when_flag_false(self):
+    def test_extracts_cves_even_when_flag_false_for_regular_feeds(self):
         entry = {
             "title": "Patch for CVE-2026-1234",
             "link": "https://example.com/article",
@@ -292,7 +317,7 @@ class TestNormalizeArticle:
         }
         result = normalize_article(entry, self._make_source(extract_cves=False))
         assert result is not None
-        assert result.get("cve_ids") in ([], None)
+        assert result["cve_ids"] == ["CVE-2026-1234"]
 
     def test_extracts_cves_when_flag_true(self):
         entry = {
@@ -339,6 +364,32 @@ class TestNormalizeArticle:
         assert result is not None
         assert result.get("raw_metadata", {}).get("advisory_id") == "AA25-099A"
 
+    def test_extracts_cves_from_tags_without_flag(self):
+        entry = {
+            "title": "Patch Tuesday",
+            "link": "https://example.com/article",
+            "id": "https://example.com/article",
+            "summary": "Monthly roundup",
+            "tags": [{"term": "CVE-2026-9999"}],
+        }
+        result = normalize_article(entry, self._make_source(extract_cves=False))
+        assert result is not None
+        assert result["cve_ids"] == ["CVE-2026-9999"]
+
+    def test_sets_source_id_and_body_fields(self):
+        entry = {
+            "title": "Test Article",
+            "link": "https://example.com/article",
+            "id": "https://example.com/article",
+            "summary": "<p>Only a summary here</p>",
+        }
+        result = normalize_article(entry, self._make_source(id=7))
+        assert result is not None
+        assert result["source_id"] == 7
+        assert result["body_source"] == "summary"
+        assert result["body_quality"] == "partial"
+        assert result["is_teaser"] is False
+
     def test_returns_none_for_missing_title(self):
         entry = {"link": "https://example.com/article"}
         assert normalize_article(entry, self._make_source()) is None
@@ -352,7 +403,7 @@ class TestNormalizerRegistry:
     def test_all_keys_present(self):
         expected = {
             "generic", "thn", "bleepingcomputer", "securityweek",
-            "krebs", "cisa_news", "cisa_advisory",
+            "krebs", "securelist", "cisa_news", "cisa_advisory",
         }
         assert set(NORMALIZER_REGISTRY.keys()) == expected
 
@@ -372,3 +423,25 @@ class TestNormalizerRegistry:
     def test_generic_flags_are_empty(self):
         for key in ("generic", "thn", "bleepingcomputer", "securityweek", "krebs"):
             assert NORMALIZER_REGISTRY[key] == {}
+
+    def test_normalize_with_registry_uses_generic_dispatch(self):
+        entry = {
+            "title": "Patch for CVE-2026-1111",
+            "link": "https://example.com/article",
+            "id": "https://example.com/article",
+            "summary": "Fixes CVE-2026-1111",
+        }
+        result = normalize_with_registry(entry, _make_source())
+        assert result is not None
+        assert result["cve_ids"] == ["CVE-2026-1111"]
+
+    def test_normalize_with_registry_uses_special_handler(self):
+        entry = {
+            "title": "CISA News Item",
+            "link": "https://example.com/article",
+            "id": "https://example.com/article",
+        }
+        source = _make_source(normalizer="cisa_news")
+        result = normalize_with_registry(entry, source)
+        assert result is not None
+        assert result["author"] == "CISA"

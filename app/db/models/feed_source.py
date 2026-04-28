@@ -54,6 +54,7 @@ class FeedSource(Base):
         any normalizer code.
         """
         return {
+            "id": self.id,
             "name": self.name,
             "url": self.url,
             "default_type": self.default_type,

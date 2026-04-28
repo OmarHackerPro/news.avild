@@ -23,6 +23,9 @@ class NewsItem(BaseModel):
     cvss_score: Optional[Decimal] = Field(None, json_schema_extra={"example": 9.8})
     cve_ids: List[str] = Field(default=[], json_schema_extra={"example": ["CVE-2026-12345"]})
     published_at: str = Field(json_schema_extra={"example": "2026-03-15T08:30:00Z"})  # ISO-8601
+    body_quality: Optional[str] = Field(None, json_schema_extra={"example": "teaser"})
+    body_source: Optional[str] = Field(None, json_schema_extra={"example": "summary"})
+    is_teaser: bool = Field(False, json_schema_extra={"example": True})
 
 
 class NewsDetail(NewsItem):

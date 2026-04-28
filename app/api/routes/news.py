@@ -16,6 +16,7 @@ _LIST_SOURCE_FIELDS = [
     "slug", "title", "desc", "summary", "tags", "keywords", "published_at",
     "severity", "type", "category", "author", "source_name",
     "source_url", "image_url", "cvss_score", "cve_ids",
+    "body_quality", "body_source", "is_teaser",
 ]
 
 
@@ -58,6 +59,9 @@ def _hit_to_item(hit: dict) -> NewsItem:
         cvss_score=Decimal(str(src["cvss_score"])) if src.get("cvss_score") is not None else None,
         cve_ids=src.get("cve_ids") or [],
         published_at=src["published_at"],
+        body_quality=src.get("body_quality"),
+        body_source=src.get("body_source"),
+        is_teaser=src.get("is_teaser", False),
     )
 
 
@@ -83,6 +87,9 @@ def _hit_to_detail(hit: dict) -> NewsDetail:
         cvss_score=Decimal(str(src["cvss_score"])) if src.get("cvss_score") is not None else None,
         cve_ids=src.get("cve_ids") or [],
         published_at=src["published_at"],
+        body_quality=src.get("body_quality"),
+        body_source=src.get("body_source"),
+        is_teaser=src.get("is_teaser", False),
         content_html=src.get("content_html"),
         content_source=src.get("content_source"),
         raw_metadata=src.get("raw_metadata"),
