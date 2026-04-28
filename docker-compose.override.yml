@@ -2,6 +2,8 @@
 # Mounts local source into containers so edits are live without rebuilding.
 services:
   backend:
+    depends_on:
+      - kiber-embedder
     environment:
       DEBUG: "true"
       EMBEDDER_URL: "http://kiber-embedder:8001"
@@ -14,6 +16,8 @@ services:
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   ingestion:
+    depends_on:
+      - kiber-embedder
     environment:
       EMBEDDER_URL: "http://kiber-embedder:8001"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"

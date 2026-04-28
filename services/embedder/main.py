@@ -1,12 +1,13 @@
 import torch
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 
 _INSTRUCTION = "Represent this cybersecurity article for finding related articles: "
 _MODEL_NAME = "BAAI/bge-large-en-v1.5"
 _device = "cuda" if torch.cuda.is_available() else "cpu"
 _model = SentenceTransformer(_MODEL_NAME, device=_device)
+_model.encode("warmup", normalize_embeddings=True)
 
 app = FastAPI()
 
@@ -16,7 +17,7 @@ class EmbedRequest(BaseModel):
 
 
 class BatchEmbedRequest(BaseModel):
-    texts: list[str]
+    texts: list[str] = Field(..., min_length=1, max_length=256)
 
 
 @app.get("/health")
