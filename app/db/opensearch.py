@@ -309,9 +309,18 @@ async def ensure_indexes() -> None:
                     else:
                         log.warning(
                             "Index '%s' exists without k-NN. article_embedding will not be "
-                            "k-NN searchable until the index is manually reindexed.",
+                            "stored until the index is recreated with index.knn=true by an admin.",
                             index,
                         )
+                        non_knn_props = {
+                            k: v for k, v in mapping["mappings"]["properties"].items()
+                            if v.get("type") != "knn_vector"
+                        }
+                        await client.indices.put_mapping(
+                            index=index,
+                            body={"properties": non_knn_props},
+                        )
+                        log.info("Updated non-knn mapping fields for index: %s", index)
                 else:
                     await client.indices.put_mapping(
                         index=index,
