@@ -298,25 +298,20 @@ async def ensure_indexes() -> None:
 
             if exists and needs_knn:
                 settings_resp = await client.indices.get_settings(index=index)
+                # OpenSearch returns all settings values as strings; compare to "true" not True
                 knn_on = settings_resp[index]["settings"].get("index", {}).get("knn") == "true"
                 if not knn_on:
                     if index == INDEX_CLUSTERS:
                         log.warning("Recreating %s index to enable k-NN", index)
                         await client.indices.delete(index=index)
                         await client.indices.create(index=index, body=mapping)
+                        log.info("Recreated index %s with k-NN enabled", index)
                     else:
                         log.warning(
                             "Index '%s' exists without k-NN. article_embedding will not be "
                             "k-NN searchable until the index is manually reindexed.",
                             index,
                         )
-                        try:
-                            await client.indices.put_mapping(
-                                index=index,
-                                body={"properties": mapping["mappings"]["properties"]},
-                            )
-                        except Exception:
-                            pass
                 else:
                     await client.indices.put_mapping(
                         index=index,
