@@ -24,8 +24,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import load_dotenv
 load_dotenv()
 
-import asyncio as _asyncio
-
 from app.db.opensearch import INDEX_NEWS, get_os_client
 from app.db.session import AsyncSessionLocal
 from app.ingestion.ner_llm import extract_entities_llm
@@ -110,7 +108,7 @@ async def main(args: argparse.Namespace) -> None:
                 counts["new_extractions"] += 1
                 # Only delay after a real LLM call
                 if args.delay > 0:
-                    await _asyncio.sleep(args.delay)
+                    await asyncio.sleep(args.delay)
 
             if entities:
                 await store_article_entities(slug, entities)
