@@ -138,3 +138,19 @@ async def test_find_best_cluster_returns_highest_scoring():
         result = await find_best_cluster(article_entities, None)
 
     assert result == "c-high"
+
+
+@pytest.mark.asyncio
+async def test_find_best_cluster_returns_none_when_candidates_below_threshold():
+    """Returns None even when candidates exist, if best score is below ASSIGN_THRESHOLD."""
+    from app.ingestion.unified_scorer import find_best_cluster
+
+    # Cluster with no shared CVEs/aliases/entities and no embedding — score = 0.0
+    no_match_cluster = _make_cluster("c-nomatch")
+    article_entities = _make_article_entities([("cve", "CVE-2024-9999")])
+
+    with patch("app.ingestion.unified_scorer._get_candidates", new_callable=AsyncMock) as mock_cands:
+        mock_cands.return_value = [no_match_cluster]
+        result = await find_best_cluster(article_entities, None)
+
+    assert result is None
