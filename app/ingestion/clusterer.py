@@ -11,6 +11,7 @@ from typing import Optional
 
 from app.db.opensearch import INDEX_CLUSTERS, INDEX_NEWS, get_os_client
 from app.ingestion.embedding_client import embed_text
+from app.ingestion.scorer import rescore_cluster
 from app.ingestion.unified_scorer import find_best_cluster
 
 logger = logging.getLogger(__name__)
@@ -231,7 +232,7 @@ async def merge_into_cluster(
                     "slug": article_slug,
                     "entity_keys": entity_keys,
                     "cve_ids": cve_ids,
-                    "cvss_score": cvss_score or 0.0,
+                    "cvss_score": cvss_score,
                     "credibility_weight": credibility_weight,
                     "published_at": published_at or now,
                     "now": now,
@@ -246,7 +247,6 @@ async def merge_into_cluster(
                     "centroid": new_centroid,
                 },
             },
-            "upsert": {},
         },
         retry_on_conflict=3,
     )
@@ -322,7 +322,6 @@ async def create_cluster(
 
 async def _rescore(cluster_id: str) -> None:
     try:
-        from app.ingestion.scorer import rescore_cluster
         await rescore_cluster(cluster_id)
     except Exception as exc:
         logger.warning("Rescore failed for %s: %s", cluster_id, exc)
