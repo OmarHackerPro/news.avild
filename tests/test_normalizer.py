@@ -26,14 +26,14 @@ class TestNormalizeGeneric:
             "title": "Test Article",
             "link": "https://example.com/article",
             "id": "https://example.com/article",
-            "summary": "Short teaser text",
+            "summary": "Short teaser text.",
             "content": [{"value": "<p>Full article body with <b>HTML</b> content here.</p>"}],
         }
         result = normalize_generic(entry, _make_source())
         assert result is not None
         assert result["content_html"] == "<p>Full article body with <b>HTML</b> content here.</p>"
         assert "Full article body" in result["summary"]
-        assert result["desc"] == "Short teaser text"
+        assert result["desc"] == "Short teaser text."
         assert result["content_source"] == "rss"
 
     def test_falls_back_to_summary_when_no_content(self):
@@ -42,13 +42,13 @@ class TestNormalizeGeneric:
             "title": "Test Article",
             "link": "https://example.com/article",
             "id": "https://example.com/article",
-            "summary": "<p>Only a summary here</p>",
+            "summary": "<p>Only a summary here.</p>",
         }
         result = normalize_generic(entry, _make_source())
         assert result is not None
-        assert result["content_html"] == "<p>Only a summary here</p>"
-        assert result["summary"] == "Only a summary here"
-        assert result["desc"] == "Only a summary here"
+        assert result["content_html"] == "<p>Only a summary here.</p>"
+        assert result["summary"] == "Only a summary here."
+        assert result["desc"] == "Only a summary here."
 
     def test_strips_wp_footer_from_desc_and_summary(self):
         entry = {
@@ -175,6 +175,55 @@ class TestStripWpFooter:
     def test_does_not_match_mid_text(self):
         text = "The post appeared first on stage. Then more text follows here."
         assert _strip_wp_footer(text) == "The post appeared first on stage. Then more text follows here."
+
+
+from app.ingestion.normalizer import _clean_truncated_text
+
+
+class TestCleanTruncatedText:
+    def test_complete_sentence_unchanged(self):
+        text = "Microsoft patched the flaw on Tuesday."
+        assert _clean_truncated_text(text) == text
+
+    def test_question_mark_unchanged(self):
+        text = "Is your stack vulnerable?"
+        assert _clean_truncated_text(text) == text
+
+    def test_quoted_sentence_unchanged(self):
+        text = 'The vendor said the issue is "fully resolved."'
+        assert _clean_truncated_text(text) == text
+
+    def test_already_ellipsised_unchanged(self):
+        text = "Some teaser…"
+        assert _clean_truncated_text(text) == text
+
+    def test_trims_back_to_last_full_sentence(self):
+        text = (
+            "An admin role meant for AI agents within Microsoft Entra ID could enable "
+            "privilege escalation, according to new findings from Silverfort. "
+            "Agent ID Administrator is a built-in role introduced by Microsoft to handle "
+            "all aspects of an AI agent's identity lifecycle operations in a"
+        )
+        result = _clean_truncated_text(text)
+        # Clean trim to the last complete sentence — no ellipsis needed.
+        assert not result.endswith("…")
+        assert "lifecycle operations in a" not in result
+        assert result.startswith("An admin role")
+        assert result.endswith("from Silverfort.")
+
+    def test_appends_ellipsis_when_no_clean_break(self):
+        text = "A very short fragment with no terminator that"
+        result = _clean_truncated_text(text)
+        assert result.endswith("…")
+
+    def test_keeps_text_when_trim_loses_too_much(self):
+        text = "Very short fragment that"
+        result = _clean_truncated_text(text)
+        assert result.endswith("…")
+        assert "Very short fragment" in result
+
+    def test_empty_string_returns_empty(self):
+        assert _clean_truncated_text("") == ""
 
 
 from app.ingestion.normalizer import _extract_image_url

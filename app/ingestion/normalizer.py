@@ -104,6 +104,39 @@ def _strip_wp_footer(text: str) -> str:
     return re.sub(r"\s*The post .+? appeared first on .+?\.\s*\Z", "", text).strip()
 
 
+_SENTENCE_END_RE = re.compile(r'[.!?][\'")\]]?(?=\s|$)')
+
+
+def _clean_truncated_text(text: str) -> str:
+    """Tidy a feed excerpt that ends mid-sentence.
+
+    Many RSS feeds publish a fixed-length teaser that cuts off mid-word
+    (e.g. "...lifecycle operations in a"). When that happens, trim back
+    to the last complete sentence and append a single "…" to signal the
+    cut. If the text already ends cleanly, return it unchanged.
+    """
+    if not text:
+        return text
+    stripped = text.rstrip()
+    if not stripped:
+        return stripped
+    if stripped.endswith(("…", "...")):
+        return stripped
+    if _SENTENCE_END_RE.search(stripped[-3:] + " "):
+        return stripped
+
+    matches = list(_SENTENCE_END_RE.finditer(stripped))
+    if matches:
+        cut = matches[-1].end()
+        # If trimming back to the last complete sentence preserves enough
+        # content, return that — no ellipsis needed because the text now
+        # reads as a clean, finished excerpt.
+        if cut >= max(60, int(len(stripped) * 0.4)):
+            return stripped[:cut].rstrip()
+    # Couldn't find a clean sentence break; flag as truncated.
+    return stripped + "…"
+
+
 def _extract_image_url(
     entry: feedparser.FeedParserDict, content_html: Optional[str]
 ) -> Optional[str]:
@@ -211,12 +244,20 @@ def normalize_generic(
     # If content:encoded / Atom content exists, use it as the full body
     if content_value:
         content_html = content_value or None
-        desc_text = _strip_wp_footer(strip_html(raw_desc).strip()) or strip_html(content_value).strip() or title
-        summary_text = _strip_wp_footer(strip_html(content_value).strip())[:2000] or None
+        desc_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(raw_desc).strip())
+        ) or strip_html(content_value).strip() or title
+        summary_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(content_value).strip())[:2000]
+        ) or None
     elif raw_desc:
         content_html = raw_desc or None
-        desc_text = _strip_wp_footer(strip_html(raw_desc).strip()) or title
-        summary_text = _strip_wp_footer(strip_html(raw_desc).strip())[:2000] or None
+        desc_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(raw_desc).strip())
+        ) or title
+        summary_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(raw_desc).strip())[:2000]
+        ) or None
     else:
         content_html = None
         desc_text = title
@@ -316,7 +357,7 @@ def normalize_cisa_advisory(
     guid = (entry.get("id") or link).strip()
     content_html = entry.get("summary") or entry.get("description") or ""
     # Plain-text excerpt for list views (capped to avoid huge previews)
-    desc = strip_html(content_html).strip()[:2000] or None
+    desc = _clean_truncated_text(strip_html(content_html).strip()[:2000]) or None
 
     cvss_score = _extract_cvss_score(content_html)
     cve_ids    = _extract_cve_ids(content_html)
@@ -379,15 +420,21 @@ def normalize_article(
     if content_value:
         content_html = content_value or None
         desc_text = (
-            _strip_wp_footer(strip_html(raw_desc).strip())
+            _clean_truncated_text(_strip_wp_footer(strip_html(raw_desc).strip()))
             or strip_html(content_value).strip()
             or title
         )
-        summary_text = _strip_wp_footer(strip_html(content_value).strip())[:2000] or None
+        summary_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(content_value).strip())[:2000]
+        ) or None
     elif raw_desc:
         content_html = raw_desc or None
-        desc_text = _strip_wp_footer(strip_html(raw_desc).strip()) or title
-        summary_text = _strip_wp_footer(strip_html(raw_desc).strip())[:2000] or None
+        desc_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(raw_desc).strip())
+        ) or title
+        summary_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(raw_desc).strip())[:2000]
+        ) or None
     else:
         content_html = None
         desc_text = title
