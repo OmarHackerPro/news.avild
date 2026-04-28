@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
 import httpx
 
+from app.api.translation_glossary import apply_glossary
+
 router = APIRouter()
 
 GT_LANG = {"zh": "zh-CN"}
@@ -37,4 +39,5 @@ async def translate(q: str = Query(..., max_length=500), lang: str = Query(..., 
     if not translated:
         raise HTTPException(status_code=502, detail="Empty translation result")
 
+    translated = apply_glossary(translated, lang)
     return {"translated": translated}

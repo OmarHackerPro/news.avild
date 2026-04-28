@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from opensearchpy.exceptions import NotFoundError
 
 from app.db.opensearch import INDEX_NEWS, get_os_client
+from app.ingestion.normalizer import _clean_truncated_text
 from app.models.errors import ErrorResponse
 from app.models.news import NewsDetail, NewsItem, NewsListResponse
 
@@ -39,13 +40,15 @@ def _time_ago(dt: datetime) -> str:
 def _hit_to_item(hit: dict) -> NewsItem:
     src = hit["_source"]
     published_at = datetime.fromisoformat(src["published_at"])
+    raw_desc = src.get("desc")
+    raw_summary = src.get("summary")
     return NewsItem(
         id=hit["_id"],
         slug=src.get("slug") or hit["_id"],
         tags=src.get("tags") or [],
         title=src["title"],
-        desc=src.get("desc"),
-        summary=src.get("summary"),
+        desc=_clean_truncated_text(raw_desc) if raw_desc else None,
+        summary=_clean_truncated_text(raw_summary) if raw_summary else None,
         keywords=src.get("keywords") or [],
         time=_time_ago(published_at),
         severity=src.get("severity"),
@@ -64,13 +67,15 @@ def _hit_to_item(hit: dict) -> NewsItem:
 def _hit_to_detail(hit: dict) -> NewsDetail:
     src = hit["_source"]
     published_at = datetime.fromisoformat(src["published_at"])
+    raw_desc = src.get("desc")
+    raw_summary = src.get("summary")
     return NewsDetail(
         id=hit["_id"],
         slug=src.get("slug") or hit["_id"],
         tags=src.get("tags") or [],
         title=src["title"],
-        desc=src.get("desc"),
-        summary=src.get("summary"),
+        desc=_clean_truncated_text(raw_desc) if raw_desc else None,
+        summary=_clean_truncated_text(raw_summary) if raw_summary else None,
         keywords=src.get("keywords") or [],
         time=_time_ago(published_at),
         severity=src.get("severity"),
