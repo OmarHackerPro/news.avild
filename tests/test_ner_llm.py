@@ -1,7 +1,8 @@
 """Tests for app.ingestion.ner_llm."""
-import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+from app.ingestion.ner_llm import extract_entities_llm
 
 
 def _make_anthropic_response(entities: list[dict]):
@@ -22,10 +23,10 @@ async def test_extract_entities_returns_cve_and_vuln_alias():
         {"type": "actor", "name": "Lazarus Group", "normalized_key": "lazarus-group"},
     ]
 
-    with patch("app.ingestion.ner_llm._client") as mock_client:
-        mock_client.messages.create.return_value = _make_anthropic_response(mock_entities)
+    mock_async_client = MagicMock()
+    mock_async_client.messages.create = AsyncMock(return_value=_make_anthropic_response(mock_entities))
 
-        from app.ingestion.ner_llm import extract_entities_llm
+    with patch("app.ingestion.ner_llm._get_client", return_value=mock_async_client):
         result = await extract_entities_llm(
             slug="test-article",
             title="Log4Shell exploited by Lazarus Group",
@@ -40,10 +41,10 @@ async def test_extract_entities_returns_cve_and_vuln_alias():
 
 @pytest.mark.asyncio
 async def test_extract_entities_returns_empty_on_llm_failure():
-    with patch("app.ingestion.ner_llm._client") as mock_client:
-        mock_client.messages.create.side_effect = Exception("API error")
+    mock_async_client = MagicMock()
+    mock_async_client.messages.create = AsyncMock(side_effect=Exception("API error"))
 
-        from app.ingestion.ner_llm import extract_entities_llm
+    with patch("app.ingestion.ner_llm._get_client", return_value=mock_async_client):
         result = await extract_entities_llm(
             slug="fail-article",
             title="Some article",
@@ -65,8 +66,10 @@ async def test_extract_entities_uses_cache_on_hit():
     mock_result.fetchone.return_value = (cached_entities,)
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("app.ingestion.ner_llm._client") as mock_client:
-        from app.ingestion.ner_llm import extract_entities_llm
+    mock_async_client = MagicMock()
+    mock_async_client.messages.create = AsyncMock()
+
+    with patch("app.ingestion.ner_llm._get_client", return_value=mock_async_client):
         result = await extract_entities_llm(
             slug="cached-article",
             title="LockBit ransomware",
@@ -74,7 +77,7 @@ async def test_extract_entities_uses_cache_on_hit():
             db_session=mock_session,
         )
 
-    mock_client.messages.create.assert_not_called()
+    mock_async_client.messages.create.assert_not_called()
     assert result == cached_entities
 
 
@@ -90,10 +93,10 @@ async def test_extract_entities_caches_result():
     miss_result.fetchone.return_value = None
     mock_session.execute = AsyncMock(return_value=miss_result)
 
-    with patch("app.ingestion.ner_llm._client") as mock_client:
-        mock_client.messages.create.return_value = _make_anthropic_response(mock_entities)
+    mock_async_client = MagicMock()
+    mock_async_client.messages.create = AsyncMock(return_value=_make_anthropic_response(mock_entities))
 
-        from app.ingestion.ner_llm import extract_entities_llm
+    with patch("app.ingestion.ner_llm._get_client", return_value=mock_async_client):
         result = await extract_entities_llm(
             slug="new-article",
             title="MOVEit Transfer breach",
@@ -103,3 +106,28 @@ async def test_extract_entities_caches_result():
 
     assert mock_session.execute.call_count == 2  # one SELECT, one INSERT
     assert result == mock_entities
+
+
+@pytest.mark.asyncio
+async def test_extract_entities_does_not_cache_on_failure():
+    """LLM failure must not write empty entities to cache."""
+    mock_session = AsyncMock()
+    # Simulate cache miss
+    miss_result = MagicMock()
+    miss_result.fetchone.return_value = None
+    mock_session.execute = AsyncMock(return_value=miss_result)
+
+    mock_async_client = MagicMock()
+    mock_async_client.messages.create = AsyncMock(side_effect=Exception("API timeout"))
+
+    with patch("app.ingestion.ner_llm._get_client", return_value=mock_async_client):
+        result = await extract_entities_llm(
+            slug="fail-article",
+            title="Some article",
+            summary="Some content.",
+            db_session=mock_session,
+        )
+
+    # Only the SELECT should have been called, not INSERT
+    assert mock_session.execute.call_count == 1
+    assert result == []

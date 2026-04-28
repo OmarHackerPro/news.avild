@@ -3,20 +3,39 @@
 Caches results in Postgres ner_cache table. Pass db_session=None to skip cache
 (useful for unit tests and one-off calls).
 """
-import json
 import logging
 import os
-from typing import Optional
+from typing import Literal, Optional
 
 import anthropic
+import httpx
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+_async_client: anthropic.AsyncAnthropic | None = None
+
 _MODEL = "claude-haiku-4-5-20251001"
 _MAX_TOKENS = 1024
+
+
+class _EntityResult(BaseModel):
+    type: Literal["cve", "product", "malware", "actor", "tool", "vuln_alias", "campaign"]
+    name: str
+    normalized_key: str
+
+
+def _get_client() -> anthropic.AsyncAnthropic:
+    global _async_client
+    if _async_client is None:
+        _async_client = anthropic.AsyncAnthropic(
+            api_key=os.environ["ANTHROPIC_API_KEY"],
+            timeout=httpx.Timeout(30.0),
+        )
+    return _async_client
+
 
 _SYSTEM_PROMPT = """You are a cybersecurity named entity extractor. Extract security-relevant entities from the article title and summary.
 
@@ -74,7 +93,7 @@ async def _write_cache(slug: str, entities: list[dict], session: AsyncSession) -
             "VALUES (:slug, :entities, NOW()) "
             "ON CONFLICT (slug) DO NOTHING"
         ),
-        {"slug": slug, "entities": json.dumps(entities)},
+        {"slug": slug, "entities": entities},
     )
     await session.commit()
 
@@ -96,8 +115,9 @@ async def extract_entities_llm(
             return cached
 
     text_input = f"Title: {title}\nSummary: {(summary or '')[:500]}"
+    entities: list[dict] = []
     try:
-        response = _client.messages.create(
+        response = await _get_client().messages.create(
             model=_MODEL,
             max_tokens=_MAX_TOKENS,
             system=_SYSTEM_PROMPT,
@@ -106,12 +126,16 @@ async def extract_entities_llm(
             messages=[{"role": "user", "content": text_input}],
         )
         tool_block = next((b for b in response.content if b.type == "tool_use"), None)
-        entities = tool_block.input.get("entities", []) if tool_block else []
+        raw = tool_block.input.get("entities", []) if tool_block else []
+        for item in raw:
+            if isinstance(item, dict):
+                try:
+                    entities.append(_EntityResult.model_validate(item).model_dump())
+                except ValidationError:
+                    logger.warning("Skipping invalid entity from LLM: %s", item)
+        if db_session is not None:
+            await _write_cache(slug, entities, db_session)
     except Exception as exc:
         logger.warning("LLM NER failed for slug=%s: %s", slug, exc)
-        entities = []
-
-    if db_session is not None:
-        await _write_cache(slug, entities, db_session)
 
     return entities
