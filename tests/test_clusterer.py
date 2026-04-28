@@ -1,6 +1,6 @@
 """Tests for the rewritten app.ingestion.clusterer (unified scorer)."""
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
 from app.ingestion.clusterer import _build_event_signature, _updated_centroid
 
