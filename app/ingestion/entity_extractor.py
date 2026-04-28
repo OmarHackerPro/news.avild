@@ -392,7 +392,10 @@ async def extract_entities(
     seen_keys = {e["normalized_key"] for e in llm_entities}
     merged = list(llm_entities)
     for e in regex_entities:
-        if e["normalized_key"] not in seen_keys:
+        key = e["normalized_key"]
+        # suppress if exact match OR if LLM already has a more-specific variant
+        # (e.g. lockbit-3.0 in seen_keys suppresses lockbit from regex)
+        if key not in seen_keys and not any(k.startswith(key + "-") for k in seen_keys):
             merged.append(e)
-            seen_keys.add(e["normalized_key"])
+            seen_keys.add(key)
     return merged

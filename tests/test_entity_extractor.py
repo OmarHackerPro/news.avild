@@ -117,3 +117,45 @@ async def test_missing_data_file_falls_back_to_baseline(tmp_path):
         keys = [e["normalized_key"] for e in entities]
         assert "lockbit" in keys
     importlib.reload(mod)
+
+
+# ---------------------------------------------------------------------------
+# LLM-first path tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_extract_entities_llm_results_take_precedence():
+    """When slug is provided, LLM entities come first; regex adds new keys only."""
+    from unittest.mock import AsyncMock, patch
+
+    llm_result = [
+        {"type": "vuln_alias", "name": "CitrixBleed", "normalized_key": "citrixbleed"},
+        {"type": "cve", "name": "CVE-2023-4966", "normalized_key": "CVE-2023-4966"},
+    ]
+    article = _make_article(title="CitrixBleed CVE-2023-4966 — LockBit exploiting NetScaler")
+
+    with patch("app.ingestion.ner_llm.extract_entities_llm", new_callable=AsyncMock, return_value=llm_result):
+        entities = await extract_entities(article, slug="test-slug")
+
+    keys = [e["normalized_key"] for e in entities]
+    # LLM entities present
+    assert "citrixbleed" in keys
+    assert "CVE-2023-4966" in keys
+    # Regex-extracted entity (lockbit) also present as supplement
+    assert "lockbit" in keys
+    # No duplicates
+    assert len(keys) == len(set(keys))
+
+
+@pytest.mark.asyncio
+async def test_extract_entities_falls_back_to_regex_when_llm_returns_empty():
+    """When LLM returns no entities, regex results are used."""
+    from unittest.mock import AsyncMock, patch
+
+    article = _make_article(title="LockBit ransomware hits hospital")
+
+    with patch("app.ingestion.ner_llm.extract_entities_llm", new_callable=AsyncMock, return_value=[]):
+        entities = await extract_entities(article, slug="test-slug")
+
+    keys = [e["normalized_key"] for e in entities]
+    assert "lockbit" in keys
