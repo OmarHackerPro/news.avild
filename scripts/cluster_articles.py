@@ -82,7 +82,7 @@ async def _scroll_articles(source: str | None) -> list[dict]:
                 "_source": [
                     "slug", "title", "desc", "summary", "cve_ids",
                     "category", "tags", "published_at",
-                    "source_name", "credibility_weight",
+                    "source_name", "credibility_weight", "cvss_score",
                 ],
             },
         )
@@ -164,6 +164,7 @@ async def main(args: argparse.Namespace) -> None:
             "published_at": src.get("published_at"),
             "source_name": src.get("source_name", ""),
             "credibility_weight": src.get("credibility_weight", 1.0),
+            "cvss_score": src.get("cvss_score"),
         }
 
         entities = await _get_entities_for_slug(slug)
