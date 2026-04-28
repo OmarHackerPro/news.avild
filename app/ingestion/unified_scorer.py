@@ -29,7 +29,7 @@ _EMBED_WINDOW_HOURS = 72
 
 _SOURCE_FIELDS = [
     "article_count", "state", "entity_keys",
-    "event_signature", "centroid_embedding",
+    "event_signature", "centroid_embedding", "latest_at",
 ]
 
 
@@ -130,19 +130,14 @@ async def _get_candidates(
     async def _knn_lookup() -> list[dict]:
         if not article_embedding:
             return []
+        # NMSLIB does not support filters inside knn queries; post-filter in Python
         query = {
-            "size": _KNN_K,
+            "size": _KNN_K * 3,  # fetch extra to absorb post-filter losses
             "query": {
                 "knn": {
                     "centroid_embedding": {
                         "vector": article_embedding,
-                        "k": _KNN_K,
-                        "filter": {
-                            "bool": {
-                                "must": [{"range": {"latest_at": {"gte": cutoff_72h}}}],
-                                "must_not": [{"term": {"state": "resolved"}}],
-                            }
-                        },
+                        "k": _KNN_K * 3,
                     }
                 }
             },
@@ -150,7 +145,12 @@ async def _get_candidates(
         }
         try:
             resp = await os_client.search(index=INDEX_CLUSTERS, body=query)
-            return resp["hits"]["hits"]
+            hits = resp["hits"]["hits"]
+            return [
+                h for h in hits
+                if h["_source"].get("state") != "resolved"
+                and (h["_source"].get("latest_at") or "") >= cutoff_72h
+            ][:_KNN_K]
         except Exception as exc:
             logger.warning("k-NN candidate lookup failed: %s", exc)
             return []
