@@ -3,6 +3,7 @@
 Candidate retrieval: OpenSearch structured terms + k-NN, then score each candidate.
 Best cluster above ASSIGN_THRESHOLD wins; None means create a new cluster.
 """
+import asyncio
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -53,6 +54,8 @@ def _compute_score(
 
     cl_cves = set(sig.get("cve_ids") or [])
     cl_aliases = set((sig.get("vuln_aliases") or []) + (sig.get("campaign_names") or []))
+    # entity_keys is a flat list without type metadata; subtract known structured keys
+    # to reduce (but not fully eliminate) vendor-key asymmetry with art_others
     cl_others = set(cluster_source.get("entity_keys") or []) - cl_cves - cl_aliases
 
     cve_overlap = 1.0 if art_cves & cl_cves else 0.0
@@ -86,30 +89,24 @@ async def _get_candidates(
 ) -> list[dict]:
     os_client = get_os_client()
     now = datetime.now(timezone.utc)
-    cutoff_14d = (now - timedelta(days=_STRUCTURED_WINDOW_DAYS)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
-    cutoff_72h = (now - timedelta(hours=_EMBED_WINDOW_HOURS)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    cutoff_14d = (now - timedelta(days=_STRUCTURED_WINDOW_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    cutoff_72h = (now - timedelta(hours=_EMBED_WINDOW_HOURS)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     cve_ids = [e["normalized_key"] for e in article_entities if e["type"] == "cve"]
     vuln_aliases = [e["normalized_key"] for e in article_entities if e["type"] == "vuln_alias"]
     campaign_names = [e["normalized_key"] for e in article_entities if e["type"] == "campaign"]
 
-    candidates: dict[str, dict] = {}
-
-    # Structured lookup (terms query on event_signature)
-    should_clauses = []
-    for cve in cve_ids:
-        should_clauses.append({"term": {"event_signature.cve_ids": cve}})
-    for alias in vuln_aliases:
-        should_clauses.append({"term": {"event_signature.vuln_aliases": alias}})
-    for campaign in campaign_names:
-        should_clauses.append({"term": {"event_signature.campaign_names": campaign}})
-
-    if should_clauses:
-        structured_query = {
+    async def _structured_lookup() -> list[dict]:
+        should_clauses = []
+        for cve in cve_ids:
+            should_clauses.append({"term": {"event_signature.cve_ids": cve}})
+        for alias in vuln_aliases:
+            should_clauses.append({"term": {"event_signature.vuln_aliases": alias}})
+        for campaign in campaign_names:
+            should_clauses.append({"term": {"event_signature.campaign_names": campaign}})
+        if not should_clauses:
+            return []
+        query = {
             "query": {
                 "bool": {
                     "should": should_clauses,
@@ -124,15 +121,16 @@ async def _get_candidates(
             "size": 20,
         }
         try:
-            resp = await os_client.search(index=INDEX_CLUSTERS, body=structured_query)
-            for hit in resp["hits"]["hits"]:
-                candidates[hit["_id"]] = hit
+            resp = await os_client.search(index=INDEX_CLUSTERS, body=query)
+            return resp["hits"]["hits"]
         except Exception as exc:
             logger.warning("Structured candidate lookup failed: %s", exc)
+            return []
 
-    # k-NN lookup (embedding similarity)
-    if article_embedding:
-        knn_query = {
+    async def _knn_lookup() -> list[dict]:
+        if not article_embedding:
+            return []
+        query = {
             "size": _KNN_K,
             "query": {
                 "knn": {
@@ -151,12 +149,20 @@ async def _get_candidates(
             "_source": _SOURCE_FIELDS,
         }
         try:
-            resp = await os_client.search(index=INDEX_CLUSTERS, body=knn_query)
-            for hit in resp["hits"]["hits"]:
-                if hit["_id"] not in candidates:
-                    candidates[hit["_id"]] = hit
+            resp = await os_client.search(index=INDEX_CLUSTERS, body=query)
+            return resp["hits"]["hits"]
         except Exception as exc:
             logger.warning("k-NN candidate lookup failed: %s", exc)
+            return []
+
+    structured_hits, knn_hits = await asyncio.gather(_structured_lookup(), _knn_lookup())
+
+    candidates: dict[str, dict] = {}
+    for hit in structured_hits:
+        candidates[hit["_id"]] = hit
+    for hit in knn_hits:
+        if hit["_id"] not in candidates:
+            candidates[hit["_id"]] = hit
 
     return list(candidates.values())
 
