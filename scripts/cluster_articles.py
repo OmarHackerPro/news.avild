@@ -24,6 +24,8 @@ load_dotenv()
 from app.db.opensearch import INDEX_NEWS, INDEX_ENTITIES, INDEX_CLUSTERS, get_os_client
 from app.ingestion.clusterer import cluster_article
 
+_REFRESH_EVERY = 50  # force cluster index refresh every N articles during backfill
+
 logger = logging.getLogger(__name__)
 
 
@@ -184,6 +186,9 @@ async def main(args: argparse.Namespace) -> None:
         except Exception:
             logger.exception("Failed to cluster %s", slug[:50])
             totals["errors"] += 1
+
+        if i % _REFRESH_EVERY == 0:
+            await get_os_client().indices.refresh(index=INDEX_CLUSTERS)
 
         if i % args.batch_size == 0:
             logger.info("Progress: %d/%d processed.", i, len(unclustered))
