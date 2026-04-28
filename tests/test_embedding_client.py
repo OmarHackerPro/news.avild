@@ -10,7 +10,7 @@ async def test_embed_text_returns_list_of_floats():
     mock_response.raise_for_status = MagicMock()
     mock_response.json.return_value = {"embedding": [0.1] * 1024}
 
-    with patch("httpx.AsyncClient") as mock_client_cls:
+    with patch("app.ingestion.embedding_client.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
@@ -27,7 +27,7 @@ async def test_embed_text_returns_list_of_floats():
 
 @pytest.mark.asyncio
 async def test_embed_text_returns_none_on_timeout():
-    with patch("httpx.AsyncClient") as mock_client_cls:
+    with patch("app.ingestion.embedding_client.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
@@ -46,7 +46,7 @@ async def test_embed_batch_returns_list_of_embeddings():
     mock_response.raise_for_status = MagicMock()
     mock_response.json.return_value = {"embeddings": [[0.1] * 1024, [0.2] * 1024]}
 
-    with patch("httpx.AsyncClient") as mock_client_cls:
+    with patch("app.ingestion.embedding_client.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
@@ -62,7 +62,7 @@ async def test_embed_batch_returns_list_of_embeddings():
 
 @pytest.mark.asyncio
 async def test_embed_batch_returns_nones_on_error():
-    with patch("httpx.AsyncClient") as mock_client_cls:
+    with patch("app.ingestion.embedding_client.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
@@ -73,3 +73,10 @@ async def test_embed_batch_returns_nones_on_error():
         result = await embed_batch(["a", "b", "c"])
 
     assert result == [None, None, None]
+
+
+@pytest.mark.asyncio
+async def test_embed_batch_returns_empty_list_for_empty_input():
+    from app.ingestion.embedding_client import embed_batch
+    result = await embed_batch([])
+    assert result == []
