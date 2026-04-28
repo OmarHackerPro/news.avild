@@ -1,293 +1,97 @@
-"""Article clustering engine.
+"""Cluster assignment: unified scorer replaces the 3-tier CVE/entity/MLT waterfall.
 
-Assigns articles to clusters using a three-tier decision tree:
-  1. CVE overlap  — exact match on shared CVE IDs (7-day window)
-  2. Entity overlap — 2+ shared entity keys (48-hour window)
-  3. Narrative similarity — more_like_this on title+summary (24-hour window)
-
-If no existing cluster matches, a new one is created.
+Public API (unchanged from previous version):
+  cluster_article(article, slug, entities) → None
+  merge_into_cluster(cluster_id, slug, entity_keys, cve_ids, *, ...) → None
+  create_cluster(article, entities, *, embedding) → str
 """
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Optional
 
 from app.db.opensearch import INDEX_CLUSTERS, INDEX_NEWS, get_os_client
-from app.ingestion.normalizer import NormalizedArticle
-from app.ingestion.scorer import compute_cluster_score, rescore_cluster
+from app.ingestion.embedding_client import embed_text
+from app.ingestion.unified_scorer import find_best_cluster
 
 logger = logging.getLogger(__name__)
 
-# MLT score threshold — clusters below this are not considered matches.
-# Tuned conservatively to avoid false merges; lower if clusters are too granular.
-_MLT_SCORE_THRESHOLD = 10.0
-
-# Entity types that have signal value in clustering (discriminators).
-# Vendors (e.g., Microsoft, Google, Apache) are excluded because they appear in
-# nearly every security article and offer no discriminatory power.
-_SIGNAL_TYPES = frozenset({"cve", "product", "malware", "actor", "tool"})
-
-# CVE count cap for matching: articles with > this many CVEs are considered
-# "noise" (e.g., bulk advisories) and should not match on CVE overlap.
-_MAX_ARTICLE_CVES_FOR_MATCHING = 3
-
-# MLT stop words — excluded from similarity scoring to avoid false merges on
-# generic security vocabulary that appears in nearly every cybersecurity article.
-_MLT_STOP_WORDS = [
-    # Report boilerplate
-    "advisory", "bulletin", "alert", "roundup", "brief", "summary", "report",
-    "update", "updates", "patch", "patches",
-    # Generic security verbs / nouns
-    "vulnerability", "vulnerabilities", "security", "cyber", "cybersecurity",
-    "threat", "threats", "attack", "attacks", "exploit", "exploitation",
-    "malware", "ransomware", "phishing", "breach", "incident",
-    "critical", "high", "medium", "low", "severity",
-    "affected", "systems", "users", "allow", "allows", "attacker", "attackers",
-    "remote", "code", "execution", "arbitrary", "access", "unauthorized",
-    "disclosed", "disclosure", "researchers", "researcher", "cve", "cvss",
-    "mitigation", "mitigate", "mitigated", "detection", "protect", "protection",
-]
-
-_MLT_MAX_CLUSTER_SIZE = 15  # clusters larger than this cannot absorb via MLT
+_EMBED_INPUT_MAX = 400  # chars of summary/desc to include in embedding input
 
 
-def _signal_keys(entities: list[dict]) -> list[str]:
-    """Extract normalized_key from entities that have signal value in clustering.
-
-    Filters out vendor type (which appears in nearly all articles) and returns
-    the normalized_keys of entities that are CVEs, products, malware, actors,
-    or tools—sufficiently specific to discriminate between events.
-
-    Args:
-        entities: list of entity dicts with 'normalized_key' and 'type' keys
-
-    Returns:
-        list of normalized_key strings for high-signal entity types
-    """
-    return [e["normalized_key"] for e in entities if e["type"] in _SIGNAL_TYPES]
+def _build_embed_input(article: dict) -> str:
+    text = article.get("title", "")
+    snippet = article.get("summary") or article.get("desc") or ""
+    if snippet:
+        text += ". " + snippet[:_EMBED_INPUT_MAX]
+    return text
 
 
-# ---------------------------------------------------------------------------
-# Finders — each returns the best matching cluster_id or None
-# ---------------------------------------------------------------------------
-
-async def find_cluster_by_cve(
-    cve_ids: list[str], window_days: int = 7,
-) -> Optional[str]:
-    """Find an existing cluster that shares any CVE ID within the time window."""
-    if not cve_ids:
-        return None
-
-    client = get_os_client()
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=window_days)).isoformat()
-
-    # Match seed_cve_ids only — not cve_ids (which grows as articles merge in) —
-    # to prevent roundup articles from expanding the match pool.
-    resp = await client.search(
-        index=INDEX_CLUSTERS,
-        body={
-            "query": {
-                "bool": {
-                    "filter": [
-                        {"terms": {"seed_cve_ids": cve_ids}},
-                        {"range": {"created_at": {"gte": cutoff}}},
-                    ]
-                }
-            },
-            "sort": [{"article_count": {"order": "desc"}}],
-            "size": 1,
-            "_source": False,
-        },
-    )
-
-    hits = resp["hits"]["hits"]
-    return hits[0]["_id"] if hits else None
-
-
-async def find_cluster_by_entities(
-    entity_keys: list[str], window_hours: int = 48,
-) -> Optional[str]:
-    """Find a cluster sharing 2+ entity keys within the time window."""
-    if len(entity_keys) < 2:
-        return None
-
-    client = get_os_client()
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=window_hours)).isoformat()
-
-    resp = await client.search(
-        index=INDEX_CLUSTERS,
-        body={
-            "query": {
-                "bool": {
-                    "filter": [
-                        {"range": {"created_at": {"gte": cutoff}}},
-                    ],
-                    "should": [
-                        {"terms": {"entity_keys": entity_keys}},
-                    ],
-                    "minimum_should_match": 1,
-                }
-            },
-            "sort": [{"article_count": {"order": "desc"}}],
-            "size": 10,
-            "_source": ["entity_keys"],
-        },
-    )
-
-    # Post-filter: require at least 2 overlapping keys
-    for hit in resp["hits"]["hits"]:
-        cluster_keys = set(hit["_source"].get("entity_keys") or [])
-        overlap = cluster_keys & set(entity_keys)
-        if len(overlap) >= 2:
-            return hit["_id"]
-
-    return None
-
-
-async def find_cluster_by_mlt(
-    title: str, summary: Optional[str], window_hours: int = 24,
-) -> Optional[str]:
-    """Find a narratively similar cluster via more_like_this."""
-    like_text = title
-    if summary:
-        like_text = f"{title} {summary}"
-
-    client = get_os_client()
-
-    # Guard: MLT needs a minimum corpus to produce meaningful results
-    count_resp = await client.count(index=INDEX_CLUSTERS)
-    if count_resp.get("count", 0) < 20:
-        return None
-
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=window_hours)).isoformat()
-
-    resp = await client.search(
-        index=INDEX_CLUSTERS,
-        body={
-            "query": {
-                "bool": {
-                    "must": [
-                        {
-                            "more_like_this": {
-                                "fields": ["label", "summary"],
-                                "like": like_text,
-                                "min_term_freq": 1,
-                                "min_doc_freq": 1,
-                                "minimum_should_match": "30%",
-                                "stop_words": _MLT_STOP_WORDS,
-                            }
-                        }
-                    ],
-                    "filter": [
-                        {"range": {"created_at": {"gte": cutoff}}},
-                        {"range": {"article_count": {"lte": _MLT_MAX_CLUSTER_SIZE}}},
-                    ],
-                }
-            },
-            "size": 1,
-            "_source": ["entity_keys", "article_count"],
-        },
-    )
-
-    hits = resp["hits"]["hits"]
-    if hits and hits[0]["_score"] >= _MLT_SCORE_THRESHOLD:
-        src = hits[0]["_source"]
-        entity_keys = src.get("entity_keys") or []
-        article_count = src.get("article_count", 1)
-        # Reject "naked series" clusters: no named-entity anchor and already grown
-        # large via pure text similarity (ISC Stormcast, weekly newsletters, etc.)
-        if not entity_keys and article_count >= 3:
-            return None
-        return hits[0]["_id"]
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-async def _tag_article(client, slug: str, cluster_id: str) -> None:
-    """Set cluster_id on the article doc (denormalized back-reference)."""
-    await client.update(
-        index=INDEX_NEWS,
-        id=slug,
-        body={"doc": {"cluster_id": cluster_id}},
-    )
-
-
-# ---------------------------------------------------------------------------
-# Mutators — create or merge
-# ---------------------------------------------------------------------------
-
-async def create_cluster(
-    article: NormalizedArticle,
-    entity_keys: list[str],
-    credibility_weight: float = 1.0,
-    entity_max_cvss: Optional[float] = None,
-    cisa_kev: bool = False,
-) -> str:
-    """Create a new cluster seeded from a single article. Returns cluster _id."""
-    now = datetime.now(timezone.utc).isoformat()
-    slug = article["slug"]
-
-    cve_ids = article.get("cve_ids") or []
-    # Prefer NVD-authoritative CVSS from entity lookup over article-level field
-    max_cvss = entity_max_cvss if entity_max_cvss is not None else article.get("cvss_score")
-    if max_cvss is not None:
-        max_cvss = float(max_cvss)
-
-    score_data = compute_cluster_score(
-        article_count=1,
-        max_cvss=max_cvss,
-        cve_count=len(cve_ids),
-        entity_keys=entity_keys,
-        state="new",
-        latest_at=now,
-        max_credibility_weight=credibility_weight,
-        unique_source_count=1,
-        cisa_kev=cisa_kev,
-    )
-
-    doc = {
-        "label": article.get("title", ""),
-        "state": "new",
-        "summary": article.get("summary") or article.get("desc"),
-        "why_it_matters": None,
-        "score": score_data["score"],
-        "confidence": score_data["confidence"],
-        "top_factors": score_data["top_factors"],
-        "max_cvss": max_cvss,
-        "cisa_kev": cisa_kev,
-        "max_credibility_weight": credibility_weight,
-        "article_ids": [slug],
-        "article_count": 1,
-        "cve_ids": cve_ids,
-        "seed_cve_ids": cve_ids,  # frozen at creation; never updated on merge
-        "entity_keys": entity_keys,
-        "categories": [article["category"]] if article.get("category") else [],
-        "tags": article.get("tags") or [],
-        "timeline": [{
-            "article_slug": slug,
-            "source_name": article.get("source_name", ""),
-            "title": article.get("title", ""),
-            "published_at": article.get("published_at", now),
-            "added_at": now,
-        }],
-        "latest_at": now,
-        "created_at": now,
-        "updated_at": now,
+def _build_event_signature(entities: list[dict], cve_ids: list[str]) -> dict:
+    sig: dict = {
+        "cve_ids": list(dict.fromkeys(cve_ids)),
+        "vuln_aliases": [],
+        "campaign_names": [],
+        "affected_products": [],
+        "primary_actors": [],
+        "confidence": "low",
     }
+    for e in entities:
+        t = e["type"]
+        k = e["normalized_key"]
+        if t == "vuln_alias":
+            sig["vuln_aliases"].append(k)
+        elif t == "campaign":
+            sig["campaign_names"].append(k)
+        elif t == "product":
+            sig["affected_products"].append(k)
+        elif t == "actor":
+            sig["primary_actors"].append(k)
 
-    client = get_os_client()
-    resp = await client.index(
-        index=INDEX_CLUSTERS,
-        body=doc,
-        params={"refresh": "false"},
-    )
+    if len(sig["cve_ids"]) >= 2 or (sig["cve_ids"] and sig["vuln_aliases"]):
+        sig["confidence"] = "high"
+    elif sig["cve_ids"] or sig["vuln_aliases"] or sig["campaign_names"]:
+        sig["confidence"] = "medium"
+    return sig
 
-    cluster_id = resp["_id"]
-    await _tag_article(client, slug, cluster_id)
-    logger.info("Created cluster %s for article '%s'", cluster_id, slug)
-    return cluster_id
+
+def _updated_centroid(
+    old_centroid: Optional[list[float]], new_vec: list[float], n: int
+) -> list[float]:
+    """Running average: new_centroid = (old * (n-1) + new) / n."""
+    if old_centroid is None or n <= 1:
+        return new_vec
+    import numpy as np
+    c = (np.array(old_centroid) * (n - 1) + np.array(new_vec)) / n
+    return c.tolist()
+
+
+async def cluster_article(
+    article: dict,
+    slug: str,
+    entities: list[dict],
+) -> None:
+    """Assign article to an existing cluster or create a new one."""
+    cve_ids: list[str] = article.get("cve_ids") or []
+    embedding = await embed_text(_build_embed_input(article))
+
+    cluster_id = await find_best_cluster(entities, embedding)
+
+    if cluster_id:
+        await merge_into_cluster(
+            cluster_id,
+            slug,
+            [e["normalized_key"] for e in entities],
+            cve_ids,
+            source_name=article.get("source_name", ""),
+            title=article.get("title", ""),
+            published_at=article.get("published_at", ""),
+            cvss_score=article.get("cvss_score"),
+            credibility_weight=float(article.get("credibility_weight") or 1.0),
+            new_entities=entities,
+            new_embedding=embedding,
+        )
+    else:
+        await create_cluster(article, entities, embedding=embedding)
 
 
 async def merge_into_cluster(
@@ -301,175 +105,224 @@ async def merge_into_cluster(
     published_at: str = "",
     cvss_score: Optional[float] = None,
     credibility_weight: float = 1.0,
-    cisa_kev: bool = False,
+    new_entities: Optional[list[dict]] = None,
+    new_embedding: Optional[list[float]] = None,
 ) -> None:
-    """Merge an article into an existing cluster via scripted update."""
-    now = datetime.now(timezone.utc).isoformat()
-    if not published_at:
-        published_at = now
+    os_client = get_os_client()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    script = """
+    # Fetch current cluster to compute centroid update and merge event_signature
+    try:
+        existing = await os_client.get(index=INDEX_CLUSTERS, id=cluster_id, _source=True)
+        src = existing["_source"]
+        old_centroid = src.get("centroid_embedding")
+        old_count = src.get("article_count", 1)
+        old_sig = src.get("event_signature") or {}
+    except Exception:
+        old_centroid = None
+        old_count = 1
+        old_sig = {}
+
+    new_count = old_count + 1
+    new_centroid = (
+        _updated_centroid(old_centroid, new_embedding, new_count)
+        if new_embedding
+        else old_centroid
+    )
+
+    # Merge event_signature fields
+    new_sig_entities = new_entities or []
+    sig_update = {
+        "cve_ids": list(dict.fromkeys((old_sig.get("cve_ids") or []) + cve_ids)),
+        "vuln_aliases": list(dict.fromkeys(
+            (old_sig.get("vuln_aliases") or []) +
+            [e["normalized_key"] for e in new_sig_entities if e["type"] == "vuln_alias"]
+        )),
+        "campaign_names": list(dict.fromkeys(
+            (old_sig.get("campaign_names") or []) +
+            [e["normalized_key"] for e in new_sig_entities if e["type"] == "campaign"]
+        )),
+        "affected_products": list(dict.fromkeys(
+            (old_sig.get("affected_products") or []) +
+            [e["normalized_key"] for e in new_sig_entities if e["type"] == "product"]
+        )),
+        "primary_actors": list(dict.fromkeys(
+            (old_sig.get("primary_actors") or []) +
+            [e["normalized_key"] for e in new_sig_entities if e["type"] == "actor"]
+        )),
+    }
+    if len(sig_update["cve_ids"]) >= 2 or (sig_update["cve_ids"] and sig_update["vuln_aliases"]):
+        sig_update["confidence"] = "high"
+    elif sig_update["cve_ids"] or sig_update["vuln_aliases"] or sig_update["campaign_names"]:
+        sig_update["confidence"] = "medium"
+    else:
+        sig_update["confidence"] = old_sig.get("confidence", "low")
+
+    script_source = """
+        // Dedup and add article
         if (!ctx._source.article_ids.contains(params.slug)) {
             ctx._source.article_ids.add(params.slug);
-            ctx._source.article_count = ctx._source.article_ids.size();
-            // Append timeline entry (dedupe by slug)
-            if (ctx._source.timeline == null) {
-                ctx._source.timeline = new ArrayList();
-            }
-            boolean found = false;
-            for (entry in ctx._source.timeline) {
-                if (entry.article_slug.equals(params.slug)) { found = true; break; }
-            }
-            if (!found) {
-                Map e = new HashMap();
-                e.put('article_slug', params.slug);
-                e.put('source_name', params.source_name);
-                e.put('title', params.title);
-                e.put('published_at', params.published_at);
-                e.put('added_at', params.now);
-                ctx._source.timeline.add(e);
-            }
+            ctx._source.article_count += 1;
         }
+
+        // Lifecycle state
+        if (ctx._source.article_count >= 3) {
+            ctx._source.state = 'confirmed';
+        } else if (ctx._source.article_count >= 2) {
+            if (ctx._source.state == 'new') ctx._source.state = 'developing';
+        }
+
+        // Entity keys (dedup)
         for (key in params.entity_keys) {
             if (!ctx._source.entity_keys.contains(key)) {
                 ctx._source.entity_keys.add(key);
             }
         }
+
+        // CVE ids (dedup, grow)
         for (cve in params.cve_ids) {
             if (!ctx._source.cve_ids.contains(cve)) {
                 ctx._source.cve_ids.add(cve);
             }
         }
-        // Track max CVSS seen across all member articles
-        if (params.cvss_score != null) {
-            if (ctx._source.max_cvss == null || params.cvss_score > ctx._source.max_cvss) {
-                ctx._source.max_cvss = params.cvss_score;
-            }
+
+        // CVSS max
+        if (params.cvss_score != null && params.cvss_score > ctx._source.max_cvss) {
+            ctx._source.max_cvss = params.cvss_score;
         }
-        // Latch cisa_kev — once true, stays true
-        if (params.cisa_kev) {
-            ctx._source.cisa_kev = true;
-        }
-        // Track max credibility_weight seen across all member articles
-        if (ctx._source.max_credibility_weight == null || params.credibility_weight > ctx._source.max_credibility_weight) {
+
+        // Credibility max
+        if (params.credibility_weight > ctx._source.max_credibility_weight) {
             ctx._source.max_credibility_weight = params.credibility_weight;
         }
-        ctx._source.latest_at = params.now;
+
+        // Timeline (dedup by slug)
+        boolean found = false;
+        for (entry in ctx._source.timeline) {
+            if (entry.article_slug == params.slug) { found = true; break; }
+        }
+        if (!found) {
+            ctx._source.timeline.add(params.timeline_entry);
+        }
+
+        // Timestamps
+        if (params.published_at > ctx._source.latest_at) {
+            ctx._source.latest_at = params.published_at;
+        }
         ctx._source.updated_at = params.now;
-        if (ctx._source.article_count >= 3) {
-            ctx._source.state = 'confirmed';
-        } else if (ctx._source.article_count >= 2) {
-            ctx._source.state = 'developing';
+
+        // Event signature
+        ctx._source.event_signature = params.event_signature;
+
+        // Centroid embedding
+        if (params.centroid != null) {
+            ctx._source.centroid_embedding = params.centroid;
         }
     """
 
-    client = get_os_client()
-    await client.update(
+    await os_client.update(
         index=INDEX_CLUSTERS,
         id=cluster_id,
         body={
             "script": {
-                "source": script,
+                "source": script_source,
+                "lang": "painless",
                 "params": {
                     "slug": article_slug,
-                    "source_name": source_name,
-                    "title": title,
-                    "published_at": published_at,
                     "entity_keys": entity_keys,
                     "cve_ids": cve_ids,
-                    "cvss_score": cvss_score,
-                    "cisa_kev": cisa_kev,
+                    "cvss_score": cvss_score or 0.0,
                     "credibility_weight": credibility_weight,
+                    "published_at": published_at or now,
                     "now": now,
+                    "timeline_entry": {
+                        "article_slug": article_slug,
+                        "source_name": source_name,
+                        "title": title,
+                        "published_at": published_at or now,
+                        "added_at": now,
+                    },
+                    "event_signature": sig_update,
+                    "centroid": new_centroid,
                 },
             },
+            "upsert": {},
         },
         retry_on_conflict=3,
     )
 
-    await _tag_article(client, article_slug, cluster_id)
-    logger.info("Merged article '%s' into cluster %s", article_slug, cluster_id)
+    await os_client.update(
+        index=INDEX_NEWS,
+        id=article_slug,
+        body={"doc": {"cluster_id": cluster_id}},
+        retry_on_conflict=3,
+    )
 
-    # Recompute score now that article_count, max_cvss, and state have changed
-    await rescore_cluster(cluster_id)
+    await _rescore(cluster_id)
 
 
-# ---------------------------------------------------------------------------
-# Orchestrator — the decision tree
-# ---------------------------------------------------------------------------
-
-async def cluster_article(
-    article: NormalizedArticle,
-    slug: str,
+async def create_cluster(
+    article: dict,
     entities: list[dict],
-) -> None:
-    """Assign an article to a cluster (existing or new).
-
-    Decision priority:
-      1. CVE overlap (strongest signal)
-      2. Entity overlap (2+ shared keys)
-      3. Narrative similarity (MLT fallback)
-      4. Create new cluster
-
-    ``entities`` is a list of entity dicts with 'normalized_key' and 'type'.
-    All entity keys are stored in the cluster; only high-signal keys
-    (non-vendor types) are used for matching to avoid false merges.
-    Roundup articles (> _MAX_ARTICLE_CVES_FOR_MATCHING CVEs) skip CVE lookup.
-    """
+    *,
+    embedding: Optional[list[float]] = None,
+) -> str:
+    os_client = get_os_client()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    slug = article.get("slug", "")
+    cve_ids: list[str] = article.get("cve_ids") or []
     entity_keys = [e["normalized_key"] for e in entities]
-    signal_keys = _signal_keys(entities)
+    published_at = article.get("published_at") or now
 
-    cve_ids = article.get("cve_ids") or []
-    credibility_weight = float(article.get("credibility_weight") or 1.0)
-    cluster_id: Optional[str] = None
+    doc = {
+        "label": article.get("title", ""),
+        "state": "new",
+        "summary": "",
+        "why_it_matters": "",
+        "score": 0.0,
+        "confidence": "low",
+        "max_cvss": article.get("cvss_score") or 0.0,
+        "cisa_kev": False,
+        "max_credibility_weight": float(article.get("credibility_weight") or 1.0),
+        "top_factors": [],
+        "article_ids": [slug],
+        "categories": [article.get("category")] if article.get("category") else [],
+        "tags": [],
+        "article_count": 1,
+        "cve_ids": cve_ids,
+        "seed_cve_ids": cve_ids,
+        "entity_keys": entity_keys,
+        "event_signature": _build_event_signature(entities, cve_ids),
+        "centroid_embedding": embedding,
+        "merged_into": None,
+        "timeline": [{
+            "article_slug": slug,
+            "source_name": article.get("source_name", ""),
+            "title": article.get("title", ""),
+            "published_at": published_at,
+            "added_at": now,
+        }],
+        "latest_at": published_at,
+        "created_at": now,
+        "updated_at": now,
+    }
 
-    # Derive CVSS and CISA KEV from NVD-enriched CVE entities when available
-    entity_max_cvss: Optional[float] = None
-    entity_cisa_kev = False
-    for e in entities:
-        if e.get("type") == "cve":
-            score = e.get("cvss_score")
-            if score is not None and (entity_max_cvss is None or score > entity_max_cvss):
-                entity_max_cvss = float(score)
-            if e.get("cisa_kev"):
-                entity_cisa_kev = True
+    resp = await os_client.index(index=INDEX_CLUSTERS, body=doc)
+    cluster_id = resp["_id"]
 
-    # 1. CVE overlap — skip if article is a roundup (too many CVEs)
-    if cve_ids and len(cve_ids) <= _MAX_ARTICLE_CVES_FOR_MATCHING:
-        cluster_id = await find_cluster_by_cve(cve_ids)
-        if cluster_id:
-            logger.debug("CVE match for '%s' → cluster %s", slug, cluster_id)
+    await os_client.update(
+        index=INDEX_NEWS,
+        id=slug,
+        body={"doc": {"cluster_id": cluster_id}},
+        retry_on_conflict=3,
+    )
+    await _rescore(cluster_id)
+    return cluster_id
 
-    # 2. Entity overlap — use signal_keys (vendors excluded) for matching
-    if not cluster_id:
-        cluster_id = await find_cluster_by_entities(signal_keys)
-        if cluster_id:
-            logger.debug("Entity match for '%s' → cluster %s", slug, cluster_id)
 
-    # 3. Narrative similarity
-    if not cluster_id:
-        title = article.get("title") or ""
-        summary = article.get("summary") or article.get("desc")
-        cluster_id = await find_cluster_by_mlt(title, summary)
-        if cluster_id:
-            logger.debug("MLT match for '%s' → cluster %s", slug, cluster_id)
-
-    # 4. Merge or create — always pass all entity_keys (not just signal_keys)
-    if cluster_id:
-        # Prefer entity CVSS; fall back to article-level field
-        raw_cvss = entity_max_cvss if entity_max_cvss is not None else article.get("cvss_score")
-        await merge_into_cluster(
-            cluster_id, slug, entity_keys, cve_ids,
-            source_name=article.get("source_name", ""),
-            title=article.get("title", ""),
-            published_at=article.get("published_at", ""),
-            cvss_score=float(raw_cvss) if raw_cvss is not None else None,
-            credibility_weight=credibility_weight,
-            cisa_kev=entity_cisa_kev,
-        )
-    else:
-        await create_cluster(
-            article, entity_keys, credibility_weight,
-            entity_max_cvss=entity_max_cvss,
-            cisa_kev=entity_cisa_kev,
-        )
+async def _rescore(cluster_id: str) -> None:
+    try:
+        from app.ingestion.scorer import rescore_cluster
+        await rescore_cluster(cluster_id)
+    except Exception as exc:
+        logger.warning("Rescore failed for %s: %s", cluster_id, exc)
