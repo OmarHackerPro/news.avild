@@ -104,6 +104,39 @@ def _strip_wp_footer(text: str) -> str:
     return re.sub(r"\s*The post .+? appeared first on .+?\.\s*\Z", "", text).strip()
 
 
+_SENTENCE_END_RE = re.compile(r'[.!?][\'")\]]?(?=\s|$)')
+
+
+def _clean_truncated_text(text: str) -> str:
+    """Tidy a feed excerpt that ends mid-sentence.
+
+    Many RSS feeds publish a fixed-length teaser that cuts off mid-word
+    (e.g. "...lifecycle operations in a"). When that happens, trim back
+    to the last complete sentence and append a single "…" to signal the
+    cut. If the text already ends cleanly, return it unchanged.
+    """
+    if not text:
+        return text
+    stripped = text.rstrip()
+    if not stripped:
+        return stripped
+    if stripped.endswith(("…", "...")):
+        return stripped
+    if _SENTENCE_END_RE.search(stripped[-3:] + " "):
+        return stripped
+
+    matches = list(_SENTENCE_END_RE.finditer(stripped))
+    if matches:
+        cut = matches[-1].end()
+        # If trimming back to the last complete sentence preserves enough
+        # content, return that — no ellipsis needed because the text now
+        # reads as a clean, finished excerpt.
+        if cut >= max(60, int(len(stripped) * 0.4)):
+            return stripped[:cut].rstrip()
+    # Couldn't find a clean sentence break; flag as truncated.
+    return stripped + "…"
+
+
 def _extract_image_url(
     entry: feedparser.FeedParserDict, content_html: Optional[str]
 ) -> Optional[str]:
@@ -182,32 +215,6 @@ def _extract_advisory_id(url: str) -> Optional[str]:
     return m.group(1).upper() if m else None
 
 
-def _build_cve_source(title: str, content_html: Optional[str], tags: list[str]) -> str:
-    """Build a text blob for CVE extraction from article fields."""
-    tag_text = " ".join(tags)
-    return f"{title} {content_html or ''} {tag_text}"
-
-
-def _body_quality_fields(
-    *,
-    title: str,
-    body_source: str,
-    body_text: str,
-    summary_text: Optional[str],
-) -> tuple[str, str, bool]:
-    """Classify the quality/source of RSS body text for downstream auditing."""
-    if body_source == "none":
-        return "empty", "none", False
-
-    body_text = (summary_text or body_text).strip()
-    teaser = body_text.endswith("[...]")
-    if teaser:
-        return "teaser", body_source, True
-    if len(body_text) >= 600:
-        return "full", body_source, False
-    return "partial", body_source, False
-
-
 # ---------------------------------------------------------------------------
 # Per-feed normalizers
 # ---------------------------------------------------------------------------
@@ -216,8 +223,79 @@ def normalize_generic(
     entry: feedparser.FeedParserDict,
     source: FeedSource,
 ) -> Optional[NormalizedArticle]:
-    """Universal normalizer for RSS 2.0 and Atom feeds."""
-    return normalize_article(entry, source)
+    """Universal normalizer for RSS 2.0 and Atom feeds.
+
+    Handles content:encoded (RSS), <content> (Atom), summary-only feeds,
+    WordPress footers, image extraction, and CVE ID extraction.
+    """
+    title = (entry.get("title") or "").strip()
+    link = (entry.get("link") or "").strip()
+
+    if not title or not link:
+        return None
+
+    guid = (entry.get("id") or link).strip()
+
+    # --- Content body: prefer content:encoded / Atom <content> ---
+    content_list = entry.get("content") or []
+    content_value = (content_list[0].get("value") if content_list else "") or ""
+    raw_desc = entry.get("summary") or entry.get("description") or ""
+
+    # If content:encoded / Atom content exists, use it as the full body
+    if content_value:
+        content_html = content_value or None
+        desc_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(raw_desc).strip())
+        ) or strip_html(content_value).strip() or title
+        summary_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(content_value).strip())[:2000]
+        ) or None
+    elif raw_desc:
+        content_html = raw_desc or None
+        desc_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(raw_desc).strip())
+        ) or title
+        summary_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(raw_desc).strip())[:2000]
+        ) or None
+    else:
+        content_html = None
+        desc_text = title
+        summary_text = None
+
+    content_source = "rss" if content_html else None
+
+    # --- Image extraction ---
+    image_url = _extract_image_url(entry, content_html)
+
+    # --- Tags ---
+    tags = _extract_tags(entry)
+
+    # --- CVE extraction from content + tags ---
+    tag_text = " ".join(tags)
+    cve_source = f"{title} {content_html or ''} {tag_text}"
+    cve_ids = _extract_cve_ids(cve_source)
+
+    return NormalizedArticle(
+        slug=build_slug(title, guid),
+        guid=guid,
+        source_name=source["name"],
+        title=title[:500],
+        author=(entry.get("author") or "").strip() or None,
+        desc=desc_text,
+        content_html=content_html,
+        summary=summary_text,
+        content_source=content_source,
+        image_url=image_url[:2048] if image_url else None,
+        tags=tags,
+        keywords=[],
+        published_at=_parse_date(entry),
+        severity=source["default_severity"],
+        type=source["default_type"],
+        category=source["default_category"],
+        source_url=link[:2048],
+        cve_ids=cve_ids if cve_ids else [],
+    )
 
 
 def normalize_cisa_news(
@@ -241,7 +319,6 @@ def normalize_cisa_news(
     return NormalizedArticle(
         slug=build_slug(title, guid),
         guid=guid,
-        source_id=source.get("id"),
         source_name=source["name"],
         title=title[:500],
         author="CISA",
@@ -249,9 +326,6 @@ def normalize_cisa_news(
         content_html=None,
         summary=None,
         content_source=None,
-        body_quality="empty",
-        body_source="none",
-        is_teaser=False,
         tags=[],
         keywords=[],
         published_at=_parse_date(entry),
@@ -283,7 +357,7 @@ def normalize_cisa_advisory(
     guid = (entry.get("id") or link).strip()
     content_html = entry.get("summary") or entry.get("description") or ""
     # Plain-text excerpt for list views (capped to avoid huge previews)
-    desc = strip_html(content_html).strip()[:2000] or None
+    desc = _clean_truncated_text(strip_html(content_html).strip()[:2000]) or None
 
     cvss_score = _extract_cvss_score(content_html)
     cve_ids    = _extract_cve_ids(content_html)
@@ -296,17 +370,9 @@ def normalize_cisa_advisory(
     if cvss_vector:
         raw_metadata["cvss_vector"] = cvss_vector
 
-    body_quality, body_source, is_teaser = _body_quality_fields(
-        title=title,
-        body_source="summary" if content_html else "none",
-        body_text=strip_html(content_html),
-        summary_text=desc,
-    )
-
     return NormalizedArticle(
         slug=build_slug(title, guid),
         guid=guid,
-        source_id=source.get("id"),
         source_name=source["name"],
         title=title[:500],
         author="CISA",
@@ -314,9 +380,6 @@ def normalize_cisa_advisory(
         content_html=content_html or None,
         summary=desc,
         content_source="rss" if content_html else None,
-        body_quality=body_quality,
-        body_source=body_source,
-        is_teaser=is_teaser,
         tags=[],
         keywords=[],
         published_at=_parse_date(entry),
@@ -334,12 +397,12 @@ def normalize_article(
     entry: feedparser.FeedParserDict,
     source: dict,
 ) -> Optional[NormalizedArticle]:
-    """Config-driven normalizer — reads extract_cvss flags from source dict.
+    """Config-driven normalizer — reads extract_cves/extract_cvss flags from source dict.
 
     Replaces the per-source class hierarchy for all sources except cisa_news
     (which uses its own minimal function due to that feed's empty content).
     source dict must have: name, url, default_type, default_category, default_severity.
-    Optional: id, credibility_weight (default 1.0), extract_cvss (default False).
+    Optional: credibility_weight (default 1.0), extract_cves (default False), extract_cvss (default False).
     """
     title = (entry.get("title") or "").strip()
     link = (entry.get("link") or "").strip()
@@ -357,37 +420,32 @@ def normalize_article(
     if content_value:
         content_html = content_value or None
         desc_text = (
-            _strip_wp_footer(strip_html(raw_desc).strip())
+            _clean_truncated_text(_strip_wp_footer(strip_html(raw_desc).strip()))
             or strip_html(content_value).strip()
             or title
         )
-        summary_text = _strip_wp_footer(strip_html(content_value).strip())[:2000] or None
-        body_source = "content"
+        summary_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(content_value).strip())[:2000]
+        ) or None
     elif raw_desc:
         content_html = raw_desc or None
-        desc_text = _strip_wp_footer(strip_html(raw_desc).strip()) or title
-        summary_text = _strip_wp_footer(strip_html(raw_desc).strip())[:2000] or None
-        body_source = "summary"
+        desc_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(raw_desc).strip())
+        ) or title
+        summary_text = _clean_truncated_text(
+            _strip_wp_footer(strip_html(raw_desc).strip())[:2000]
+        ) or None
     else:
         content_html = None
         desc_text = title
         summary_text = None
-        body_source = "none"
 
     tags = _extract_tags(entry)
     image_url = _extract_image_url(entry, content_html)
-    body_quality, body_source, is_teaser = _body_quality_fields(
-        title=title,
-        body_source=body_source,
-        body_text=strip_html(content_html or raw_desc),
-        summary_text=summary_text,
-    )
-    cve_ids = _extract_cve_ids(_build_cve_source(title, content_html, tags))
 
     article = NormalizedArticle(
         slug=build_slug(title, guid),
         guid=guid,
-        source_id=source.get("id"),
         source_name=source["name"],
         title=title[:500],
         author=(entry.get("author") or "").strip() or None,
@@ -395,9 +453,6 @@ def normalize_article(
         content_html=content_html,
         summary=summary_text,
         content_source="rss" if content_html else None,
-        body_quality=body_quality,
-        body_source=body_source,
-        is_teaser=is_teaser,
         image_url=image_url[:2048] if image_url else None,
         tags=tags,
         keywords=[],
@@ -406,9 +461,15 @@ def normalize_article(
         type=source["default_type"],
         category=source["default_category"],
         source_url=link[:2048],
-        cve_ids=cve_ids if cve_ids else [],
+        cve_ids=[],
         credibility_weight=source.get("credibility_weight", 1.0),
     )
+
+    # Conditional: extract CVE IDs from advisory content
+    if source.get("extract_cves"):
+        tag_text = " ".join(tags)
+        cve_source = f"{title} {content_html or ''} {tag_text}"
+        article["cve_ids"] = _extract_cve_ids(cve_source)
 
     # Conditional: extract CVSS score + advisory metadata
     if source.get("extract_cvss"):
@@ -428,21 +489,6 @@ def normalize_article(
     return article
 
 
-def normalize_with_registry(
-    entry: feedparser.FeedParserDict,
-    source: FeedSource | dict,
-) -> Optional[NormalizedArticle]:
-    """Normalize an entry using the same registry dispatch as live ingestion."""
-    flags = NORMALIZER_REGISTRY.get(source["normalizer"])
-    if flags is None:
-        raise KeyError(source["normalizer"])
-    handler = flags.get("_handler")
-    if handler:
-        return handler(entry, source)
-    merged_source = {**source, **{k: v for k, v in flags.items() if not k.startswith("_")}}
-    return normalize_article(entry, merged_source)
-
-
 # ---------------------------------------------------------------------------
 # Registry — string key → flag dict (or _handler for special cases).
 # Keeps FeedSource as pure serializable data (no Callable references there).
@@ -456,7 +502,6 @@ NORMALIZER_REGISTRY: dict[str, dict] = {
     "bleepingcomputer": {},
     "securityweek":     {},
     "krebs":            {},
-    "securelist":       {"extract_cves": True},
     "cisa_advisory":    {"extract_cves": True, "extract_cvss": True},
     "cisa_news":        {"_handler": normalize_cisa_news},
 }
