@@ -45,16 +45,24 @@ async def _scroll_articles(source: str | None, limit: int | None) -> list[dict]:
     from_offset = 0
 
     while True:
-        resp = await client.search(
-            index=INDEX_NEWS,
-            body={
-                "query": query,
-                "sort": [{"published_at": {"order": "asc"}}],
-                "size": page_size,
-                "from": from_offset,
-                "_source": ["slug", "title", "summary", "desc", "source_name"],
-            },
-        )
+        for attempt in range(3):
+            try:
+                resp = await client.search(
+                    index=INDEX_NEWS,
+                    body={
+                        "query": query,
+                        "sort": [{"published_at": {"order": "asc"}}],
+                        "size": page_size,
+                        "from": from_offset,
+                        "_source": ["slug", "title", "summary", "desc", "source_name"],
+                    },
+                )
+                break
+            except Exception as exc:
+                if attempt == 2:
+                    raise
+                logger.warning("OpenSearch scroll attempt %d failed: %s — retrying", attempt + 1, exc)
+                await asyncio.sleep(5)
         hits = resp["hits"]["hits"]
         if not hits:
             break
