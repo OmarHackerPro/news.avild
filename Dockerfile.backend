@@ -11,6 +11,7 @@ COPY alembic.ini .
 COPY main.py .
 COPY scripts/ scripts/
 COPY static/ static/
+COPY templates/ templates/
 COPY tests/ tests/
 COPY data/ data/
 

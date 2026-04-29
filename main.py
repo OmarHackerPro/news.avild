@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import (
-    admin, auth, clusters, digest, entities, exports, feed, feeds, news,
+    admin, auth, clusters, digest, entities, exports, feed, feeds, news, pages,
     preferences, rss, search, sources, translate,
 )
 from app.core.config import settings
@@ -89,6 +89,10 @@ app.include_router(exports.router, prefix="/api")
 app.include_router(clusters.router, prefix="/api")
 app.include_router(feed.router, prefix="/api")
 app.include_router(translate.router, prefix="/api")
+
+# HTML pages — server-rendered with per-page SEO. Mounted last so /api/* and
+# /static/* always win in the routing table.
+app.include_router(pages.router)
 
 
 @app.get("/health", tags=["health"], summary="Health check")
