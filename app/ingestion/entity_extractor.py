@@ -277,8 +277,8 @@ def _normalize_key(name: str) -> str:
     return key.strip("-")
 
 
-def extract_entities(article: NormalizedArticle) -> list[dict]:
-    """Extract structured entities from an article dict.
+def _extract_regex(article: NormalizedArticle) -> list[dict]:
+    """Extract structured entities from an article dict using regex and keyword matching.
 
     Returns a list of dicts with keys: type, name, normalized_key, cvss_score (optional).
     """
@@ -368,3 +368,34 @@ def extract_entities(article: NormalizedArticle) -> list[dict]:
                 }
 
     return list(seen.values())
+
+
+async def extract_entities(
+    article: NormalizedArticle,
+    *,
+    slug: str | None = None,
+    db_session=None,
+) -> list[dict]:
+    """Extract entities from article. LLM NER runs first if slug is provided; regex fills gaps."""
+    llm_entities: list[dict] = []
+    if slug:
+        from app.ingestion.ner_llm import extract_entities_llm
+        llm_entities = await extract_entities_llm(
+            slug=slug,
+            title=article.get("title") or "",
+            summary=article.get("summary") or article.get("desc") or "",
+            db_session=db_session,
+        )
+
+    regex_entities = _extract_regex(article)
+
+    seen_keys = {e["normalized_key"] for e in llm_entities}
+    merged = list(llm_entities)
+    for e in regex_entities:
+        key = e["normalized_key"]
+        # suppress if exact match OR if LLM already has a more-specific variant
+        # (e.g. lockbit-3.0 in seen_keys suppresses lockbit from regex)
+        if key not in seen_keys and not any(k.startswith(key + "-") for k in seen_keys):
+            merged.append(e)
+            seen_keys.add(key)
+    return merged

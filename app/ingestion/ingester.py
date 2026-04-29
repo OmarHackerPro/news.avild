@@ -354,7 +354,10 @@ async def ingest_source(
                 stats["inserted"] += 1
                 entities = []
                 try:
-                    entities = extract_entities(article)
+                    article_slug = article.get("slug")
+                    if not article_slug:
+                        logger.warning("[%s] Article missing slug — LLM NER skipped", name)
+                    entities = await extract_entities(article, slug=article_slug, db_session=None)
                     if entities:
                         await store_article_entities(
                             article["slug"], entities,
