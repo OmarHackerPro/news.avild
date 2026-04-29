@@ -44,6 +44,13 @@ _TYPE_COLOR = {
 
 async def main(args: argparse.Namespace) -> None:
     client = get_os_client()
+    try:
+        await _run(args, client)
+    finally:
+        await client.close()
+
+
+async def _run(args: argparse.Namespace, client) -> None:
 
     async with AsyncSessionLocal() as db:
         if args.slug:
