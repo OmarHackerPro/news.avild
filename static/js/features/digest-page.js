@@ -29,6 +29,10 @@
     els.statusEmail = document.getElementById('digestStatusEmail');
     els.statusMeta = document.getElementById('digestStatusMeta');
     els.unsubscribeBtn = document.getElementById('digestUnsubscribeBtn');
+    els.editBtn = document.getElementById('digestEditBtn');
+    els.cancelEditBtn = document.getElementById('digestCancelEditBtn');
+    els.subscribeSection = document.getElementById('digestSubscribeSection');
+    els.previewSection = document.getElementById('digestPreviewSection');
     els.previewBadge = document.getElementById('digestPreviewBadge');
     els.previewSubject = document.getElementById('digestPreviewSubject');
     els.previewArticles = document.getElementById('digestPreviewArticles');
@@ -39,6 +43,7 @@
     var existing = loadSubscription();
     if (existing) hydrateForm(existing);
     renderStatus(existing);
+    setEditMode(!existing);
     renderPreview();
 
     els.form.addEventListener('submit', handleSubmit);
@@ -49,7 +54,28 @@
       flash(els.previewBtn);
     });
     if (els.unsubscribeBtn) els.unsubscribeBtn.addEventListener('click', handleUnsubscribe);
+    if (els.editBtn) els.editBtn.addEventListener('click', function() {
+      setEditMode(true);
+      if (els.email) els.email.focus();
+    });
+    if (els.cancelEditBtn) els.cancelEditBtn.addEventListener('click', function() {
+      var current = loadSubscription();
+      if (current) hydrateForm(current);
+      setEmailError(false);
+      renderPreview();
+      setEditMode(false);
+    });
   });
+
+  function setEditMode(editing) {
+    var subscribed = !!loadSubscription();
+    if (els.subscribeSection) els.subscribeSection.hidden = subscribed && !editing;
+    if (els.previewSection) els.previewSection.hidden = subscribed && !editing;
+    if (els.cancelEditBtn) els.cancelEditBtn.hidden = !subscribed || !editing;
+    if (els.subscribeLabel) {
+      els.subscribeLabel.textContent = subscribed ? 'Update subscription' : 'Subscribe';
+    }
+  }
 
   function loadSubscription() {
     try {
@@ -117,16 +143,19 @@
       showToast('Pick at least one topic to include in your digest.', 'error');
       return;
     }
+    var wasSubscribed = !!loadSubscription();
     var sub = Object.assign({}, data, { subscribedAt: new Date().toISOString() });
     saveSubscription(sub);
     renderStatus(sub);
+    setEditMode(false);
     renderPreview();
-    showToast('Subscribed! Digest settings saved locally in your browser.', 'success');
+    showToast(wasSubscribed ? 'Subscription updated.' : 'Subscribed! Digest settings saved locally in your browser.', 'success');
   }
 
   function handleUnsubscribe() {
     clearSubscription();
     renderStatus(null);
+    setEditMode(true);
     showToast('You have been unsubscribed.', 'success');
   }
 

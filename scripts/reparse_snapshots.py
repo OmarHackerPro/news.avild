@@ -28,7 +28,7 @@ from app.db.models.feed_source import FeedSource as FeedSourceModel
 from app.db.opensearch import INDEX_SNAPSHOTS, get_os_client
 from app.db.session import AsyncSessionLocal
 from app.ingestion.ingester import overwrite_article, upsert_article
-from app.ingestion.normalizer import NORMALIZER_REGISTRY
+from app.ingestion.normalizer import NORMALIZER_REGISTRY, normalize_with_registry
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,15 @@ async def reparse_snapshot(
     update: bool,
 ) -> dict:
     """Re-parse one snapshot hit. Returns stats dict."""
-    stats = {"entries": 0, "upserted": 0, "skipped": 0, "errors": 0}
+    stats = {
+        "entries": 0,
+        "upserted": 0,
+        "skipped": 0,
+        "errors": 0,
+        "teasers": 0,
+        "thin_bodies": 0,
+        "articles_with_cves": 0,
+    }
     src = snap_hit["_source"]
     snap_id = snap_hit["_id"]
     source_name = src["source_name"]
@@ -107,8 +115,8 @@ async def reparse_snapshot(
         )
         return stats
 
-    normalizer_fn = NORMALIZER_REGISTRY.get(source["normalizer"])
-    if normalizer_fn is None:
+    flags = NORMALIZER_REGISTRY.get(source["normalizer"])
+    if flags is None:
         logger.warning(
             "No normalizer '%s' for source '%s'",
             source["normalizer"], source_name,
@@ -119,19 +127,22 @@ async def reparse_snapshot(
     entries = feed.get("entries", [])
     stats["entries"] = len(entries)
 
-    if dry_run:
-        logger.info(
-            "[DRY RUN] Snapshot %s (%s): %d entries would be re-processed",
-            snap_id[:8], source_name, len(entries),
-        )
-        return stats
-
     write_fn = overwrite_article if update else upsert_article
     for entry in entries:
         try:
-            article = normalizer_fn(entry, source)
+            article = normalize_with_registry(entry, source)
             if article is None:
                 stats["errors"] += 1
+                continue
+
+            if article.get("is_teaser"):
+                stats["teasers"] += 1
+            if article.get("body_quality") in {"teaser", "partial"}:
+                stats["thin_bodies"] += 1
+            if article.get("cve_ids"):
+                stats["articles_with_cves"] += 1
+
+            if dry_run:
                 continue
 
             wrote = await write_fn(article)
@@ -163,7 +174,16 @@ async def main(args: argparse.Namespace) -> None:
 
     logger.info("Found %d snapshot(s) to re-parse.", len(snapshots))
 
-    totals = {"entries": 0, "upserted": 0, "skipped": 0, "errors": 0}
+    totals = {
+        "entries": 0,
+        "upserted": 0,
+        "skipped": 0,
+        "errors": 0,
+        "teasers": 0,
+        "thin_bodies": 0,
+        "articles_with_cves": 0,
+    }
+    by_source: dict[str, dict[str, int]] = {}
     for snap in snapshots:
         src = snap["_source"]
         logger.info(
@@ -175,17 +195,39 @@ async def main(args: argparse.Namespace) -> None:
         )
         for k in totals:
             totals[k] += stats[k]
+        source_stats = by_source.setdefault(
+            src["source_name"],
+            {
+                "entries": 0,
+                "teasers": 0,
+                "thin_bodies": 0,
+                "articles_with_cves": 0,
+            },
+        )
+        for k in source_stats:
+            source_stats[k] += stats[k]
         logger.info(
-            "  entries=%d upserted=%d skipped=%d errors=%d",
+            "  entries=%d upserted=%d skipped=%d errors=%d teasers=%d thin=%d cve_articles=%d",
             stats["entries"], stats["upserted"],
             stats["skipped"], stats["errors"],
+            stats["teasers"], stats["thin_bodies"], stats["articles_with_cves"],
         )
 
     logger.info(
-        "=== Totals: entries=%d upserted=%d skipped=%d errors=%d ===",
+        "=== Totals: entries=%d upserted=%d skipped=%d errors=%d teasers=%d thin=%d cve_articles=%d ===",
         totals["entries"], totals["upserted"],
         totals["skipped"], totals["errors"],
+        totals["teasers"], totals["thin_bodies"], totals["articles_with_cves"],
     )
+    for source_name, stats in sorted(by_source.items()):
+        logger.info(
+            "[Audit] %s entries=%d teasers=%d thin=%d cve_articles=%d",
+            source_name,
+            stats["entries"],
+            stats["teasers"],
+            stats["thin_bodies"],
+            stats["articles_with_cves"],
+        )
 
 
 if __name__ == "__main__":

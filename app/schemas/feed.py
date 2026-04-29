@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class FeedSourceCreate(BaseModel):
@@ -11,6 +11,9 @@ class FeedSourceCreate(BaseModel):
     default_category: str = Field("breaking", json_schema_extra={"example": "breaking"})
     default_severity: Optional[str] = Field(None, json_schema_extra={"example": "critical"})
     normalizer_key: str = Field("generic", json_schema_extra={"example": "cisa"})
+    credibility_weight: float = Field(1.0, json_schema_extra={"example": 1.2})
+    extract_cves: bool = Field(False, json_schema_extra={"example": True})
+    extract_cvss: bool = Field(False, json_schema_extra={"example": True})
     fetch_interval_minutes: int = Field(60, json_schema_extra={"example": 30})
 
     @field_validator("default_type")
@@ -37,6 +40,9 @@ class FeedSourceUpdate(BaseModel):
     default_category: Optional[str] = Field(None, json_schema_extra={"example": "breaking"})
     default_severity: Optional[str] = Field(None, json_schema_extra={"example": "high"})
     normalizer_key: Optional[str] = Field(None, json_schema_extra={"example": "cisa"})
+    credibility_weight: Optional[float] = Field(None, json_schema_extra={"example": 1.2})
+    extract_cves: Optional[bool] = Field(None, json_schema_extra={"example": True})
+    extract_cvss: Optional[bool] = Field(None, json_schema_extra={"example": True})
     is_active: Optional[bool] = Field(None, json_schema_extra={"example": True})
     fetch_interval_minutes: Optional[int] = Field(None, json_schema_extra={"example": 15})
 
@@ -49,6 +55,9 @@ class FeedSourceResponse(BaseModel):
     default_category: str = Field(json_schema_extra={"example": "breaking"})
     default_severity: Optional[str] = Field(None, json_schema_extra={"example": "critical"})
     normalizer_key: str = Field(json_schema_extra={"example": "cisa"})
+    credibility_weight: float = Field(json_schema_extra={"example": 1.2})
+    extract_cves: bool = Field(json_schema_extra={"example": True})
+    extract_cvss: bool = Field(json_schema_extra={"example": True})
     is_active: bool = Field(json_schema_extra={"example": True})
     last_fetched_at: Optional[datetime] = Field(None, json_schema_extra={"example": "2026-03-15T12:00:00Z"})
     fetch_interval_minutes: int = Field(json_schema_extra={"example": 30})

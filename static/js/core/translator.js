@@ -5,16 +5,21 @@
 (function () {
   'use strict';
 
-  var CACHE_PREFIX = 'txc_';
+  // Bumped from txc_ to txc2_ to invalidate caches that pre-date the
+  // server-side acronym glossary (e.g. APT → АПТ for Russian).
+  var CACHE_PREFIX = 'txc2_';
   var SUPPORTED = { az: true, ru: true, es: true, fr: true, de: true, ja: true, zh: true, ar: true, tr: true };
 
-  // Purge any poisoned cache entries left over from the old MyMemory backend
+  // Purge any poisoned cache entries left over from the old MyMemory backend,
+  // and any pre-glossary cache entries (old txc_ prefix).
   (function purgePoison() {
     try {
       var toDelete = [];
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (k && k.indexOf(CACHE_PREFIX) === 0) {
+        if (!k) continue;
+        if (k.indexOf('txc_') === 0) { toDelete.push(k); continue; }
+        if (k.indexOf(CACHE_PREFIX) === 0) {
           var v = localStorage.getItem(k);
           if (v && v.toUpperCase().indexOf('MYMEMORY') !== -1) toDelete.push(k);
         }

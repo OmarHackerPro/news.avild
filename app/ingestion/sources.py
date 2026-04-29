@@ -2,6 +2,7 @@ from typing import NotRequired, Optional, TypedDict
 
 
 class FeedSource(TypedDict):
+    id: NotRequired[int]
     name: str
     url: str
     default_type: str       # news | analysis | report | advisory | alert
@@ -12,9 +13,9 @@ class FeedSource(TypedDict):
     extract_cves: NotRequired[bool]          # extract CVE IDs from advisory HTML
     extract_cvss: NotRequired[bool]          # extract CVSS score from advisory HTML
 
-
-# Seed data — used by scripts/seed_sources.py and migration 5b2c3d4e6f7a.
-# Runtime ingestion reads from the feed_sources DB table instead.
+# Bootstrap seed data only.
+# Runtime ingestion and source management read from the feed_sources DB table.
+# This file exists to provision defaults for fresh environments and tests.
 SEED_SOURCES: list[FeedSource] = [
     FeedSource(
         name="The Hacker News",

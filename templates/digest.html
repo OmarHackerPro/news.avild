@@ -4,19 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="google" content="notranslate">
-  <meta name="description" content="Subscribe to news.avild.com email digest — daily or weekly curated cybersecurity updates delivered to your inbox.">
-  <meta name="robots" content="noindex, nofollow">
-  <title>Email Digest — news.avild.com</title>
-  <link rel="stylesheet" href="/static/css/main/main.css">
-  <link rel="stylesheet" href="/static/css/layout/navbar.css?v=3">
+  {% include "_seo.html" %}
+  <link rel="stylesheet" href="/static/css/main/main.css?v=5">
+  <link rel="stylesheet" href="/static/css/layout/navbar.css?v=5">
   <link rel="stylesheet" href="/static/css/pages/digest.css">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
   <style>
-    .navbar { display: flex !important; flex-direction: column !important; }
-    .nav-bottom { display: flex !important; align-items: center !important; position: relative !important; visibility: visible !important; opacity: 1 !important; min-height: 48px !important; }
-    .nav-brand { flex-shrink: 0 !important; }
-    .nav-links { display: flex !important; visibility: visible !important; position: absolute !important; left: 50% !important; transform: translateX(-50%) !important; overflow-x: visible !important; gap: 0.35rem !important; flex: 0 0 auto !important; white-space: nowrap !important; pointer-events: auto !important; }
+    .navbar { display: flex; flex-direction: column; }
+    .nav-top { display: flex; min-height: 44px; }
+    .nav-bottom { display: grid; min-height: 48px; align-items: center; position: relative; }
+    .nav-brand { flex-shrink: 0; }
+    .nav-links { display: flex; }
   </style>
   <script>
     (function() {
@@ -28,6 +27,33 @@
 </head>
 <body>
   <nav class="navbar">
+    <div class="nav-top">
+      <div class="lang-select-wrapper">
+        <select id="langSelect" class="lang-select-native" aria-label="Language">
+          <option value="en" selected>English</option>
+          <option value="az">Azərbaycan</option>
+          <option value="ru">Русский</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+          <option value="tr">Türkçe</option>
+        </select>
+        <div class="lang-select-trigger" id="langTrigger" aria-expanded="false" aria-haspopup="listbox">
+          <i class="fas fa-globe lang-icon"></i>
+          <span class="lang-current" data-short="EN">EN</span>
+          <i class="fas fa-chevron-down lang-arrow"></i>
+        </div>
+        <div class="lang-dropdown" id="langDropdown" role="listbox">
+          <div class="lang-option selected" data-lang="en" data-short="EN" role="option">English</div>
+          <div class="lang-option" data-lang="az" data-short="AZ" role="option">Azərbaycan</div>
+          <div class="lang-option" data-lang="ru" data-short="RU" role="option">Русский</div>
+          <div class="lang-option" data-lang="es" data-short="ES" role="option">Español</div>
+          <div class="lang-option" data-lang="fr" data-short="FR" role="option">Français</div>
+          <div class="lang-option" data-lang="de" data-short="DE" role="option">Deutsch</div>
+          <div class="lang-option" data-lang="tr" data-short="TR" role="option">Türkçe</div>
+        </div>
+      </div>
+    </div>
     <div class="nav-bottom">
       <a href="/" class="nav-brand">
         <span class="brand-logo-box"><i class="fas fa-shield-alt brand-icon"></i></span>
@@ -57,12 +83,17 @@
             <p class="digest-status-meta" id="digestStatusMeta"></p>
           </div>
         </div>
-        <button type="button" class="digest-btn digest-btn-danger" id="digestUnsubscribeBtn">
-          <i class="fas fa-user-slash"></i> Unsubscribe
-        </button>
+        <div class="digest-status-actions">
+          <button type="button" class="digest-btn digest-btn-secondary" id="digestEditBtn">
+            <i class="fas fa-pen"></i> Edit
+          </button>
+          <button type="button" class="digest-btn digest-btn-danger" id="digestUnsubscribeBtn">
+            <i class="fas fa-user-slash"></i> Unsubscribe
+          </button>
+        </div>
       </section>
 
-      <section class="digest-section" aria-labelledby="subscribe-title">
+      <section class="digest-section" id="digestSubscribeSection" aria-labelledby="subscribe-title">
         <h2 id="subscribe-title" class="digest-section-title"><i class="fas fa-paper-plane"></i> Subscribe</h2>
         <form id="digestForm" class="digest-form" novalidate>
           <div class="digest-field">
@@ -150,13 +181,16 @@
             <button type="button" class="digest-btn digest-btn-secondary" id="digestPreviewBtn">
               <i class="fas fa-eye"></i> Preview digest
             </button>
+            <button type="button" class="digest-btn digest-btn-ghost" id="digestCancelEditBtn" hidden>
+              Cancel
+            </button>
           </div>
 
           <p class="digest-toast" id="digestToast" hidden role="status"></p>
         </form>
       </section>
 
-      <section class="digest-section" aria-labelledby="preview-title">
+      <section class="digest-section" id="digestPreviewSection" aria-labelledby="preview-title">
         <h2 id="preview-title" class="digest-section-title"><i class="fas fa-eye"></i> Preview</h2>
         <p class="digest-section-help">Here's a rough preview of what your digest email will look like based on your current selections.</p>
 
@@ -210,6 +244,8 @@
     </div>
   </main>
 
+  <script src="/static/js/data/translations.js"></script>
+  <script src="/static/js/components/language.js"></script>
   <script src="/static/js/components/theme.js"></script>
   <script src="/static/js/features/digest-page.js"></script>
   <script src="/static/js/components/auth.js"></script>

@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-"""Seed the feed_sources table from the SEED_SOURCES list.
+"""Seed the feed_sources table from the bootstrap SEED_SOURCES list.
 
 Usage:
     python scripts/seed_sources.py            # insert missing sources
     python scripts/seed_sources.py --dry-run  # preview only
 
-Idempotent: uses ON CONFLICT (name) DO NOTHING so existing rows are
-never overwritten. To update an existing source, use SQL directly or
-a future admin UI.
+Idempotent: uses ON CONFLICT (name) DO UPDATE so managed bootstrap fields
+stay aligned without touching operational fields like fetch history.
 """
 import asyncio
 import argparse
@@ -61,16 +60,26 @@ async def seed_sources(*, dry_run: bool = False) -> None:
                 stmt = (
                     pg_insert(FeedSource)
                     .values(**row)
-                    .on_conflict_do_nothing(index_elements=["name"])
+                    .on_conflict_do_update(
+                        index_elements=["name"],
+                        set_={
+                            "url": row["url"],
+                            "default_type": row["default_type"],
+                            "default_category": row["default_category"],
+                            "default_severity": row["default_severity"],
+                            "normalizer_key": row["normalizer_key"],
+                            "credibility_weight": row["credibility_weight"],
+                            "extract_cves": row["extract_cves"],
+                            "extract_cvss": row["extract_cvss"],
+                        },
+                    )
                 )
                 result = await session.execute(stmt)
                 if result.rowcount == 1:
-                    logger.info("Inserted: %s", row["name"])
+                    logger.info("Upserted: %s", row["name"])
                     inserted += 1
-                else:
-                    logger.debug("Already exists: %s", row["name"])
 
-    logger.info("Seeding complete: %d inserted, %d already existed.", inserted, len(rows) - inserted)
+    logger.info("Seeding complete: %d row(s) inserted or updated.", inserted)
 
 
 if __name__ == "__main__":

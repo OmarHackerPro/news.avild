@@ -17,7 +17,7 @@ from app.db.session import AsyncSessionLocal
 from app.ingestion.clusterer import cluster_article
 from app.ingestion.entity_extractor import extract_entities
 from app.ingestion.entity_store import store_article_entities
-from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle, normalize_article
+from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle, normalize_with_registry
 from app.ingestion.sources import FeedSource
 
 logger = logging.getLogger(__name__)
@@ -89,6 +89,9 @@ def _prepare_article_doc(article: NormalizedArticle) -> tuple[str, dict]:
     doc.setdefault("content_html", None)
     doc.setdefault("summary", None)
     doc.setdefault("content_source", None)
+    doc.setdefault("body_quality", "empty")
+    doc.setdefault("body_source", "none")
+    doc.setdefault("is_teaser", False)
     # Strip unknown fields to prevent dynamic:strict indexing errors
     unexpected = set(doc.keys()) - _ALLOWED_FIELDS
     for key in unexpected:
@@ -318,12 +321,7 @@ async def ingest_source(
 
     for entry in entries:
         try:
-            handler = flags.get("_handler")
-            if handler:
-                article = handler(entry, source)
-            else:
-                merged_source = {**source, **{k: v for k, v in flags.items() if not k.startswith("_")}}
-                article = normalize_article(entry, merged_source)
+            article = normalize_with_registry(entry, source)
             if article is None:
                 logger.debug(
                     "[%s] Skipped entry (normalizer returned None): %s",
