@@ -3,6 +3,7 @@
 Caches results in Postgres ner_cache table. Pass db_session=None to skip cache
 (useful for unit tests and one-off calls).
 """
+import json
 import logging
 import os
 from typing import Literal, Optional
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 _async_client: anthropic.AsyncAnthropic | None = None
 
-_MODEL = "claude-haiku-4-5-20251001"
+_MODEL = "claude-haiku-4-5"
 _MAX_TOKENS = 1024
 
 
@@ -93,7 +94,7 @@ async def _write_cache(slug: str, entities: list[dict], session: AsyncSession) -
             "VALUES (:slug, :entities, NOW()) "
             "ON CONFLICT (slug) DO NOTHING"
         ),
-        {"slug": slug, "entities": entities},
+        {"slug": slug, "entities": json.dumps(entities)},
     )
     await session.commit()
 
