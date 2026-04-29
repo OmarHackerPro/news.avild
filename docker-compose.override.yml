@@ -44,18 +44,6 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
 
-  opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:2.19.0
-    ports:
-      - "5601:5601"
-    environment:
-      OPENSEARCH_HOSTS: '["${OPENSEARCH_URL}"]'
-      OPENSEARCH_USERNAME: "${OPENSEARCH_USER}"
-      OPENSEARCH_PASSWORD: "${OPENSEARCH_PASSWORD}"
-      # Remote OS uses a self-signed cert — skip verification
-      NODE_TLS_REJECT_UNAUTHORIZED: "0"
-      OPENSEARCH_SSL_VERIFICATIONMODE: none
-    restart: unless-stopped
 
 volumes:
   embedder-model-cache:
