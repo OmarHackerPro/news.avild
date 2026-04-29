@@ -4,30 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="google" content="notranslate">
-  <meta name="description" content="Search CyberNews for security news, IOCs, and threat actors.">
-  <meta name="robots" content="index, follow">
-  <link rel="canonical" href="/search">
-  <title>Search - CyberNews</title>
-  <script type="application/ld+json">
-  {"@context":"https://schema.org","@graph":[
-    {"@type":"WebPage","@id":"https://news.avild.com/search","name":"Search - CyberNews","url":"https://news.avild.com/search","description":"Search security news, IOCs, and threat actors.","breadcrumb":{"@id":"#breadcrumb"}},
-    {"@type":"BreadcrumbList","@id":"#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://news.avild.com/"},{"@type":"ListItem","position":2,"name":"Search","item":"https://news.avild.com/search"}]}
-  ]}
-  </script>
-  <link rel="stylesheet" href="/static/css/main/main.css">
-  <link rel="stylesheet" href="/static/css/layout/navbar.css?v=3">
+  {% include "_seo.html" %}
+  <link rel="stylesheet" href="/static/css/main/main.css?v=5">
+  <link rel="stylesheet" href="/static/css/layout/navbar.css?v=5">
   <link rel="stylesheet" href="/static/css/pages/search.css">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
   <style>
-    .navbar { display: flex !important; flex-direction: column !important; }
-    .nav-top { display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 44px !important; }
-    .nav-bottom { display: flex !important; justify-content: space-between !important; align-items: center !important; position: relative !important; visibility: visible !important; opacity: 1 !important; min-height: 48px !important; }
-    .nav-brand { flex-shrink: 0 !important; }
-    .nav-bottom .nav-links { position: absolute !important; left: 50% !important; transform: translateX(-50%) !important; flex: 0 0 auto !important; white-space: nowrap !important; pointer-events: auto !important; }
-    .nav-bottom .search-box.nav-bottom-search { flex-shrink: 0 !important; width: 180px !important; min-width: 0 !important; max-width: 180px !important; }
-    .nav-actions { display: flex !important; visibility: visible !important; opacity: 1 !important; }
-    .nav-links { display: flex !important; visibility: visible !important; overflow-x: visible !important; gap: 0.35rem !important; }
+    .navbar { display: flex; flex-direction: column; }
+    .nav-top { display: flex; min-height: 44px; }
+    .nav-bottom { display: grid; min-height: 48px; align-items: center; position: relative; }
+    .nav-brand { flex-shrink: 0; }
+    .nav-actions { display: flex; }
+    .nav-links { display: flex; }
   </style>
   <script>
     (function() {

@@ -4,21 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="google" content="notranslate">
-  <meta name="description" content="Subscribe to news.avild.com email digest — daily or weekly curated cybersecurity updates delivered to your inbox.">
-  <meta name="robots" content="noindex, nofollow">
-  <title>Email Digest — news.avild.com</title>
-  <link rel="stylesheet" href="/static/css/main/main.css">
-  <link rel="stylesheet" href="/static/css/layout/navbar.css?v=3">
+  {% include "_seo.html" %}
+  <link rel="stylesheet" href="/static/css/main/main.css?v=5">
+  <link rel="stylesheet" href="/static/css/layout/navbar.css?v=5">
   <link rel="stylesheet" href="/static/css/pages/digest.css">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
   <style>
-    .navbar { display: flex !important; flex-direction: column !important; }
-    .nav-top { display: flex !important; align-items: center !important; justify-content: flex-start !important; padding: 0.5rem 1.5rem !important; gap: 1rem !important; min-height: 44px !important; border-bottom: 1px solid var(--border) !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 10002 !important; }
-    .nav-top .lang-select-wrapper { display: inline-flex !important; visibility: visible !important; opacity: 1 !important; }
-    .nav-bottom { display: flex !important; align-items: center !important; position: relative !important; visibility: visible !important; opacity: 1 !important; min-height: 48px !important; }
-    .nav-brand { flex-shrink: 0 !important; }
-    .nav-links { display: flex !important; visibility: visible !important; position: absolute !important; left: 50% !important; transform: translateX(-50%) !important; overflow-x: visible !important; gap: 0.35rem !important; flex: 0 0 auto !important; white-space: nowrap !important; pointer-events: auto !important; }
+    .navbar { display: flex; flex-direction: column; }
+    .nav-top { display: flex; min-height: 44px; }
+    .nav-bottom { display: grid; min-height: 48px; align-items: center; position: relative; }
+    .nav-brand { flex-shrink: 0; }
+    .nav-links { display: flex; }
   </style>
   <script>
     (function() {
