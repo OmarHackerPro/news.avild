@@ -67,3 +67,6 @@ class TestPrepareArticleDoc:
         assert doc["content_html"] is None
         assert doc["summary"] is None
         assert doc["content_source"] is None
+        assert doc["body_quality"] == "empty"
+        assert doc["body_source"] == "none"
+        assert doc["is_teaser"] is False

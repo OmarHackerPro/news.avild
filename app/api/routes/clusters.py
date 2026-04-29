@@ -6,6 +6,7 @@ from opensearchpy import NotFoundError
 
 from app.api.routes.news import _hit_to_item
 from app.db.opensearch import INDEX_CLUSTERS, INDEX_NEWS, get_os_client
+from app.ingestion.normalizer import _clean_truncated_text
 from app.models.cluster import ClusterDetail, ClusterListResponse, ClusterSummary, ClusterTimelineEntry, ScoringFactor
 from app.models.errors import ErrorResponse
 
@@ -128,12 +129,14 @@ async def get_cluster(cluster_id: str):
         for entry in (src.get("timeline") or [])
     ]
 
+    raw_summary = src.get("summary")
+    raw_why = src.get("why_it_matters")
     return ClusterDetail(
         id=resp["_id"],
         label=src["label"],
         state=src.get("state", "new"),
-        summary=src.get("summary"),
-        why_it_matters=src.get("why_it_matters"),
+        summary=_clean_truncated_text(raw_summary) if raw_summary else None,
+        why_it_matters=_clean_truncated_text(raw_why) if raw_why else None,
         score=Decimal(str(src["score"])) if src.get("score") is not None else None,
         confidence=src.get("confidence"),
         top_factors=[ScoringFactor(**f) for f in (src.get("top_factors") or [])],

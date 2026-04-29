@@ -62,6 +62,9 @@ async def create_feed(body: FeedSourceCreate, db: AsyncSession = Depends(get_db)
         default_category=body.default_category,
         default_severity=body.default_severity,
         normalizer_key=body.normalizer_key,
+        credibility_weight=body.credibility_weight,
+        extract_cves=body.extract_cves,
+        extract_cvss=body.extract_cvss,
         fetch_interval_minutes=body.fetch_interval_minutes,
     )
     db.add(feed)
