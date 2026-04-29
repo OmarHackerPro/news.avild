@@ -26,7 +26,7 @@ from app.ingestion.clusterer import cluster_article
 
 _REFRESH_EVERY = 50  # force cluster index refresh every N articles during backfill
 _RETRY_ATTEMPTS = 5
-_RETRY_DELAY = 30  # seconds
+_RETRY_DELAY = 10  # seconds
 
 logger = logging.getLogger(__name__)
 
