@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 """Backfill NER entities for existing articles by running LLM extraction.
 
-Scrolls all articles from OpenSearch oldest-first, calls extract_entities_llm()
-for each, and stores any results via store_article_entities(). The NER function
-handles cache reads/writes internally — articles already in ner_cache are
-returned instantly without hitting the LLM.
+Processes articles page-by-page (no upfront bulk load) so progress is never
+lost to an OpenSearch timeout. Each OpenSearch request retries up to 5 times
+with a 30s delay before giving up.
 
 Usage:
     python scripts/backfill_ner.py                          # all articles
@@ -31,108 +30,114 @@ from app.ingestion.entity_store import store_article_entities
 
 logger = logging.getLogger(__name__)
 
+_RETRY_ATTEMPTS = 5
+_RETRY_DELAY = 30  # seconds between retries
 
-async def _scroll_articles(source: str | None, limit: int | None) -> list[dict]:
-    client = get_os_client()
-    filters = []
-    if source:
-        filters.append({"term": {"source_name": source}})
 
-    query = {"bool": {"filter": filters}} if filters else {"match_all": {}}
-
-    results = []
-    page_size = 100
-    from_offset = 0
-
-    while True:
-        for attempt in range(3):
-            try:
-                resp = await client.search(
-                    index=INDEX_NEWS,
-                    body={
-                        "query": query,
-                        "sort": [{"published_at": {"order": "asc"}}],
-                        "size": page_size,
-                        "from": from_offset,
-                        "_source": ["slug", "title", "summary", "desc", "source_name"],
-                    },
-                )
-                break
-            except Exception as exc:
-                if attempt == 2:
-                    raise
-                logger.warning("OpenSearch scroll attempt %d failed: %s — retrying", attempt + 1, exc)
-                await asyncio.sleep(5)
-        hits = resp["hits"]["hits"]
-        if not hits:
-            break
-        results.extend(hits)
-        from_offset += len(hits)
-        if len(hits) < page_size:
-            break
-        if limit is not None and len(results) >= limit:
-            break
-
-    if limit is not None:
-        results = results[:limit]
-
-    return results
+async def _os_search(client, body: dict) -> dict:
+    """Run an OpenSearch search, retrying up to _RETRY_ATTEMPTS times."""
+    for attempt in range(_RETRY_ATTEMPTS):
+        try:
+            return await client.search(index=INDEX_NEWS, body=body)
+        except Exception as exc:
+            if attempt == _RETRY_ATTEMPTS - 1:
+                raise
+            logger.warning(
+                "OpenSearch request attempt %d/%d failed: %s — retrying in %ds",
+                attempt + 1, _RETRY_ATTEMPTS, exc, _RETRY_DELAY,
+            )
+            await asyncio.sleep(_RETRY_DELAY)
+    raise RuntimeError("unreachable")
 
 
 async def main(args: argparse.Namespace) -> None:
-    articles = await _scroll_articles(source=args.source, limit=args.limit)
-    total = len(articles)
-    logger.info("Found %d article(s) to process.", total)
+    client = get_os_client()
+    filters = [{"term": {"source_name": args.source}}] if args.source else []
+    query = {"bool": {"filter": filters}} if filters else {"match_all": {}}
 
+    # Get total count for progress reporting
+    count_resp = await _os_search(client, {"query": query, "size": 0})
+    grand_total = count_resp["hits"]["total"]["value"]
+    if args.limit is not None:
+        grand_total = min(grand_total, args.limit)
+    logger.info("Found %d article(s) to process.", grand_total)
+
+    page_size = 100
+    from_offset = 0
+    processed_total = 0
     counts = {"processed": 0, "cached_hits": 0, "new_extractions": 0, "errors": 0}
 
-    for i, hit in enumerate(articles, 1):
-        slug = hit["_id"]
-        src = hit["_source"]
-        title = src.get("title") or ""
-        summary = src.get("summary") or src.get("desc") or ""
+    while True:
+        if args.limit is not None and processed_total >= args.limit:
+            break
 
-        if args.dry_run:
-            logger.info("[DRY RUN] %d/%d slug=%s", i, total, slug[:60])
-            counts["processed"] += 1
-            if i % 50 == 0:
-                logger.info("Progress: %d/%d", i, total)
-            continue
+        fetch_size = page_size
+        if args.limit is not None:
+            fetch_size = min(page_size, args.limit - processed_total)
 
-        try:
-            async with AsyncSessionLocal() as db:
-                from sqlalchemy import text as _text
-                cached_check = await db.execute(
-                    _text("SELECT 1 FROM ner_cache WHERE slug = :slug"),
-                    {"slug": slug},
+        resp = await _os_search(client, {
+            "query": query,
+            "sort": [{"published_at": {"order": "asc"}}],
+            "size": fetch_size,
+            "from": from_offset,
+            "_source": ["slug", "title", "summary", "desc", "source_name"],
+        })
+        hits = resp["hits"]["hits"]
+        if not hits:
+            break
+
+        for hit in hits:
+            slug = hit["_id"]
+            src = hit["_source"]
+            title = src.get("title") or ""
+            summary = src.get("summary") or src.get("desc") or ""
+            processed_total += 1
+
+            if args.dry_run:
+                logger.info(
+                    "[DRY RUN] %d/%d slug=%s", processed_total, grand_total, slug[:60]
                 )
-                already_cached = cached_check.fetchone() is not None
+                counts["processed"] += 1
+                if processed_total % 50 == 0:
+                    logger.info("Progress: %d/%d", processed_total, grand_total)
+                continue
 
-                entities = await extract_entities_llm(slug, title, summary, db)
+            try:
+                async with AsyncSessionLocal() as db:
+                    from sqlalchemy import text as _text
+                    cached_row = await db.execute(
+                        _text("SELECT 1 FROM ner_cache WHERE slug = :slug"),
+                        {"slug": slug},
+                    )
+                    already_cached = cached_row.fetchone() is not None
+                    entities = await extract_entities_llm(slug, title, summary, db)
 
-            if already_cached:
-                counts["cached_hits"] += 1
-            else:
-                counts["new_extractions"] += 1
-                # Only delay after a real LLM call
-                if args.delay > 0:
-                    await asyncio.sleep(args.delay)
+                if already_cached:
+                    counts["cached_hits"] += 1
+                else:
+                    counts["new_extractions"] += 1
+                    if args.delay > 0:
+                        await asyncio.sleep(args.delay)
 
-            if entities:
-                await store_article_entities(slug, entities)
+                if entities:
+                    await store_article_entities(slug, entities)
 
-            counts["processed"] += 1
+                counts["processed"] += 1
 
-        except Exception:
-            logger.exception("Failed to process slug=%s", slug[:60])
-            counts["errors"] += 1
+            except Exception:
+                logger.exception("Failed to process slug=%s", slug[:60])
+                counts["errors"] += 1
 
-        if i % 50 == 0:
-            logger.info(
-                "Progress: %d/%d — cached=%d new=%d errors=%d",
-                i, total,
-                counts["cached_hits"], counts["new_extractions"], counts["errors"],
-            )
+            if processed_total % 50 == 0:
+                logger.info(
+                    "Progress: %d/%d — cached=%d new=%d errors=%d",
+                    processed_total, grand_total,
+                    counts["cached_hits"], counts["new_extractions"], counts["errors"],
+                )
+
+        from_offset += len(hits)
+        if len(hits) < fetch_size:
+            break
 
     logger.info(
         "=== Done: processed=%d cached_hits=%d new_extractions=%d errors=%d ===",
