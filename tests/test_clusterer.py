@@ -1,291 +1,181 @@
-"""Tests for app.ingestion.clusterer — async mocked OpenSearch client."""
+"""Tests for the rewritten app.ingestion.clusterer (unified scorer)."""
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
-from app.ingestion.clusterer import _signal_keys, cluster_article
-
-
-@pytest.fixture
-def mock_os_client():
-    client = AsyncMock()
-    with patch("app.ingestion.clusterer.get_os_client", return_value=client):
-        yield client
+from app.ingestion.clusterer import _build_event_signature, _updated_centroid
 
 
 # ---------------------------------------------------------------------------
-# find_cluster_by_cve
+# Helper unit tests
 # ---------------------------------------------------------------------------
 
-@pytest.mark.asyncio
-async def test_find_cluster_by_cve_returns_match(mock_os_client):
-    from app.ingestion.clusterer import find_cluster_by_cve
-
-    mock_os_client.search.return_value = {
-        "hits": {"hits": [{"_id": "cluster-abc", "_score": 1.0}]}
-    }
-
-    result = await find_cluster_by_cve(["CVE-2026-1234"])
-    assert result == "cluster-abc"
-
-    # Verify the query used terms on seed_cve_ids (not cve_ids)
-    call_body = mock_os_client.search.call_args.kwargs["body"]
-    terms = call_body["query"]["bool"]["filter"][0]
-    assert terms == {"terms": {"seed_cve_ids": ["CVE-2026-1234"]}}
+def test_build_event_signature_high_confidence_cve_and_alias():
+    entities = [
+        {"type": "cve", "normalized_key": "CVE-2021-44228"},
+        {"type": "vuln_alias", "normalized_key": "log4shell"},
+    ]
+    sig = _build_event_signature(entities, ["CVE-2021-44228"])
+    assert sig["confidence"] == "high"
+    assert "log4shell" in sig["vuln_aliases"]
+    assert "CVE-2021-44228" in sig["cve_ids"]
 
 
-# ---------------------------------------------------------------------------
-# find_cluster_by_entities
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_find_cluster_by_entities_returns_match(mock_os_client):
-    from app.ingestion.clusterer import find_cluster_by_entities
-
-    mock_os_client.search.return_value = {
-        "hits": {
-            "hits": [{
-                "_id": "cluster-xyz",
-                "_score": 1.0,
-                "_source": {"entity_keys": ["fortinet", "fortios", "vpn"]},
-            }]
-        }
-    }
-
-    result = await find_cluster_by_entities(["fortinet", "fortios"])
-    assert result == "cluster-xyz"
+def test_build_event_signature_low_confidence_no_signals():
+    sig = _build_event_signature([], [])
+    assert sig["confidence"] == "low"
 
 
-@pytest.mark.asyncio
-async def test_find_cluster_by_entities_insufficient_overlap(mock_os_client):
-    from app.ingestion.clusterer import find_cluster_by_entities
+def test_updated_centroid_initializes_from_first_vec():
+    vec = [1.0, 0.0, 0.0]
+    result = _updated_centroid(None, vec, 1)
+    assert result == vec
 
-    # Cluster only has "fortinet", not "fortios" — overlap is 1, below threshold
-    mock_os_client.search.return_value = {
-        "hits": {
-            "hits": [{
-                "_id": "cluster-xyz",
-                "_score": 1.0,
-                "_source": {"entity_keys": ["fortinet"]},
-            }]
-        }
-    }
 
-    result = await find_cluster_by_entities(["fortinet", "fortios"])
-    assert result is None
+def test_updated_centroid_running_average():
+    old = [1.0, 0.0]
+    new_vec = [0.0, 1.0]
+    result = _updated_centroid(old, new_vec, 2)
+    assert abs(result[0] - 0.5) < 0.001
+    assert abs(result[1] - 0.5) < 0.001
 
 
 # ---------------------------------------------------------------------------
-# cluster_article — full path (CVE match)
+# cluster_article — delegates to find_best_cluster
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_cluster_article_cve_match_merges():
-    from app.ingestion.clusterer import cluster_article
-
+async def test_cluster_article_merges_when_cluster_found():
     article = {
-        "slug": "test-article-001",
-        "title": "Critical FortiOS RCE",
-        "source_name": "BleepingComputer",
-        "published_at": "2026-03-19T10:00:00+00:00",
+        "slug": "fortios-rce-001",
+        "title": "FortiOS RCE",
         "cve_ids": ["CVE-2026-1234"],
-        "summary": "A critical vulnerability...",
-        "desc": "A critical vulnerability...",
-        "category": "vulnerability",
+        "source_name": "BleepingComputer",
+        "published_at": "2026-04-27T10:00:00Z",
+        "credibility_weight": 1.2,
     }
+    entities = [{"type": "cve", "normalized_key": "CVE-2026-1234"}]
 
-    with patch("app.ingestion.clusterer.find_cluster_by_cve", new_callable=AsyncMock) as mock_cve, \
+    with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value="cluster-abc") as mock_best, \
          patch("app.ingestion.clusterer.merge_into_cluster", new_callable=AsyncMock) as mock_merge, \
          patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock) as mock_create:
 
-        mock_cve.return_value = "cluster-existing"
+        from app.ingestion.clusterer import cluster_article
+        await cluster_article(article, "fortios-rce-001", entities)
 
-        entities = [
-            {"normalized_key": "fortinet", "type": "vendor"},
-            {"normalized_key": "fortios", "type": "product"},
-        ]
-        await cluster_article(article, "test-article-001", entities)
-
-        mock_cve.assert_awaited_once_with(["CVE-2026-1234"])
-        mock_merge.assert_awaited_once()
-        # Verify merge was called with the right cluster id and slug
-        merge_args = mock_merge.call_args
-        assert merge_args[0][0] == "cluster-existing"
-        assert merge_args[0][1] == "test-article-001"
-        mock_create.assert_not_awaited()
-
-
-# ---------------------------------------------------------------------------
-# _signal_keys helper
-# ---------------------------------------------------------------------------
-
-def test_signal_keys_excludes_vendors():
-    entities = [
-        {"normalized_key": "microsoft", "type": "vendor"},
-        {"normalized_key": "cve-2024-1234", "type": "cve"},
-        {"normalized_key": "lockbit", "type": "malware"},
-    ]
-    assert _signal_keys(entities) == ["cve-2024-1234", "lockbit"]
-
-
-def test_signal_keys_empty_input():
-    assert _signal_keys([]) == []
-
-
-def test_signal_keys_all_vendors_returns_empty():
-    entities = [
-        {"normalized_key": "microsoft", "type": "vendor"},
-        {"normalized_key": "google", "type": "vendor"},
-    ]
-    assert _signal_keys(entities) == []
-
-
-# ---------------------------------------------------------------------------
-# cluster_article — CVE cap (roundup articles skip CVE lookup)
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_cluster_article_skips_cve_lookup_for_roundup():
-    """Articles with >3 CVEs skip CVE-based cluster matching."""
-    entities = [
-        {"normalized_key": f"cve-2024-{i:04d}", "type": "cve"} for i in range(5)
-    ]
-    article = {"slug": "patch-tuesday", "title": "Patch Tuesday", "published_at": "2024-01-01T00:00:00Z"}
-
-    with patch("app.ingestion.clusterer.find_cluster_by_cve", new_callable=AsyncMock) as mock_cve, \
-         patch("app.ingestion.clusterer.find_cluster_by_entities", new_callable=AsyncMock, return_value=None), \
-         patch("app.ingestion.clusterer.find_cluster_by_mlt", new_callable=AsyncMock, return_value=None), \
-         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock):
-        await cluster_article(article, "patch-tuesday", entities)
-        mock_cve.assert_not_called()
-
-
-# ---------------------------------------------------------------------------
-# cluster_article — vendor entities excluded from entity matching
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_cluster_article_excludes_vendors_from_entity_matching():
-    """Vendor entities are excluded from signal_keys used for cluster matching."""
-    entities = [
-        {"normalized_key": "microsoft", "type": "vendor"},
-        {"normalized_key": "google", "type": "vendor"},
-    ]
-    article = {"slug": "generic-article", "title": "Generic Article", "published_at": "2024-01-01T00:00:00Z"}
-
-    with patch("app.ingestion.clusterer.find_cluster_by_entities", new_callable=AsyncMock, return_value=None) as mock_entities, \
-         patch("app.ingestion.clusterer.find_cluster_by_cve", new_callable=AsyncMock, return_value=None), \
-         patch("app.ingestion.clusterer.find_cluster_by_mlt", new_callable=AsyncMock, return_value=None), \
-         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock):
-        await cluster_article(article, "generic-article", entities)
-        # Should be called with empty signal_keys (vendors excluded)
-        mock_entities.assert_awaited_once_with([])
-
-
-# ---------------------------------------------------------------------------
-# find_cluster_by_mlt — stop words and size cap
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_mlt_query_includes_stop_words(mock_os_client):
-    """MLT query must include a stop_words list to suppress boilerplate terms."""
-    from app.ingestion.clusterer import find_cluster_by_mlt
-
-    mock_os_client.count.return_value = {"count": 25}
-    mock_os_client.search.return_value = {"hits": {"hits": []}}
-
-    await find_cluster_by_mlt("Critical vulnerability in Apache", None)
-
-    call_body = mock_os_client.search.call_args.kwargs["body"]
-    mlt_query = call_body["query"]["bool"]["must"][0]["more_like_this"]
-    assert "stop_words" in mlt_query
-    assert "advisory" in mlt_query["stop_words"]
-    assert "vulnerability" in mlt_query["stop_words"]
-    assert "critical" in mlt_query["stop_words"]
+    mock_best.assert_awaited_once()
+    mock_merge.assert_awaited_once()
+    assert mock_merge.call_args[0][0] == "cluster-abc"
+    mock_create.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_mlt_query_caps_cluster_size(mock_os_client):
-    """MLT query must filter out clusters with article_count > 15."""
-    from app.ingestion.clusterer import find_cluster_by_mlt, _MLT_MAX_CLUSTER_SIZE
+async def test_cluster_article_creates_new_when_no_match():
+    article = {
+        "slug": "novel-article-001",
+        "title": "New Threat",
+        "cve_ids": [],
+        "source_name": "Threatpost",
+        "published_at": "2026-04-27T10:00:00Z",
+    }
 
-    mock_os_client.count.return_value = {"count": 25}
-    mock_os_client.search.return_value = {"hits": {"hits": []}}
+    with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=None), \
+         patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value=None), \
+         patch("app.ingestion.clusterer.merge_into_cluster", new_callable=AsyncMock) as mock_merge, \
+         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock) as mock_create:
 
-    await find_cluster_by_mlt("Ransomware gang targets hospitals", None)
+        from app.ingestion.clusterer import cluster_article
+        await cluster_article(article, "novel-article-001", [])
 
-    call_body = mock_os_client.search.call_args.kwargs["body"]
-    filters = call_body["query"]["bool"]["filter"]
-    size_filter = next(
-        (f for f in filters if "range" in f and "article_count" in f["range"]),
-        None,
-    )
-    assert size_filter is not None, "Expected article_count range filter"
-    assert size_filter["range"]["article_count"]["lte"] == _MLT_MAX_CLUSTER_SIZE
+    mock_merge.assert_not_awaited()
+    mock_create.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
-# Seed-based CVE gating
+# create_cluster — sets seed_cve_ids, event_signature, centroid_embedding
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_create_cluster_sets_seed_cve_ids(mock_os_client):
-    """New cluster must store seed_cve_ids equal to the founding article's CVEs."""
-    from app.ingestion.clusterer import create_cluster
-
-    mock_os_client.index.return_value = {"_id": "new-cluster-001"}
-    mock_os_client.update.return_value = {}
+async def test_create_cluster_sets_seed_cve_ids():
+    os_mock = AsyncMock()
+    os_mock.index.return_value = {"_id": "new-cluster-001"}
+    os_mock.update.return_value = {}
 
     article = {
-        "slug": "fortigate-rce-001",
-        "title": "FortiGate RCE",
-        "cve_ids": ["CVE-2026-1111"],
-        "category": "vulnerability",
-        "published_at": "2026-04-21T10:00:00Z",
+        "slug": "cve-article-001",
+        "title": "Critical Bug",
+        "cve_ids": ["CVE-2026-9999"],
+        "published_at": "2026-04-27T10:00:00Z",
+        "source_name": "CISA",
+    }
+    entities = [{"type": "cve", "normalized_key": "CVE-2026-9999"}]
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import create_cluster
+        await create_cluster(article, entities, embedding=[0.1] * 1024)
+
+    indexed = os_mock.index.call_args.kwargs["body"]
+    assert indexed["seed_cve_ids"] == ["CVE-2026-9999"]
+    assert indexed["cve_ids"] == ["CVE-2026-9999"]
+    assert indexed["centroid_embedding"] == [0.1] * 1024
+
+
+@pytest.mark.asyncio
+async def test_create_cluster_event_signature_confidence_high_when_cve_and_alias():
+    os_mock = AsyncMock()
+    os_mock.index.return_value = {"_id": "cluster-hi-conf"}
+    os_mock.update.return_value = {}
+
+    article = {
+        "slug": "log4shell-001",
+        "title": "Log4Shell exploited",
+        "cve_ids": ["CVE-2021-44228"],
+        "published_at": "2026-04-27T10:00:00Z",
         "source_name": "BleepingComputer",
     }
-    await create_cluster(article, ["fortigate", "fortios"])
+    entities = [
+        {"type": "cve", "normalized_key": "CVE-2021-44228"},
+        {"type": "vuln_alias", "normalized_key": "log4shell"},
+    ]
 
-    indexed_doc = mock_os_client.index.call_args.kwargs["body"]
-    assert indexed_doc["seed_cve_ids"] == ["CVE-2026-1111"]
-    assert indexed_doc["cve_ids"] == ["CVE-2026-1111"]
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import create_cluster
+        await create_cluster(article, entities)
 
+    indexed = os_mock.index.call_args.kwargs["body"]
+    assert indexed["event_signature"]["confidence"] == "high"
+    assert "log4shell" in indexed["event_signature"]["vuln_aliases"]
+
+
+# ---------------------------------------------------------------------------
+# merge_into_cluster — does NOT update seed_cve_ids
+# ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_find_cluster_by_cve_queries_seed_cve_ids(mock_os_client):
-    """CVE cluster lookup must query seed_cve_ids, not cve_ids."""
-    from app.ingestion.clusterer import find_cluster_by_cve
-
-    mock_os_client.search.return_value = {
-        "hits": {"hits": [{"_id": "cluster-seed-test"}]}
+async def test_merge_does_not_touch_seed_cve_ids():
+    os_mock = AsyncMock()
+    os_mock.get.return_value = {
+        "_source": {
+            "article_count": 1,
+            "centroid_embedding": [0.5] * 1024,
+            "event_signature": {"cve_ids": ["CVE-2026-1111"], "vuln_aliases": [],
+                                 "campaign_names": [], "affected_products": [],
+                                 "primary_actors": [], "confidence": "medium"},
+        }
     }
+    os_mock.update.return_value = {}
 
-    await find_cluster_by_cve(["CVE-2026-9999"])
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import merge_into_cluster
+        await merge_into_cluster(
+            "cluster-existing", "article-new", ["fortios"], ["CVE-2026-1111"],
+            source_name="CISA", title="Follow-up", published_at="2026-04-27T12:00:00Z",
+        )
 
-    call_body = mock_os_client.search.call_args.kwargs["body"]
-    terms_filter = call_body["query"]["bool"]["filter"][0]
-    assert terms_filter == {"terms": {"seed_cve_ids": ["CVE-2026-9999"]}}
-
-
-@pytest.mark.asyncio
-async def test_merge_does_not_grow_seed_cve_ids(mock_os_client):
-    """Merging an article into a cluster must NOT update seed_cve_ids."""
-    from app.ingestion.clusterer import merge_into_cluster
-
-    mock_os_client.update.return_value = {}
-
-    await merge_into_cluster(
-        "cluster-existing",
-        "article-new",
-        ["fortios"],
-        ["CVE-2026-AAAA"],
-        source_name="KrebsOnSecurity",
-        title="Follow-up FortiGate story",
-        published_at="2026-04-21T12:00:00Z",
-    )
-
-    # The Painless script passed to update must NOT reference seed_cve_ids
-    # Check all update calls (order-independent)
-    for call in mock_os_client.update.call_args_list:
+    for call in os_mock.update.call_args_list:
         script = call.kwargs.get("body", {}).get("script", {})
         if "source" in script:
             assert "seed_cve_ids" not in script["source"]
