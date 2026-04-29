@@ -4,24 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="google" content="notranslate">
-  <meta name="description" content="Cluster detail — deduplicated security event with sources, timeline, and analysis.">
-  <meta name="robots" content="index, follow">
-  <title>Cluster — avild.news</title>
-  <link rel="stylesheet" href="/static/css/main/main.css">
-  <link rel="stylesheet" href="/static/css/layout/navbar.css?v=4">
+  {% include "_seo.html" %}
+  <link rel="stylesheet" href="/static/css/main/main.css?v=5">
+  <link rel="stylesheet" href="/static/css/layout/navbar.css?v=5">
   <link rel="stylesheet" href="/static/css/pages/cluster.css?v=2">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
   <style>
-    .navbar { display: flex !important; flex-direction: column !important; }
-    .nav-top { display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 44px !important; }
-    .nav-bottom { display: flex !important; justify-content: space-between !important; align-items: center !important; position: relative !important; visibility: visible !important; opacity: 1 !important; min-height: 48px !important; }
-    .nav-brand { flex-shrink: 0 !important; }
-    .nav-links-slider { position: absolute !important; left: 50% !important; transform: translateX(-50%) !important; width: auto !important; pointer-events: none !important; }
-    .nav-links-slider .nav-links, .nav-links-slider * { pointer-events: auto !important; }
-    .nav-bottom .search-box.nav-bottom-search { flex-shrink: 0 !important; width: 180px !important; min-width: 0 !important; max-width: 180px !important; }
-    .nav-actions { display: flex !important; visibility: visible !important; opacity: 1 !important; }
-    .nav-links { display: flex !important; visibility: visible !important; overflow-x: visible !important; gap: 0.35rem !important; white-space: nowrap !important; flex: 0 0 auto !important; }
+    .navbar { display: flex; flex-direction: column; }
+    .nav-top { display: flex; min-height: 44px; }
+    .nav-bottom { display: grid; min-height: 48px; align-items: center; position: relative; }
+    .nav-brand { flex-shrink: 0; }
+    .nav-actions { display: flex; }
+    .nav-links { display: flex; }
   </style>
   <script>
     (function() {
@@ -42,6 +37,7 @@
           <option value="es">Español</option>
           <option value="fr">Français</option>
           <option value="de">Deutsch</option>
+          <option value="tr">Türkçe</option>
         </select>
         <div class="lang-select-trigger" id="langTrigger" aria-expanded="false" aria-haspopup="listbox">
           <i class="fas fa-globe lang-icon"></i>
@@ -55,6 +51,7 @@
           <div class="lang-option" data-lang="es" data-short="ES" role="option">Español</div>
           <div class="lang-option" data-lang="fr" data-short="FR" role="option">Français</div>
           <div class="lang-option" data-lang="de" data-short="DE" role="option">Deutsch</div>
+          <div class="lang-option" data-lang="tr" data-short="TR" role="option">Türkçe</div>
         </div>
       </div>
       <div class="nav-actions">
