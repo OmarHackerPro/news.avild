@@ -1,5 +1,6 @@
 import calendar
 import hashlib
+import html as _html
 import re
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -228,7 +229,7 @@ def normalize_generic(
     Handles content:encoded (RSS), <content> (Atom), summary-only feeds,
     WordPress footers, image extraction, and CVE ID extraction.
     """
-    title = (entry.get("title") or "").strip()
+    title = _html.unescape((entry.get("title") or "").strip())
     link = (entry.get("link") or "").strip()
 
     if not title or not link:
@@ -308,7 +309,7 @@ def normalize_cisa_news(
     No description, no categories. Author is always "CISA".
     desc is intentionally None — the feed contains no summary content.
     """
-    title = (entry.get("title") or "").strip()
+    title = _html.unescape((entry.get("title") or "").strip())
     link  = (entry.get("link")  or "").strip()
 
     if not title or not link:
@@ -348,7 +349,7 @@ def normalize_cisa_advisory(
     CVSS score and CVE IDs are extracted into dedicated columns.
     Advisory-specific extras (CVSS vector, advisory ID) go into raw_metadata.
     """
-    title = (entry.get("title") or "").strip()
+    title = _html.unescape((entry.get("title") or "").strip())
     link  = (entry.get("link")  or "").strip()
 
     if not title or not link:
@@ -404,7 +405,7 @@ def normalize_article(
     source dict must have: name, url, default_type, default_category, default_severity.
     Optional: credibility_weight (default 1.0), extract_cves (default False), extract_cvss (default False).
     """
-    title = (entry.get("title") or "").strip()
+    title = _html.unescape((entry.get("title") or "").strip())
     link = (entry.get("link") or "").strip()
 
     if not title or not link:
