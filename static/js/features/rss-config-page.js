@@ -48,12 +48,24 @@
     if (urlInput) urlInput.value = url;
   }
 
+  function trackEvent(props) {
+    if (window.CyberNews && window.CyberNews.analytics) {
+      window.CyberNews.analytics.track('export_click', props);
+    }
+  }
+
   if (copyBtn) {
     copyBtn.addEventListener('click', function() {
       if (!urlInput || !urlInput.value) return;
       navigator.clipboard.writeText(urlInput.value).then(function() {
         copyBtn.textContent = t('rss.copied');
         setTimeout(function() { copyBtn.textContent = t('rss.copyUrl'); }, 2000);
+      });
+      trackEvent({
+        kind: 'rss_copy_url',
+        source: 'rss_config',
+        include: getInclude(),
+        filters: getFilters(),
       });
     });
   }
@@ -62,6 +74,7 @@
     regenBtn.addEventListener('click', function() {
       api.regenerateToken();
       updateUrl();
+      trackEvent({ kind: 'rss_regenerate_token', source: 'rss_config' });
     });
   }
 

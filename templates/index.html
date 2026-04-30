@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" translate="no">
 <head>
@@ -8,6 +7,7 @@
   {% include "_seo.html" %}
   <link rel="stylesheet" href="/static/css/main/main.css?v=5">
   <link rel="stylesheet" href="/static/css/layout/navbar.css?v=5">
+  <link rel="stylesheet" href="/static/css/components/analytics-panel.css">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
   <style>
@@ -34,11 +34,11 @@
         <select id="langSelect" class="lang-select-native" aria-label="Language">
           <option value="en" selected>English</option>
           <option value="az">Azərbaycan</option>
+          <option value="tr">Türkçe</option>
           <option value="ru">Русский</option>
           <option value="es">Español</option>
           <option value="fr">Français</option>
           <option value="de">Deutsch</option>
-          <option value="tr">Türkçe</option>
         </select>
         <div class="lang-select-trigger" id="langTrigger" aria-expanded="false" aria-haspopup="listbox">
           <i class="fas fa-globe lang-icon"></i>
@@ -49,10 +49,10 @@
           <div class="lang-option selected" data-lang="en" data-short="EN" role="option">English</div>
           <div class="lang-option" data-lang="az" data-short="AZ" role="option">Azərbaycan</div>
           <div class="lang-option" data-lang="ru" data-short="RU" role="option">Русский</div>
+          <div class="lang-option" data-lang="tr" data-short="TR" role="option">Türkçe</div>
           <div class="lang-option" data-lang="es" data-short="ES" role="option">Español</div>
           <div class="lang-option" data-lang="fr" data-short="FR" role="option">Français</div>
           <div class="lang-option" data-lang="de" data-short="DE" role="option">Deutsch</div>
-          <div class="lang-option" data-lang="tr" data-short="TR" role="option">Türkçe</div>
         </div>
       </div>
       <div class="nav-actions">
@@ -127,6 +127,7 @@
       </div>
     </div>
   </nav>
+  <script src="/static/js/core/analytics.js"></script>
   <script src="/static/js/core/loader.js?v=7"></script>
   <script>
     (function() {
@@ -136,6 +137,9 @@
 
         function goSearch() {
           var q = input ? input.value.trim() : '';
+          if (window.CyberNews && window.CyberNews.analytics) {
+            window.CyberNews.analytics.track('search', { query: q, source: 'nav', status: q ? 'submitted' : 'empty' });
+          }
           window.location.href = q ? '/search?q=' + encodeURIComponent(q) : '/search';
         }
 

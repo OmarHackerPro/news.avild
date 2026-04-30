@@ -41,7 +41,19 @@
   document.addEventListener('click', function() {
     if (rssDropdown.classList.contains('open')) closeRss();
   });
-  rssDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+  rssDropdown.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var opt = e.target.closest('.nav-rss-option');
+    if (opt && window.CyberNews && window.CyberNews.analytics) {
+      var feed = (opt.getAttribute('data-i18n-key') || '').replace(/^rss\./, '') ||
+                 opt.textContent.trim().toLowerCase();
+      window.CyberNews.analytics.track('export_click', {
+        kind: 'rss_feed',
+        feed: feed,
+        source: 'navbar_dropdown',
+      });
+    }
+  });
   window.addEventListener('scroll', positionRssDropdown, true);
   window.addEventListener('resize', positionRssDropdown);
 })();
