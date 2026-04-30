@@ -7,11 +7,19 @@
 
   var PRESETS_KEY = 'cn.filterPresets.v1';
 
+  function arraysEqual(a, b) {
+    if (a === b) return true;
+    if (!a || !b || a.length !== b.length) return false;
+    var aS = a.slice().sort(), bS = b.slice().sort();
+    for (var i = 0; i < aS.length; i++) if (aS[i] !== bS[i]) return false;
+    return true;
+  }
+
   // Default filter state — used for reset and to compute "is non-default"
   var DEFAULTS = {
     time: '24h',
     severity: 'all',
-    state: 'all',
+    state: [],
     sort: 'latest'
   };
 
@@ -35,7 +43,7 @@
     var count = 0;
     if (window.mainFilterTime !== DEFAULTS.time) count++;
     if (window.mainFilterSeverity !== DEFAULTS.severity) count++;
-    if (window.mainFilterState !== DEFAULTS.state) count++;
+    if (window.mainFilterState.length > 0) count++;
     if (window.currentSort !== DEFAULTS.sort) count++;
     var badge = document.getElementById('mainFilterCount');
     if (!badge) return;
@@ -51,7 +59,7 @@
       var cSev = card.getAttribute('data-severity') || '';
       var cSt = card.getAttribute('data-state') || '';
       var hideBySev = sev && sev !== 'all' && cSev !== sev;
-      var hideBySt = st && st !== 'all' && cSt !== st;
+      var hideBySt = st.length > 0 && st.indexOf(cSt) === -1;
       card.classList.toggle('filtered-out', hideBySev || hideBySt);
     });
   };
@@ -64,7 +72,10 @@
       var active = false;
       if (k === 'time') active = (v === window.mainFilterTime);
       else if (k === 'severity') active = (v === window.mainFilterSeverity);
-      else if (k === 'state') active = (v === window.mainFilterState);
+      else if (k === 'state') {
+        if (v === 'all') active = (window.mainFilterState.length === 0);
+        else active = (window.mainFilterState.indexOf(v) > -1);
+      }
       else if (k === 'sort') active = (v === window.currentSort);
       opt.classList.toggle('active', active);
     });
@@ -123,26 +134,25 @@
     var filterKey = opt.getAttribute('data-fmd-filter');
     var filterVal = opt.getAttribute('data-fmd-value');
 
-    document.querySelectorAll('.fmd-opt[data-fmd-filter="' + filterKey + '"]').forEach(function(s) {
-      s.classList.remove('active');
-    });
-    opt.classList.add('active');
-
     var needsFeedReload = false;
-    if (filterKey === 'time') {
-      window.mainFilterTime = filterVal;
-      needsFeedReload = true;
-    } else if (filterKey === 'severity') {
-      window.mainFilterSeverity = filterVal;
-    } else if (filterKey === 'state') {
-      window.mainFilterState = filterVal;
-    } else if (filterKey === 'sort') {
-      window.currentSort = filterVal;
-      needsFeedReload = true;
+    if (filterKey === 'state') {
+      if (filterVal === 'all') {
+        window.mainFilterState = [];
+      } else {
+        var idx = window.mainFilterState.indexOf(filterVal);
+        if (idx > -1) window.mainFilterState.splice(idx, 1);
+        else window.mainFilterState.push(filterVal);
+      }
+    } else {
+      if (filterKey === 'time') { window.mainFilterTime = filterVal; needsFeedReload = true; }
+      else if (filterKey === 'severity') { window.mainFilterSeverity = filterVal; }
+      else if (filterKey === 'sort') { window.currentSort = filterVal; needsFeedReload = true; }
     }
 
+    syncOptionsToState();
     updateFilterCount();
     renderPresets();
+
     if (needsFeedReload) reapplyFeed();
     else window.applyClientSideFilter();
 
@@ -216,7 +226,7 @@
     if (!a || !b) return false;
     return a.time === b.time &&
            a.severity === b.severity &&
-           a.state === b.state &&
+           arraysEqual(a.state, b.state) &&
            a.sort === b.sort;
   }
 
@@ -282,7 +292,8 @@
     var f = preset.filters;
     window.mainFilterTime = f.time || DEFAULTS.time;
     window.mainFilterSeverity = f.severity || DEFAULTS.severity;
-    window.mainFilterState = f.state || DEFAULTS.state;
+    var st = f.state || DEFAULTS.state;
+    window.mainFilterState = Array.isArray(st) ? st : (st === 'all' ? [] : [st]);
     window.currentSort = f.sort || DEFAULTS.sort;
     syncOptionsToState();
     updateFilterCount();
@@ -415,11 +426,6 @@
 
   /* ── Delegated click handlers for presets ── */
   document.addEventListener('click', function(e) {
-    // Dropdown "Save as preset" footer button
-    if (e.target.closest('#mainFilterSaveBtn')) {
-      showPresetSaveUI('dropdown');
-      return;
-    }
     if (e.target.closest('#fmdPresetSaveConfirm')) {
       confirmPresetSave('dropdown');
       return;
