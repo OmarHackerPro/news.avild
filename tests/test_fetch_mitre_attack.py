@@ -1,9 +1,9 @@
-"""Tests for the STIX parser in scripts/fetch_mitre_attack.py."""
+"""Tests for the STIX parser in scripts/sync_mitre_attack.py."""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.fetch_mitre_attack import _normalize_key, _parse_stix_bundle
+from scripts.sync_mitre_attack import _normalize_key, _parse_stix_bundle, _SKIP_NAMES
 
 
 def _make_obj(type_, name, aliases=None, x_mitre_aliases=None,
@@ -142,3 +142,23 @@ def test_no_duplicate_keywords_on_name_collision():
     ]}
     kw, _ = _parse_stix_bundle(bundle)
     assert list(kw.keys()).count("lockbit") == 1
+
+
+# --- _SKIP_NAMES noise filter ---
+
+def test_skip_names_excludes_common_words():
+    """Objects whose name is in _SKIP_NAMES must be excluded from output."""
+    # "at" and "net" are in _SKIP_NAMES — they should never appear in keywords
+    for noise_name in _SKIP_NAMES:
+        bundle = {"objects": [_make_obj("tool", noise_name)]}
+        kw, _ = _parse_stix_bundle(bundle)
+        assert _normalize_key(noise_name) not in kw, (
+            f"'{noise_name}' from _SKIP_NAMES should be excluded but was found in keywords"
+        )
+
+
+def test_skip_names_case_insensitive():
+    """_SKIP_NAMES check is case-insensitive (names are lowercased before comparison)."""
+    bundle = {"objects": [_make_obj("tool", "AT")]}
+    kw, _ = _parse_stix_bundle(bundle)
+    assert "at" not in kw
