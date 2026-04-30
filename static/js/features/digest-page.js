@@ -16,6 +16,12 @@
 
   var els = {};
 
+  function trackEvent(action, props) {
+    if (window.CyberNews && window.CyberNews.analytics) {
+      window.CyberNews.analytics.track('digest_action', Object.assign({ action: action }, props || {}));
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     els.form = document.getElementById('digestForm');
     els.email = document.getElementById('digestEmail');
@@ -52,11 +58,18 @@
     if (els.previewBtn) els.previewBtn.addEventListener('click', function() {
       renderPreview();
       flash(els.previewBtn);
+      var data = readForm();
+      trackEvent('preview', {
+        frequency: data.frequency,
+        topics: data.topics,
+        min_severity: data.minSeverity,
+      });
     });
     if (els.unsubscribeBtn) els.unsubscribeBtn.addEventListener('click', handleUnsubscribe);
     if (els.editBtn) els.editBtn.addEventListener('click', function() {
       setEditMode(true);
       if (els.email) els.email.focus();
+      trackEvent('edit_open');
     });
     if (els.cancelEditBtn) els.cancelEditBtn.addEventListener('click', function() {
       var current = loadSubscription();
@@ -64,6 +77,7 @@
       setEmailError(false);
       renderPreview();
       setEditMode(false);
+      trackEvent('edit_cancel');
     });
   });
 
@@ -137,10 +151,12 @@
     if (!EMAIL_RE.test(data.email)) {
       setEmailError(true);
       els.email.focus();
+      trackEvent('subscribe_invalid', { reason: 'invalid_email' });
       return;
     }
     if (data.topics.length === 0) {
       showToast('Pick at least one topic to include in your digest.', 'error');
+      trackEvent('subscribe_invalid', { reason: 'no_topics' });
       return;
     }
     var wasSubscribed = !!loadSubscription();
@@ -150,6 +166,12 @@
     setEditMode(false);
     renderPreview();
     showToast(wasSubscribed ? 'Subscription updated.' : 'Subscribed! Digest settings saved locally in your browser.', 'success');
+    trackEvent(wasSubscribed ? 'update' : 'subscribe', {
+      frequency: data.frequency,
+      topics: data.topics,
+      topic_count: data.topics.length,
+      min_severity: data.minSeverity,
+    });
   }
 
   function handleUnsubscribe() {
@@ -157,6 +179,7 @@
     renderStatus(null);
     setEditMode(true);
     showToast('You have been unsubscribed.', 'success');
+    trackEvent('unsubscribe');
   }
 
   function setEmailError(show) {

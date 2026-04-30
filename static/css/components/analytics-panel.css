@@ -1,0 +1,162 @@
+/* Analytics debug panel — only visible when explicitly enabled (?analytics=1 or Ctrl+Shift+A). */
+
+#cn-analytics-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 99998;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border, #2a2f3a);
+  background: var(--bg-elev, #161922);
+  color: var(--accent, #7aa2ff);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  transition: transform 120ms ease, background 120ms ease;
+}
+#cn-analytics-fab:hover { transform: translateY(-2px); }
+#cn-analytics-fab .cn-analytics-fab-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--accent, #7aa2ff);
+  color: #0c0e15;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+#cn-analytics-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 72px;
+  z-index: 99999;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elev, #161922);
+  color: var(--text, #e6e8ee);
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+  font-size: 12px;
+  overflow: hidden;
+}
+#cn-analytics-panel[hidden] { display: none; }
+
+.cn-analytics-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, #2a2f3a);
+  background: rgba(255, 255, 255, 0.03);
+}
+.cn-analytics-title {
+  font-weight: 600;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.cn-analytics-actions { display: inline-flex; gap: 6px; }
+.cn-analytics-btn {
+  background: transparent;
+  border: 1px solid var(--border, #2a2f3a);
+  color: var(--text, #e6e8ee);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  cursor: pointer;
+  font-size: 11px;
+}
+.cn-analytics-btn:hover { background: rgba(255, 255, 255, 0.05); }
+
+.cn-analytics-meta {
+  padding: 8px 12px;
+  font-size: 11px;
+  opacity: 0.7;
+  border-bottom: 1px solid var(--border, #2a2f3a);
+}
+
+.cn-analytics-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.cn-analytics-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-left: 3px solid transparent;
+}
+.cn-analytics-item:last-child { border-bottom: none; }
+.cn-ev-page_view      { border-left-color: #6ea8ff; }
+.cn-ev-search         { border-left-color: #f7c948; }
+.cn-ev-export_click   { border-left-color: #4cd6a3; }
+.cn-ev-digest_action  { border-left-color: #ff8aae; }
+
+.cn-analytics-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.cn-analytics-name {
+  font-weight: 700;
+  color: var(--accent, #7aa2ff);
+  letter-spacing: 0.02em;
+}
+.cn-analytics-time {
+  font-size: 10px;
+  opacity: 0.6;
+}
+.cn-analytics-path {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 2px;
+  word-break: break-all;
+}
+.cn-analytics-props {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Light theme tweaks */
+.theme-light #cn-analytics-fab {
+  background: #fff;
+  border-color: #d0d4dd;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+.theme-light #cn-analytics-panel {
+  background: #fff;
+  color: #1a1d24;
+  border-color: #d0d4dd;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+}
+.theme-light .cn-analytics-head { background: rgba(0, 0, 0, 0.03); border-bottom-color: #d0d4dd; }
+.theme-light .cn-analytics-meta { border-bottom-color: #d0d4dd; }
+.theme-light .cn-analytics-btn { color: #1a1d24; border-color: #d0d4dd; }
+.theme-light .cn-analytics-btn:hover { background: rgba(0, 0, 0, 0.04); }
+.theme-light .cn-analytics-props { background: #f3f4f7; }
