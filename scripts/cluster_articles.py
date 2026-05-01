@@ -30,7 +30,7 @@ from rich.progress import (
 )
 from rich.table import Table
 
-from app.db.opensearch import INDEX_NEWS, INDEX_ENTITIES, INDEX_CLUSTERS, get_os_client
+from app.db.opensearch import INDEX_NEWS, INDEX_ENTITIES, INDEX_CLUSTERS, INDEX_CVE_TOPICS, get_os_client
 from app.ingestion.clusterer import cluster_article
 
 _RETRY_ATTEMPTS = 5
@@ -285,7 +285,7 @@ async def main(args: argparse.Namespace) -> None:
     # Count cve_topics created during this rebuild
     cve_topic_count = 0
     try:
-        resp = await _os_search(client, "cve_topics", {"query": {"match_all": {}}, "size": 0})
+        resp = await _os_search(client, INDEX_CVE_TOPICS, {"query": {"match_all": {}}, "size": 0})
         cve_topic_count = resp["hits"]["total"]["value"]
     except Exception:
         pass
