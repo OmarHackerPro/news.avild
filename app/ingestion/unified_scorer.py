@@ -15,7 +15,7 @@ from app.db.opensearch import INDEX_CLUSTERS, get_os_client
 
 logger = logging.getLogger(__name__)
 
-ASSIGN_THRESHOLD = float(os.getenv("CLUSTER_SCORE_THRESHOLD", "0.30"))
+ASSIGN_THRESHOLD = float(os.getenv("CLUSTER_SCORE_THRESHOLD", "0.31"))
 MERGE_THRESHOLD = float(os.getenv("CLUSTER_MERGE_THRESHOLD", "0.55"))
 
 _W_CVE = float(os.getenv("CLUSTER_WEIGHT_CVE", "0.10"))
