@@ -20,6 +20,9 @@
   var feedEmpty = document.getElementById('feedEmpty');
   var feedError = document.getElementById('feedError');
   var feedRetryBtn = document.getElementById('feedRetryBtn');
+  var feedSkeleton = document.getElementById('feedSkeleton');
+  var feedClearFiltersBtn = document.getElementById('feedClearFiltersBtn');
+  var SKELETON_COUNT = 6;
 
   // ── Category mapping (URL param -> API category value) ──
   var CATEGORY_MAP = {
@@ -181,11 +184,61 @@
     return card;
   }
 
-  // ── Show/hide state containers ──
+  function renderSkeletons() {
+    if (!feedSkeleton) return;
+    if (feedSkeleton.childElementCount === 0) {
+      var html = '';
+      for (var i = 0; i < SKELETON_COUNT; i++) {
+        html +=
+          '<div class="skeleton-card" aria-hidden="true">' +
+            '<div class="skeleton-row">' +
+              '<div class="skeleton-line tag"></div>' +
+              '<div class="skeleton-line tag"></div>' +
+              '<div class="skeleton-line tag" style="width:80px"></div>' +
+            '</div>' +
+            '<div class="skeleton-line title"></div>' +
+            '<div class="skeleton-line title short"></div>' +
+            '<div class="skeleton-line text"></div>' +
+            '<div class="skeleton-line text short"></div>' +
+            '<div class="skeleton-line meta"></div>' +
+          '</div>';
+      }
+      feedSkeleton.innerHTML = html;
+    }
+    feedSkeleton.hidden = false;
+  }
+
+  function hideSkeletons() {
+    if (feedSkeleton) feedSkeleton.hidden = true;
+  }
+
+  function hasActiveFilters() {
+    var params = new URLSearchParams(location.search);
+    if (params.get('category')) return true;
+    if (window.mainFilterTime && window.mainFilterTime !== '24h') return true;
+    if (window.mainFilterSeverity && window.mainFilterSeverity !== 'all') return true;
+    if (window.mainFilterState && window.mainFilterState !== 'all') return true;
+    if (window.currentSort && window.currentSort !== 'latest') return true;
+    return false;
+  }
+
+  // states: 'loading' (initial skeleton), 'loading-more' (bottom spinner), 'empty', 'error', 'idle'
   function showState(state) {
+    if (loadIndicator) {
+      loadIndicator.classList.toggle('hidden', state !== 'loading-more');
+    }
     if (feedEmpty) feedEmpty.hidden = (state !== 'empty');
     if (feedError) feedError.hidden = (state !== 'error');
-    if (loadIndicator) loadIndicator.classList.toggle('hidden', state !== 'loading');
+    if (state === 'loading') {
+      renderSkeletons();
+      if (newsGrid) newsGrid.style.display = 'none';
+    } else {
+      hideSkeletons();
+      if (newsGrid) newsGrid.style.display = '';
+    }
+    if (state === 'empty' && feedClearFiltersBtn) {
+      feedClearFiltersBtn.hidden = !hasActiveFilters();
+    }
   }
 
   // ── Load a page and render ──
@@ -197,9 +250,10 @@
       offset = 0;
       loadedClusterList.length = 0;
       if (newsGrid) newsGrid.innerHTML = '';
+      showState('loading');
+    } else {
+      showState('loading-more');
     }
-
-    showState('loading');
 
     try {
       var data = await fetchPage(offset);
@@ -212,8 +266,7 @@
         return;
       }
 
-      if (feedEmpty) feedEmpty.hidden = true;
-      if (feedError) feedError.hidden = true;
+      showState('idle');
 
       var newCards = [];
       items.forEach(function (cluster, i) {
@@ -246,6 +299,8 @@
       console.error('[feed]', err);
       if (!append && loadedClusterList.length === 0) {
         showState('error');
+      } else if (loadIndicator) {
+        loadIndicator.classList.add('hidden');
       }
     }
 
@@ -279,6 +334,24 @@
   if (feedRetryBtn) {
     feedRetryBtn.addEventListener('click', function () {
       loadPage(false);
+    });
+  }
+
+  // ── Clear-filters button (shown only when empty + filters active) ──
+  if (feedClearFiltersBtn) {
+    feedClearFiltersBtn.addEventListener('click', function () {
+      var params = new URLSearchParams(location.search);
+      if (params.get('category')) {
+        // Category is URL-driven — drop it and reload to a clean home feed
+        location.href = '/';
+        return;
+      }
+      var resetBtn = document.getElementById('mainFilterReset');
+      if (resetBtn) {
+        resetBtn.click();
+      } else {
+        loadPage(false);
+      }
     });
   }
 
