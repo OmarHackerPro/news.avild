@@ -157,11 +157,11 @@ async def test_find_best_cluster_returns_highest_scoring():
     from app.ingestion.unified_scorer import find_best_cluster
 
     low_cluster = _make_cluster("c-low", primary_actors=["apt29"])
-    high_cluster = _make_cluster("c-high", primary_actors=["apt29"], campaign_names=["cozy-bear-2024"])
+    high_cluster = _make_cluster("c-high", primary_actors=["apt29"], vuln_aliases=["citrixbleed"])
 
     article_entities = _make_article_entities([
         ("actor", "apt29"),
-        ("campaign", "cozy-bear-2024"),
+        ("vuln_alias", "citrixbleed"),
     ])
 
     with patch("app.ingestion.unified_scorer._get_candidates", new_callable=AsyncMock) as mock_cands:
