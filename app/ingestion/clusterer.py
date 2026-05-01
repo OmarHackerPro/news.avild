@@ -66,6 +66,19 @@ def _updated_centroid(
     return c.tolist()
 
 
+def _parse_published_at(val) -> Optional[datetime]:
+    if isinstance(val, datetime):
+        return val.replace(tzinfo=timezone.utc) if val.tzinfo is None else val
+    if isinstance(val, str) and val:
+        for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%S%z"):
+            try:
+                dt = datetime.strptime(val, fmt)
+                return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+            except ValueError:
+                continue
+    return None
+
+
 async def cluster_article(
     article: dict,
     slug: str,
@@ -74,8 +87,9 @@ async def cluster_article(
     """Assign article to an existing cluster or create a new one."""
     cve_ids: list[str] = article.get("cve_ids") or []
     embedding = await embed_text(_build_embed_input(article))
+    ref_time = _parse_published_at(article.get("published_at"))
 
-    cluster_id = await find_best_cluster(entities, embedding)
+    cluster_id = await find_best_cluster(entities, embedding, reference_time=ref_time)
 
     if cluster_id:
         await merge_into_cluster(
@@ -119,10 +133,12 @@ async def merge_into_cluster(
         old_centroid = src.get("centroid_embedding")
         old_count = src.get("article_count", 1)
         old_sig = src.get("event_signature") or {}
+        old_latest_at = src.get("latest_at") or ""
     except Exception:
         old_centroid = None
         old_count = 1
         old_sig = {}
+        old_latest_at = ""
 
     new_count = old_count + 1
     new_centroid = (
@@ -130,6 +146,10 @@ async def merge_into_cluster(
         if new_embedding
         else old_centroid
     )
+
+    # Compute new_latest_at in Python — avoids Painless String/ZonedDateTime comparison
+    _pub = published_at or now
+    new_latest_at = max(_pub, old_latest_at) if old_latest_at else _pub
 
     # Merge event_signature fields
     new_sig_entities = new_entities or []
@@ -206,18 +226,18 @@ async def merge_into_cluster(
             ctx._source.timeline.add(params.timeline_entry);
         }
 
-        // Timestamps
-        if (params.published_at > ctx._source.latest_at) {
-            ctx._source.latest_at = params.published_at;
-        }
+        // Timestamps (latest_at pre-computed in Python to avoid Painless date type coercion)
+        ctx._source.latest_at = params.latest_at;
         ctx._source.updated_at = params.now;
 
         // Event signature
         ctx._source.event_signature = params.event_signature;
 
-        // Centroid embedding
+        // Centroid embedding — remove null (knn_vector rejects null on re-index)
         if (params.centroid != null) {
             ctx._source.centroid_embedding = params.centroid;
+        } else if (ctx._source.containsKey('centroid_embedding') && ctx._source.centroid_embedding == null) {
+            ctx._source.remove('centroid_embedding');
         }
     """
 
@@ -235,6 +255,7 @@ async def merge_into_cluster(
                     "cvss_score": cvss_score,
                     "credibility_weight": credibility_weight,
                     "published_at": published_at or now,
+                    "latest_at": new_latest_at,
                     "now": now,
                     "timeline_entry": {
                         "article_slug": article_slug,
@@ -293,7 +314,6 @@ async def create_cluster(
         "seed_cve_ids": cve_ids,
         "entity_keys": entity_keys,
         "event_signature": _build_event_signature(entities, cve_ids),
-        "centroid_embedding": embedding,
         "merged_into": None,
         "timeline": [{
             "article_slug": slug,
@@ -306,8 +326,10 @@ async def create_cluster(
         "created_at": now,
         "updated_at": now,
     }
+    if embedding is not None:
+        doc["centroid_embedding"] = embedding
 
-    resp = await os_client.index(index=INDEX_CLUSTERS, body=doc)
+    resp = await os_client.index(index=INDEX_CLUSTERS, body=doc, params={"refresh": "wait_for"})
     cluster_id = resp["_id"]
 
     await os_client.update(

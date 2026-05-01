@@ -36,7 +36,7 @@ router = APIRouter(tags=["pages"], include_in_schema=False)
 
 def _render(request: Request, template: str, seo: SEO) -> HTMLResponse:
     """One-line helper so every page route looks the same."""
-    return templates.TemplateResponse(template, {"request": request, "seo": seo})
+    return templates.TemplateResponse(request, template, {"seo": seo})
 
 
 # ---------- Static SPA shells ----------------------------------------------

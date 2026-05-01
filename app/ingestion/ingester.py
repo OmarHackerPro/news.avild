@@ -17,7 +17,7 @@ from app.db.session import AsyncSessionLocal
 from app.ingestion.clusterer import cluster_article
 from app.ingestion.entity_extractor import extract_entities
 from app.ingestion.entity_store import store_article_entities
-from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle, normalize_with_registry
+from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle, normalize_article
 from app.ingestion.sources import FeedSource
 
 logger = logging.getLogger(__name__)
@@ -321,7 +321,11 @@ async def ingest_source(
 
     for entry in entries:
         try:
-            article = normalize_with_registry(entry, source)
+            handler = flags.get("_handler")
+            if handler is not None:
+                article = handler(entry, source)
+            else:
+                article = normalize_article(entry, {**source, **flags})
             if article is None:
                 logger.debug(
                     "[%s] Skipped entry (normalizer returned None): %s",

@@ -1,5 +1,6 @@
 {
   "aliases": {
+    "2025 Poland Wiper Campaign": "2025-poland-wiper-attacks",
     "9002 RAT": "hydraq",
     "ACTINIUM": "gamaredon-group",
     "AIRBREAK": "orz",
@@ -8,6 +9,7 @@
     "ANEL": "uppercut",
     "APT-C-00": "apt32",
     "APT-C-43": "machete",
+    "APT-Q-98": "apt-c-36",
     "APT10": "menupass",
     "APT15": "ke3chang",
     "APT2": "putter-panda",
@@ -24,15 +26,20 @@
     "Adwind": "jrat",
     "Agenda": "qilin",
     "Agonizing Serpens": "agrius",
+    "AguilaCiega": "apt-c-36",
     "AjaxTM": "ajax-security-team",
+    "AkaiRy\u016b": "operation-akairy",
     "AlienSpy": "jrat",
     "Anchor_DNS": "anchor",
     "Anunak": "carbanak",
     "Aqua Blizzard": "gamaredon-group",
+    "Archer RAT / RUSTRIC": "rustywater",
     "Arid Viper": "apt-c-23",
     "Armageddon": "gamaredon-group",
+    "Ashen Lepus": "wirte",
     "Aurora": "hydraq",
     "Ave Maria": "warzonerat",
+    "BANISHED KITTEN": "void-manticore",
     "BARIUM": "apt41",
     "BELUGASTURGEON": "turla",
     "BISMUTH": "apt32",
@@ -89,6 +96,7 @@
     "COBALT DICKENS": "silent-librarian",
     "COBALT GYPSY": "oilrig",
     "COBALT ILLUSION": "magic-hound",
+    "COBALT MYSTIQUE": "void-manticore",
     "COLDRIVER": "star-blizzard",
     "COPERNICIUM": "apt38",
     "COPPER FIELDSTONE": "transparent-tribe",
@@ -110,6 +118,7 @@
     "Citrine Sleet": "applejeus",
     "Cloud Atlas": "inception",
     "CloudLook": "cloudduke",
+    "ClumsyToad": "mustang-panda",
     "Cobalt Gang": "cobalt-group",
     "Cobalt Spider": "cobalt-group",
     "Codoso": "apt19",
@@ -119,6 +128,7 @@
     "Comment Panda": "apt1",
     "Confucius APT": "confucius",
     "ControlX": "earth-lusca",
+    "Coroxy": "systembc",
     "Cosmic Wolf": "sea-turtle",
     "Cozer": "cozycar",
     "Cozy Bear": "apt29",
@@ -137,6 +147,7 @@
     "DEV-0157": "gamaredon-group",
     "DEV-0193": "wizard-spider",
     "DEV-0206": "mustard-tempest",
+    "DEV-0237": "wizard-spider",
     "DEV-0243": "indrik-spider",
     "DEV-0391": "volt-typhoon",
     "DEV-0401": "cinnamon-tempest",
@@ -155,6 +166,7 @@
     "Dark Halo": "apt29",
     "DarkKomet": "darkcomet",
     "Darkmoon": "poisonivy",
+    "DazedToad": "volt-typhoon",
     "DazzleSpy": "macma",
     "DeceptiveDevelopment": "contagious-interview",
     "DelfsCake": "sodamaster",
@@ -164,6 +176,7 @@
     "DestroyRAT": "plugx",
     "Diamond Sleet": "lazarus-group",
     "DiceLoader": "lizar",
+    "DinDoor": "tsundere-botnet",
     "Diskcoder.C": "notpetya",
     "Disttrack": "shamoon",
     "Dofoil": "smoke-loader",
@@ -182,6 +195,8 @@
     "EUROPIUM": "oilrig",
     "EVILTOSS": "advstoreshell",
     "Earth Akhlut": "tonto-team",
+    "Earth Kasha": "mirrorface",
+    "Earth Kumiho": "kimsuky",
     "Earth Simnavaz": "oilrig",
     "Earth Smilodon": "threat-group-3390",
     "Earth Vetala": "muddywater",
@@ -268,6 +283,7 @@
     "HOLMIUM": "apt33",
     "HUC Packet Transmit Tool": "htran",
     "HammerDuke": "hammertoss",
+    "Handala Hack": "void-manticore",
     "Hangover Group": "patchwork",
     "Havex": "backdoor-oldrea",
     "Hazel Sandstorm": "oilrig",
@@ -310,7 +326,9 @@
     "KEYPLUG.LINUX": "keyplug",
     "Kaba": "plugx",
     "Karagany": "trojan-karagany",
+    "Karma": "void-manticore",
     "Karma Panda": "tonto-team",
+    "Karmabelow80": "void-manticore",
     "Keyhole Panda": "apt5",
     "Kido": "conficker",
     "KnuckleTouch": "kapeka",
@@ -353,6 +371,7 @@
     "Mint Sandstorm": "magic-hound",
     "Mirage": "ke3chang",
     "Moudoor": "gh0st-rat",
+    "MuddyKrill": "muddywater",
     "Muirim": "daserf",
     "Mulberry Typhoon": "apt5",
     "Mydoor": "gh0st-rat",
@@ -362,6 +381,8 @@
     "NICKEL ACADEMY": "lazarus-group",
     "NICKEL GLADSTONE": "apt38",
     "NOBELIUM": "apt29",
+    "NOOPDOOR": "hiddenface",
+    "NastyShrew": "gamaredon-group",
     "NeD Worm": "dustysky",
     "NemesisGemina": "cosmicduke",
     "NetC": "net-crawler",
@@ -385,7 +406,9 @@
     "Onyx Sleet": "andariel",
     "Operation Exchange Marauder": "hafnium",
     "Operation Hangover": "patchwork",
+    "Operation Interception": "operation-dream-job",
     "Operation Molerats": "molerats",
+    "Operation North Star": "operation-dream-job",
     "Operation Saffron Rose": "ajax-security-team",
     "Operation Woolen-Goldfish": "ajax-security-team",
     "PE_URSNIF": "ursnif",
@@ -393,11 +416,13 @@
     "PLUTONIUM": "andariel",
     "POISONPLUG.SHADOW": "shadowpad",
     "POTASSIUM": "menupass",
+    "PROMPTSTEAL": "lamehug",
     "PSVC": "punchtrack",
     "PUNK SPIDER": "akira",
     "Page": "elise",
     "Palmerworm": "blacktech",
     "Parisite": "fox-kitten",
+    "PatheticSlug": "kimsuky",
     "Pawn Storm": "apt28",
     "Peach Sandstorm": "apt33",
     "Peer-to-Peer ZeuS": "p2p-zeus",
@@ -413,6 +438,7 @@
     "Pioneer Kitten": "fox-kitten",
     "Pirate Panda": "tropic-trooper",
     "Pirpi": "apt3",
+    "Pistachio Tempest": "wizard-spider",
     "Plaid Rain": "polonium",
     "Playful Dragon": "ke3chang",
     "Poison Ivy": "poisonivy",
@@ -437,6 +463,7 @@
     "Reaper": "apt37",
     "Red Apollo": "menupass",
     "Red Lich": "mustang-panda",
+    "Red Sandstorm": "void-manticore",
     "RedDelta": "mustang-panda",
     "Redaman": "rtm",
     "Remix Kitten": "apt39",
@@ -525,6 +552,7 @@
     "TA569": "mustard-tempest",
     "TAAL": "fin6",
     "TAG-121": "contagious-interview",
+    "TAG-144": "apt-c-36",
     "TAG-22": "earth-lusca",
     "TAG-63": "apt-c-23",
     "TANTALUM": "mustang-panda",
@@ -595,6 +623,7 @@
     "Unidentified 111": "latrodectus",
     "Unrecom": "jrat",
     "VIPER": "sakula",
+    "VMDetectLoader": "caminho",
     "Vanguard Panda": "volt-typhoon",
     "Vasa Locker": "babuk",
     "Velvet Chollima": "kimsuky",
@@ -657,6 +686,26 @@
     "xRAT": "quasarrat"
   },
   "keywords": {
+    "2015-ukraine-electric-power-attack": [
+      "2015 Ukraine Electric Power Attack",
+      "campaign"
+    ],
+    "2016-ukraine-electric-power-attack": [
+      "2016 Ukraine Electric Power Attack",
+      "campaign"
+    ],
+    "2022-ukraine-electric-power-attack": [
+      "2022 Ukraine Electric Power Attack",
+      "campaign"
+    ],
+    "2025-poland-wiper-attacks": [
+      "2025 Poland Wiper Attacks",
+      "campaign"
+    ],
+    "3cx-supply-chain-attack": [
+      "3CX Supply Chain Attack",
+      "campaign"
+    ],
     "3para-rat": [
       "3PARA RAT",
       "malware"
@@ -741,6 +790,14 @@
       "ANDROMEDA",
       "malware"
     ],
+    "anelldr": [
+      "ANELLDR",
+      "malware"
+    ],
+    "anthropic-ai-orchestrated-campaign": [
+      "Anthropic AI-orchestrated Campaign",
+      "campaign"
+    ],
     "aoqin-dragon": [
       "Aoqin Dragon",
       "actor"
@@ -793,6 +850,10 @@
       "APT28",
       "actor"
     ],
+    "apt28-nearest-neighbor-campaign": [
+      "APT28 Nearest Neighbor Campaign",
+      "campaign"
+    ],
     "apt29": [
       "APT29",
       "actor"
@@ -829,6 +890,10 @@
       "APT41",
       "actor"
     ],
+    "apt41-dust": [
+      "APT41 DUST",
+      "campaign"
+    ],
     "apt42": [
       "APT42",
       "actor"
@@ -841,6 +906,10 @@
       "Aquatic Panda",
       "actor"
     ],
+    "arcanedoor": [
+      "ArcaneDoor",
+      "campaign"
+    ],
     "aria-body": [
       "Aria-body",
       "malware"
@@ -848,6 +917,10 @@
     "arp": [
       "Arp",
       "tool"
+    ],
+    "ashtag": [
+      "AshTag",
+      "malware"
     ],
     "aspxspy": [
       "ASPXSpy",
@@ -1101,9 +1174,17 @@
       "Briba",
       "malware"
     ],
+    "brickstorm": [
+      "BRICKSTORM",
+      "malware"
+    ],
     "bronze-butler": [
       "BRONZE BUTLER",
       "actor"
+    ],
+    "brushfire": [
+      "BRUSHFIRE",
+      "malware"
     ],
     "brute-ratel-c4": [
       "Brute Ratel C4",
@@ -1133,6 +1214,46 @@
       "BUSHWALK",
       "malware"
     ],
+    "c0010": [
+      "C0010",
+      "campaign"
+    ],
+    "c0011": [
+      "C0011",
+      "campaign"
+    ],
+    "c0015": [
+      "C0015",
+      "campaign"
+    ],
+    "c0017": [
+      "C0017",
+      "campaign"
+    ],
+    "c0018": [
+      "C0018",
+      "campaign"
+    ],
+    "c0021": [
+      "C0021",
+      "campaign"
+    ],
+    "c0026": [
+      "C0026",
+      "campaign"
+    ],
+    "c0027": [
+      "C0027",
+      "campaign"
+    ],
+    "c0032": [
+      "C0032",
+      "campaign"
+    ],
+    "c0033": [
+      "C0033",
+      "campaign"
+    ],
     "cachedump": [
       "Cachedump",
       "tool"
@@ -1155,6 +1276,10 @@
     ],
     "callme": [
       "CallMe",
+      "malware"
+    ],
+    "caminho": [
+      "Caminho",
       "malware"
     ],
     "cannon": [
@@ -1369,6 +1494,10 @@
       "CostaBricks",
       "malware"
     ],
+    "costaricto": [
+      "CostaRicto",
+      "campaign"
+    ],
     "covenant": [
       "Covenant",
       "tool"
@@ -1391,6 +1520,10 @@
     ],
     "crimson": [
       "Crimson",
+      "malware"
+    ],
+    "crocodilus": [
+      "Crocodilus",
       "malware"
     ],
     "crossrat": [
@@ -1420,6 +1553,10 @@
     "curium": [
       "CURIUM",
       "actor"
+    ],
+    "cutting-edge": [
+      "Cutting Edge",
+      "campaign"
     ],
     "cyclops-blink": [
       "Cyclops Blink",
@@ -1473,6 +1610,10 @@
       "Daserf",
       "malware"
     ],
+    "dcrat": [
+      "DCRAT",
+      "tool"
+    ],
     "dcsrv": [
       "DCSrv",
       "malware"
@@ -1521,6 +1662,10 @@
       "Disco",
       "malware"
     ],
+    "diskpart": [
+      "Diskpart",
+      "tool"
+    ],
     "dnssystem": [
       "DnsSystem",
       "malware"
@@ -1547,6 +1692,10 @@
     ],
     "downdelph": [
       "Downdelph",
+      "malware"
+    ],
+    "downiissa": [
+      "DOWNIISSA",
       "malware"
     ],
     "downpaper": [
@@ -1577,6 +1726,10 @@
       "Drovorub",
       "malware"
     ],
+    "dryhook": [
+      "DRYHOOK",
+      "malware"
+    ],
     "dsquery": [
       "dsquery",
       "tool"
@@ -1599,6 +1752,10 @@
     ],
     "dustysky": [
       "DustySky",
+      "malware"
+    ],
+    "dynowiper": [
+      "DynoWiper",
       "malware"
     ],
     "dyre": [
@@ -1680,6 +1837,10 @@
     "evilbunny": [
       "EvilBunny",
       "malware"
+    ],
+    "evilginx2": [
+      "evilginx2",
+      "tool"
     ],
     "evilgrab": [
       "EvilGrab",
@@ -1809,8 +1970,16 @@
       "FLIPSIDE",
       "malware"
     ],
+    "florahox-activity": [
+      "FLORAHOX Activity",
+      "campaign"
+    ],
     "foggyweb": [
       "FoggyWeb",
+      "malware"
+    ],
+    "fooder": [
+      "Fooder",
       "malware"
     ],
     "forfiles": [
@@ -1829,6 +1998,14 @@
       "FrameworkPOS",
       "malware"
     ],
+    "frankenstein": [
+      "Frankenstein",
+      "campaign"
+    ],
+    "frostygoop-incident": [
+      "FrostyGoop Incident",
+      "campaign"
+    ],
     "frp": [
       "FRP",
       "tool"
@@ -1839,7 +2016,7 @@
     ],
     "funnydream": [
       "FunnyDream",
-      "malware"
+      "campaign"
     ],
     "fyanti": [
       "FYAnti",
@@ -1887,6 +2064,10 @@
     ],
     "glasstoken": [
       "GLASSTOKEN",
+      "malware"
+    ],
+    "glassworm": [
+      "GlassWorm",
       "malware"
     ],
     "glooxmail": [
@@ -2025,6 +2206,10 @@
       "HDoor",
       "malware"
     ],
+    "heartcrypt": [
+      "HeartCrypt",
+      "malware"
+    ],
     "hellokitty": [
       "HELLOKITTY",
       "malware"
@@ -2057,6 +2242,10 @@
       "Hi-Zor",
       "malware"
     ],
+    "hiddenface": [
+      "HiddenFace",
+      "malware"
+    ],
     "hiddenwasp": [
       "HiddenWasp",
       "malware"
@@ -2085,6 +2274,10 @@
       "HOMEFRY",
       "malware"
     ],
+    "homeland-justice": [
+      "HomeLand Justice",
+      "campaign"
+    ],
     "hoplight": [
       "HOPLIGHT",
       "malware"
@@ -2103,6 +2296,10 @@
     ],
     "httpclient": [
       "httpclient",
+      "malware"
+    ],
+    "httptroy": [
+      "HTTPTroy",
       "malware"
     ],
     "hui-loader": [
@@ -2161,6 +2358,10 @@
       "Inception",
       "actor"
     ],
+    "indian-critical-infrastructure-intrusions": [
+      "Indian Critical Infrastructure Intrusions",
+      "campaign"
+    ],
     "indigozebra": [
       "IndigoZebra",
       "actor"
@@ -2205,6 +2406,10 @@
       "IronNetInjector",
       "tool"
     ],
+    "ironwind": [
+      "IronWind",
+      "malware"
+    ],
     "isminjector": [
       "ISMInjector",
       "malware"
@@ -2216,6 +2421,10 @@
     "j-magic": [
       "J-magic",
       "malware"
+    ],
+    "j-magic-campaign": [
+      "J-magic Campaign",
+      "campaign"
     ],
     "janicab": [
       "Janicab",
@@ -2244,6 +2453,10 @@
     "jss-loader": [
       "JSS Loader",
       "malware"
+    ],
+    "juicy-mix": [
+      "Juicy Mix",
+      "campaign"
     ],
     "jumbledpath": [
       "JumbledPath",
@@ -2345,8 +2558,16 @@
       "KOPILUWAK",
       "malware"
     ],
+    "kv-botnet-activity": [
+      "KV Botnet Activity",
+      "campaign"
+    ],
     "kwampirs": [
       "Kwampirs",
+      "malware"
+    ],
+    "lamehug": [
+      "LAMEHUG",
       "malware"
     ],
     "lapsus": [
@@ -2369,6 +2590,10 @@
       "LazyScripter",
       "actor"
     ],
+    "lazywiper": [
+      "LazyWiper",
+      "malware"
+    ],
     "leafminer": [
       "Leafminer",
       "actor"
@@ -2376,6 +2601,10 @@
     "leviathan": [
       "Leviathan",
       "actor"
+    ],
+    "leviathan-australian-intrusions": [
+      "Leviathan Australian Intrusions",
+      "campaign"
     ],
     "lightneuron": [
       "LightNeuron",
@@ -2433,6 +2662,10 @@
       "LockerGoga",
       "malware"
     ],
+    "lodeinfo": [
+      "LODEINFO",
+      "malware"
+    ],
     "lofise": [
       "LoFiSe",
       "malware"
@@ -2459,6 +2692,10 @@
     ],
     "lowball": [
       "LOWBALL",
+      "malware"
+    ],
+    "lp-notes": [
+      "LP-Notes",
       "malware"
     ],
     "lslsass": [
@@ -2641,6 +2878,14 @@
       "MirageFox",
       "malware"
     ],
+    "mirrorface": [
+      "MirrorFace",
+      "actor"
+    ],
+    "mirrorstealer": [
+      "MirrorStealer",
+      "malware"
+    ],
     "mis-type": [
       "Mis-Type",
       "malware"
@@ -2716,6 +2961,10 @@
     "moustachedbouncer": [
       "MoustachedBouncer",
       "actor"
+    ],
+    "muddyviper": [
+      "MuddyViper",
+      "malware"
     ],
     "muddywater": [
       "MuddyWater",
@@ -2841,6 +3090,10 @@
       "Nidiran",
       "malware"
     ],
+    "night-dragon": [
+      "Night Dragon",
+      "campaign"
+    ],
     "nightclub": [
       "NightClub",
       "malware"
@@ -2872,6 +3125,10 @@
     "nomadic-octopus": [
       "Nomadic Octopus",
       "actor"
+    ],
+    "noopldr": [
+      "NOOPLDR",
+      "malware"
     ],
     "notpetya": [
       "NotPetya",
@@ -2929,6 +3186,50 @@
       "OopsIE",
       "malware"
     ],
+    "operation-akairy": [
+      "Operation AkaiRy\u016b",
+      "campaign"
+    ],
+    "operation-cuckoobees": [
+      "Operation CuckooBees",
+      "campaign"
+    ],
+    "operation-digital-eye": [
+      "Operation Digital Eye",
+      "campaign"
+    ],
+    "operation-dream-job": [
+      "Operation Dream Job",
+      "campaign"
+    ],
+    "operation-dust-storm": [
+      "Operation Dust Storm",
+      "campaign"
+    ],
+    "operation-ghost": [
+      "Operation Ghost",
+      "campaign"
+    ],
+    "operation-honeybee": [
+      "Operation Honeybee",
+      "campaign"
+    ],
+    "operation-midnighteclipse": [
+      "Operation MidnightEclipse",
+      "campaign"
+    ],
+    "operation-sharpshooter": [
+      "Operation Sharpshooter",
+      "campaign"
+    ],
+    "operation-spalax": [
+      "Operation Spalax",
+      "campaign"
+    ],
+    "operation-wocao": [
+      "Operation Wocao",
+      "campaign"
+    ],
     "orangeworm": [
       "Orangeworm",
       "actor"
@@ -2952,6 +3253,10 @@
     "out1": [
       "Out1",
       "tool"
+    ],
+    "outer-space": [
+      "Outer Space",
+      "campaign"
     ],
     "outsteel": [
       "OutSteel",
@@ -3025,13 +3330,25 @@
       "Peppy",
       "malware"
     ],
+    "phasejam": [
+      "PHASEJAM",
+      "malware"
+    ],
     "phoreal": [
       "PHOREAL",
+      "malware"
+    ],
+    "phpsert": [
+      "PHPsert",
       "malware"
     ],
     "pikabot": [
       "Pikabot",
       "malware"
+    ],
+    "pikabot-distribution-february-2024": [
+      "Pikabot Distribution February 2024",
+      "campaign"
     ],
     "pillowmint": [
       "Pillowmint",
@@ -3241,6 +3558,10 @@
       "Pupy",
       "tool"
     ],
+    "purecrypter": [
+      "PureCrypter",
+      "malware"
+    ],
     "putter-panda": [
       "Putter Panda",
       "actor"
@@ -3264,6 +3585,10 @@
     "qilin": [
       "Qilin",
       "malware"
+    ],
+    "quad7-activity": [
+      "Quad7 Activity",
+      "campaign"
     ],
     "quadagent": [
       "QUADAGENT",
@@ -3365,6 +3690,10 @@
       "RedCurl",
       "actor"
     ],
+    "reddelta-modified-plugx-infection-chain-operations": [
+      "RedDelta Modified PlugX Infection Chain Operations",
+      "campaign"
+    ],
     "redecho": [
       "RedEcho",
       "actor"
@@ -3376,6 +3705,10 @@
     "redline-stealer": [
       "RedLine Stealer",
       "malware"
+    ],
+    "redpenguin": [
+      "RedPenguin",
+      "campaign"
     ],
     "reg": [
       "Reg",
@@ -3457,6 +3790,10 @@
       "ROADTools",
       "tool"
     ],
+    "roaminghouse": [
+      "ROAMINGHOUSE",
+      "malware"
+    ],
     "robbinhood": [
       "RobbinHood",
       "malware"
@@ -3509,6 +3846,10 @@
       "RunningRAT",
       "malware"
     ],
+    "rustywater": [
+      "RustyWater",
+      "malware"
+    ],
     "ryuk": [
       "Ryuk",
       "malware"
@@ -3533,9 +3874,17 @@
       "Sakula",
       "malware"
     ],
+    "salesforce-data-exfiltration": [
+      "Salesforce Data Exfiltration",
+      "campaign"
+    ],
     "salt-typhoon": [
       "Salt Typhoon",
       "actor"
+    ],
+    "samecoin": [
+      "SameCoin",
+      "malware"
     ],
     "samplecheck5000": [
       "SampleCheck5000",
@@ -3605,9 +3954,21 @@
       "ShadowPad",
       "malware"
     ],
+    "shadowray": [
+      "ShadowRay",
+      "campaign"
+    ],
+    "shai-hulud": [
+      "Shai-Hulud",
+      "malware"
+    ],
     "shamoon": [
       "Shamoon",
       "malware"
+    ],
+    "sharepoint-toolshell-exploitation": [
+      "SharePoint ToolShell Exploitation",
+      "campaign"
     ],
     "shark": [
       "Shark",
@@ -3753,6 +4114,10 @@
       "Solar",
       "malware"
     ],
+    "solarwinds-compromise": [
+      "SolarWinds Compromise",
+      "campaign"
+    ],
     "sombrat": [
       "SombRAT",
       "malware"
@@ -3769,12 +4134,20 @@
       "Sowbug",
       "actor"
     ],
+    "spacehop-activity": [
+      "SPACEHOP Activity",
+      "campaign"
+    ],
     "spaceship": [
       "SPACESHIP",
       "malware"
     ],
     "spark": [
       "Spark",
+      "malware"
+    ],
+    "spawnchimera": [
+      "SPAWNCHIMERA",
       "malware"
     ],
     "speakup": [
@@ -3933,6 +4306,10 @@
       "SYSCON",
       "malware"
     ],
+    "systembc": [
+      "SystemBC",
+      "malware"
+    ],
     "systeminfo": [
       "Systeminfo",
       "tool"
@@ -4077,6 +4454,10 @@
       "Torisma",
       "malware"
     ],
+    "trailblaze": [
+      "TRAILBLAZE",
+      "malware"
+    ],
     "trailblazer": [
       "TrailBlazer",
       "malware"
@@ -4092,6 +4473,10 @@
     "trickbot": [
       "TrickBot",
       "malware"
+    ],
+    "triton-safety-instrumented-system-attack": [
+      "Triton Safety Instrumented System Attack",
+      "campaign"
     ],
     "trojan-karagany": [
       "Trojan.Karagany",
@@ -4109,12 +4494,20 @@
       "Tropic Trooper",
       "actor"
     ],
+    "trufflehog": [
+      "TruffleHog",
+      "tool"
+    ],
     "truvasys": [
       "Truvasys",
       "malware"
     ],
     "tscookie": [
       "TSCookie",
+      "malware"
+    ],
+    "tsundere-botnet": [
+      "Tsundere Botnet",
       "malware"
     ],
     "turian": [
@@ -4201,6 +4594,10 @@
       "VERMIN",
       "malware"
     ],
+    "versa-director-zero-day-exploitation": [
+      "Versa Director Zero Day Exploitation",
+      "campaign"
+    ],
     "versamem": [
       "VersaMem",
       "malware"
@@ -4212,6 +4609,10 @@
     "virtualpita": [
       "VIRTUALPITA",
       "malware"
+    ],
+    "void-manticore": [
+      "VOID MANTICORE",
+      "actor"
     ],
     "volatile-cedar": [
       "Volatile Cedar",
@@ -4244,6 +4645,10 @@
     "wastedlocker": [
       "WastedLocker",
       "malware"
+    ],
+    "water-curupira-pikabot-distribution": [
+      "Water Curupira Pikabot Distribution",
+      "campaign"
     ],
     "water-galura": [
       "Water Galura",

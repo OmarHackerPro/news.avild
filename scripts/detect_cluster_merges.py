@@ -30,6 +30,9 @@ from app.ingestion.scorer import rescore_cluster
 
 logger = logging.getLogger(__name__)
 
+_RETRY_ATTEMPTS = 5
+_RETRY_DELAY = 10  # seconds
+
 _FETCH_FIELDS = [
     "article_count", "article_ids", "entity_keys", "cve_ids",
     "event_signature", "centroid_embedding", "state", "timeline",
@@ -52,8 +55,22 @@ def _entities_from_signature(sig: dict) -> list[dict]:
     return entities
 
 
-async def _fetch_recent_clusters(window_hours: int) -> list[dict]:
-    client = get_os_client()
+async def _os_search(client, index: str, body: dict) -> dict:
+    for attempt in range(_RETRY_ATTEMPTS):
+        try:
+            return await client.search(index=index, body=body)
+        except Exception as exc:
+            if attempt == _RETRY_ATTEMPTS - 1:
+                raise
+            logger.warning(
+                "OpenSearch attempt %d/%d failed: %s — retrying in %ds",
+                attempt + 1, _RETRY_ATTEMPTS, exc, _RETRY_DELAY,
+            )
+            await asyncio.sleep(_RETRY_DELAY)
+    raise RuntimeError("unreachable")
+
+
+async def _fetch_recent_clusters(client, window_hours: int) -> list[dict]:
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=window_hours)).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
     )
@@ -62,20 +79,17 @@ async def _fetch_recent_clusters(window_hours: int) -> list[dict]:
     from_offset = 0
 
     while True:
-        resp = await client.search(
-            index=INDEX_CLUSTERS,
-            body={
-                "query": {
-                    "bool": {
-                        "filter": [{"range": {"updated_at": {"gte": cutoff}}}],
-                        "must_not": [{"term": {"state": "resolved"}}],
-                    }
-                },
-                "_source": _FETCH_FIELDS,
-                "size": page_size,
-                "from": from_offset,
+        resp = await _os_search(client, INDEX_CLUSTERS, {
+            "query": {
+                "bool": {
+                    "filter": [{"range": {"updated_at": {"gte": cutoff}}}],
+                    "must_not": [{"term": {"state": "resolved"}}],
+                }
             },
-        )
+            "_source": _FETCH_FIELDS,
+            "size": page_size,
+            "from": from_offset,
+        })
         hits = resp["hits"]["hits"]
         if not hits:
             break
@@ -87,8 +101,7 @@ async def _fetch_recent_clusters(window_hours: int) -> list[dict]:
     return results
 
 
-async def _find_overlap_candidates(cluster_id: str, sig: dict) -> list[dict]:
-    client = get_os_client()
+async def _find_overlap_candidates(client, cluster_id: str, sig: dict) -> list[dict]:
     cve_ids = sig.get("cve_ids") or []
     vuln_aliases = sig.get("vuln_aliases") or []
     campaign_names = sig.get("campaign_names") or []
@@ -120,7 +133,7 @@ async def _find_overlap_candidates(cluster_id: str, sig: dict) -> list[dict]:
     }
 
     try:
-        resp = await client.search(index=INDEX_CLUSTERS, body=query)
+        resp = await _os_search(client, INDEX_CLUSTERS, query)
         return resp["hits"]["hits"]
     except Exception as exc:
         logger.warning("Candidate lookup failed for cluster %s: %s", cluster_id, exc)
@@ -128,13 +141,13 @@ async def _find_overlap_candidates(cluster_id: str, sig: dict) -> list[dict]:
 
 
 async def _merge_clusters(
+    client,
     surviving_id: str,
     surviving_src: dict,
     dissolved_id: str,
     dissolved_src: dict,
     dry_run: bool,
 ) -> None:
-    client = get_os_client()
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     s_count = surviving_src.get("article_count") or 1
@@ -256,7 +269,9 @@ async def _merge_clusters(
 
 
 async def main(args: argparse.Namespace) -> None:
-    recent = await _fetch_recent_clusters(args.window_hours)
+    client = get_os_client()
+
+    recent = await _fetch_recent_clusters(client, args.window_hours)
     logger.info("Found %d recently-updated clusters to inspect.", len(recent))
 
     # scored_pairs maps sorted(id_a, id_b) → (score, surviving_id, surviving_src, dissolved_id, dissolved_src)
@@ -268,7 +283,7 @@ async def main(args: argparse.Namespace) -> None:
         src = hit["_source"]
         sig = src.get("event_signature") or {}
 
-        candidates = await _find_overlap_candidates(cluster_id, sig)
+        candidates = await _find_overlap_candidates(client, cluster_id, sig)
         if not candidates:
             continue
 
@@ -306,7 +321,7 @@ async def main(args: argparse.Namespace) -> None:
         )
         if args.dry_run:
             continue
-        await _merge_clusters(surviving_id, surviving_src, dissolved_id, dissolved_src, dry_run=False)
+        await _merge_clusters(client, surviving_id, surviving_src, dissolved_id, dissolved_src, dry_run=False)
         merges_executed += 1
 
     logger.info(
