@@ -79,16 +79,34 @@ def _parse_published_at(val) -> Optional[datetime]:
     return None
 
 
+_MAX_ARTICLE_CVES_FOR_CVE_TOPIC = 5  # articles with >5 CVEs are treated as roundups
+
+
 async def cluster_article(
     article: dict,
     slug: str,
     entities: list[dict],
 ) -> None:
-    """Assign article to an existing cluster or create a new one."""
+    """Assign article to an incident cluster and optionally to CVE topics.
+
+    CVE flow: articles with ≤5 CVEs attach to cve_topics (one per CVE ID).
+    Roundups (>5 CVEs) only create empty CVE topic stubs.
+    Incident flow always runs — article is assigned to or creates an incident cluster.
+    """
+    from app.ingestion.cve_topic_manager import upsert_cve_topics, create_cve_topic_stubs
+
     cve_ids: list[str] = article.get("cve_ids") or []
     embedding = await embed_text(_build_embed_input(article))
     ref_time = _parse_published_at(article.get("published_at"))
 
+    # CVE flow
+    if cve_ids:
+        if len(cve_ids) > _MAX_ARTICLE_CVES_FOR_CVE_TOPIC:
+            await create_cve_topic_stubs(cve_ids)
+        else:
+            await upsert_cve_topics(cve_ids, slug, entities, embedding)
+
+    # Incident flow (always runs)
     cluster_id = await find_best_cluster(entities, embedding, reference_time=ref_time)
 
     if cluster_id:

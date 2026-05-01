@@ -179,3 +179,110 @@ async def test_merge_does_not_touch_seed_cve_ids():
         script = call.kwargs.get("body", {}).get("script", {})
         if "source" in script:
             assert "seed_cve_ids" not in script["source"]
+
+
+# ---------------------------------------------------------------------------
+# Two-flow routing
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_cluster_article_calls_upsert_for_dedicated_cve_article():
+    """Articles with ≤5 CVEs trigger upsert_cve_topics."""
+    article = {
+        "slug": "fortios-rce-001",
+        "title": "FortiOS RCE",
+        "cve_ids": ["CVE-2026-1234"],
+        "source_name": "BleepingComputer",
+        "published_at": "2026-04-27T10:00:00Z",
+        "credibility_weight": 1.2,
+    }
+    entities = [{"type": "cve", "normalized_key": "CVE-2026-1234"}]
+
+    with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value=None), \
+         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock), \
+         patch("app.ingestion.cve_topic_manager.upsert_cve_topics", new_callable=AsyncMock) as mock_upsert, \
+         patch("app.ingestion.cve_topic_manager.create_cve_topic_stubs", new_callable=AsyncMock) as mock_stubs:
+        from app.ingestion.clusterer import cluster_article
+        await cluster_article(article, article["slug"], entities)
+
+    mock_upsert.assert_awaited_once()
+    mock_stubs.assert_not_awaited()
+    call_kwargs = mock_upsert.call_args
+    assert call_kwargs.args[0] == ["CVE-2026-1234"]
+    assert call_kwargs.args[1] == "fortios-rce-001"
+
+
+@pytest.mark.asyncio
+async def test_cluster_article_calls_stubs_for_roundup():
+    """Articles with >5 CVEs trigger create_cve_topic_stubs, not upsert."""
+    article = {
+        "slug": "patch-tuesday-may-2026",
+        "title": "Patch Tuesday May 2026",
+        "cve_ids": [f"CVE-2026-{i:04d}" for i in range(80)],
+        "source_name": "Microsoft",
+        "published_at": "2026-05-01T10:00:00Z",
+        "credibility_weight": 1.0,
+    }
+    entities = []
+
+    with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value=None), \
+         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock), \
+         patch("app.ingestion.cve_topic_manager.upsert_cve_topics", new_callable=AsyncMock) as mock_upsert, \
+         patch("app.ingestion.cve_topic_manager.create_cve_topic_stubs", new_callable=AsyncMock) as mock_stubs:
+        from app.ingestion.clusterer import cluster_article
+        await cluster_article(article, article["slug"], entities)
+
+    mock_stubs.assert_awaited_once()
+    mock_upsert.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_cluster_article_incident_flow_runs_even_for_cve_article():
+    """Incident flow (find_best_cluster) always runs regardless of CVE routing."""
+    article = {
+        "slug": "fortios-rce-001",
+        "title": "FortiOS RCE",
+        "cve_ids": ["CVE-2026-1234"],
+        "source_name": "BleepingComputer",
+        "published_at": "2026-04-27T10:00:00Z",
+        "credibility_weight": 1.2,
+    }
+    entities = [{"type": "cve", "normalized_key": "CVE-2026-1234"}]
+
+    with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value="cluster-abc") as mock_best, \
+         patch("app.ingestion.clusterer.merge_into_cluster", new_callable=AsyncMock) as mock_merge, \
+         patch("app.ingestion.cve_topic_manager.upsert_cve_topics", new_callable=AsyncMock), \
+         patch("app.ingestion.cve_topic_manager.create_cve_topic_stubs", new_callable=AsyncMock):
+        from app.ingestion.clusterer import cluster_article
+        await cluster_article(article, article["slug"], entities)
+
+    mock_best.assert_awaited_once()
+    mock_merge.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_cluster_article_no_cve_skips_cve_flow():
+    """Articles with no CVEs skip the CVE flow entirely."""
+    article = {
+        "slug": "threat-actor-post",
+        "title": "Lazarus Group targets banks",
+        "cve_ids": [],
+        "source_name": "Krebs",
+        "published_at": "2026-04-27T10:00:00Z",
+        "credibility_weight": 1.2,
+    }
+    entities = [{"type": "actor", "normalized_key": "lazarus-group"}]
+
+    with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value=None), \
+         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock), \
+         patch("app.ingestion.cve_topic_manager.upsert_cve_topics", new_callable=AsyncMock) as mock_upsert, \
+         patch("app.ingestion.cve_topic_manager.create_cve_topic_stubs", new_callable=AsyncMock) as mock_stubs:
+        from app.ingestion.clusterer import cluster_article
+        await cluster_article(article, article["slug"], entities)
+
+    mock_upsert.assert_not_awaited()
+    mock_stubs.assert_not_awaited()
