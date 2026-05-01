@@ -6,7 +6,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _EMBEDDER_URL = os.getenv("EMBEDDER_URL", "http://kiber-embedder:8001")
-_TIMEOUT = 2.0
+_TIMEOUT = 10.0
 _BATCH_TIMEOUT = 60.0
 
 
