@@ -307,4 +307,11 @@ if __name__ == "__main__":
     parser.add_argument("--reset", action="store_true", help="Delete all clusters first, then re-cluster everything")
     parser.add_argument("--concurrency", type=int, default=_DEFAULT_CONCURRENCY,
                         help=f"Articles processed in parallel (default: {_DEFAULT_CONCURRENCY})")
-    asyncio.run(main(parser.parse_args()))
+    async def _run():
+        try:
+            await main(parser.parse_args())
+        finally:
+            from app.db.opensearch import close_os_client
+            await close_os_client()
+
+    asyncio.run(_run())
