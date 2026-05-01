@@ -92,6 +92,8 @@ def _prepare_article_doc(article: NormalizedArticle) -> tuple[str, dict]:
     doc.setdefault("body_quality", "empty")
     doc.setdefault("body_source", "none")
     doc.setdefault("is_teaser", False)
+    if doc.get("source_url"):
+        doc["source_url_hash"] = hashlib.sha256(doc["source_url"].encode()).hexdigest()[:16]
     # Strip unknown fields to prevent dynamic:strict indexing errors
     unexpected = set(doc.keys()) - _ALLOWED_FIELDS
     for key in unexpected:
@@ -101,11 +103,30 @@ def _prepare_article_doc(article: NormalizedArticle) -> tuple[str, dict]:
 
 
 async def upsert_article(article: NormalizedArticle) -> bool:
-    """Index one article. Silently skips if a document with the same slug exists.
+    """Index one article. Skips if a document with the same slug or source URL exists,
+    or if the article is sponsored content.
 
-    Returns True if a new document was indexed, False if it was a duplicate.
+    Returns True if a new document was indexed, False if it was a duplicate/filtered.
     """
     slug, doc = _prepare_article_doc(article)
+
+    # Drop sponsored/advertorial content
+    author = (doc.get("author") or "").lower()
+    if author.startswith("sponsored"):
+        logger.debug("Skipping sponsored content: %s", slug)
+        return False
+
+    # URL-based dedup: same source_url under a different slug
+    url_hash = doc.get("source_url_hash")
+    if url_hash:
+        count_resp = await get_os_client().count(
+            index=INDEX_NEWS,
+            body={"query": {"term": {"source_url_hash": url_hash}}},
+        )
+        if count_resp.get("count", 0) > 0:
+            logger.debug("Skipping duplicate source_url for slug: %s", slug)
+            return False
+
     try:
         await get_os_client().index(
             index=INDEX_NEWS,
