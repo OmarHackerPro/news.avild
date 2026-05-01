@@ -86,13 +86,17 @@ def _compute_score(
 async def _get_candidates(
     article_entities: list[dict],
     article_embedding: Optional[list[float]],
+    reference_time: Optional[datetime] = None,
 ) -> list[dict]:
     os_client = get_os_client()
-    now = datetime.now(timezone.utc)
-    cutoff_14d = (now - timedelta(days=_STRUCTURED_WINDOW_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    cutoff_72h = (now - timedelta(hours=_EMBED_WINDOW_HOURS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ref = reference_time or datetime.now(timezone.utc)
+    cutoff_14d = (ref - timedelta(days=_STRUCTURED_WINDOW_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    cutoff_72h = (ref - timedelta(hours=_EMBED_WINDOW_HOURS)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    cve_ids = [e["normalized_key"] for e in article_entities if e["type"] == "cve"]
+    # Entity normalized_keys are lowercase (e.g. "cve-2025-1234") but clusters store
+    # CVE IDs in uppercase (e.g. "CVE-2025-1234") from article.cve_ids. Uppercase here
+    # so term queries match the values actually stored in event_signature.cve_ids.
+    cve_ids = [e["normalized_key"].upper() for e in article_entities if e["type"] == "cve"]
     vuln_aliases = [e["normalized_key"] for e in article_entities if e["type"] == "vuln_alias"]
     campaign_names = [e["normalized_key"] for e in article_entities if e["type"] == "campaign"]
 
@@ -170,9 +174,10 @@ async def _get_candidates(
 async def find_best_cluster(
     article_entities: list[dict],
     article_embedding: Optional[list[float]],
+    reference_time: Optional[datetime] = None,
 ) -> Optional[str]:
     """Return the cluster_id of the best matching cluster, or None to create new."""
-    candidates = await _get_candidates(article_entities, article_embedding)
+    candidates = await _get_candidates(article_entities, article_embedding, reference_time)
     if not candidates:
         return None
 

@@ -121,11 +121,7 @@
   top: calc(100% + 6px);
   right: 0;
   width: 320px;
-  max-height: min(78vh, 640px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(17,151,222,0.35) transparent;
+  overflow-y: visible;
   background:
     radial-gradient(120% 60% at 0% 0%, rgba(124,58,237,0.08), transparent 60%),
     radial-gradient(120% 60% at 100% 0%, rgba(17,151,222,0.07), transparent 55%),
@@ -142,23 +138,7 @@
 }
 
 .filter-main-dropdown::-webkit-scrollbar {
-  width: 6px;
-}
-.filter-main-dropdown::-webkit-scrollbar-track {
-  background: transparent;
-  margin: 6px 0;
-}
-.filter-main-dropdown::-webkit-scrollbar-thumb {
-  background: rgba(17,151,222,0.35);
-  border-radius: 999px;
-}
-.filter-main-dropdown::-webkit-scrollbar-thumb:hover {
-  background: rgba(17,151,222,0.6);
-}
-.filter-main-dropdown::-webkit-scrollbar-button {
   display: none;
-  width: 0;
-  height: 0;
 }
 
 .filter-main-dropdown::before {
