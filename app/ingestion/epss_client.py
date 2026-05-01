@@ -22,7 +22,7 @@ async def fetch_epss(cve_ids: list[str]) -> dict[str, dict]:
         for i in range(0, len(cve_ids), _BATCH_SIZE):
             batch = cve_ids[i : i + _BATCH_SIZE]
             try:
-                resp = await client.get(_EPSS_URL, params=[("cve", cve_id) for cve_id in batch])
+                resp = await client.get(f"{_EPSS_URL}?cve={','.join(batch)}")
                 resp.raise_for_status()
                 for entry in resp.json().get("data", []):
                     results[entry["cve"]] = {
