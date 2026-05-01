@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 ASSIGN_THRESHOLD = float(os.getenv("CLUSTER_SCORE_THRESHOLD", "0.30"))
 MERGE_THRESHOLD = float(os.getenv("CLUSTER_MERGE_THRESHOLD", "0.55"))
 
-_W_CVE = float(os.getenv("CLUSTER_WEIGHT_CVE", "0.45"))
-_W_ALIAS = float(os.getenv("CLUSTER_WEIGHT_ALIAS", "0.25"))
-_W_ENTITY = float(os.getenv("CLUSTER_WEIGHT_ENTITY", "0.15"))
-_W_EMBED = float(os.getenv("CLUSTER_WEIGHT_EMBED", "0.15"))
+_W_CVE = float(os.getenv("CLUSTER_WEIGHT_CVE", "0.10"))
+_W_ALIAS = float(os.getenv("CLUSTER_WEIGHT_ALIAS", "0.15"))
+_W_ACTOR = float(os.getenv("CLUSTER_WEIGHT_ACTOR", "0.25"))
+_W_ENTITY = float(os.getenv("CLUSTER_WEIGHT_ENTITY", "0.20"))
+_W_EMBED = float(os.getenv("CLUSTER_WEIGHT_EMBED", "0.30"))
 
 _KNN_K = 10
 _STRUCTURED_WINDOW_DAYS = 14
@@ -41,25 +42,35 @@ def _compute_score(
     sig = cluster_source.get("event_signature") or {}
 
     art_cves = {e["normalized_key"] for e in article_entities if e["type"] == "cve"}
-    art_aliases = {
+    art_vuln_aliases = {
+        e["normalized_key"] for e in article_entities if e["type"] == "vuln_alias"
+    }
+    art_actors_campaigns = {
         e["normalized_key"]
         for e in article_entities
-        if e["type"] in ("vuln_alias", "campaign")
+        if e["type"] in ("actor", "campaign")
     }
     art_others = {
         e["normalized_key"]
         for e in article_entities
-        if e["type"] not in ("cve", "vuln_alias", "campaign", "vendor")
+        if e["type"] not in ("cve", "vuln_alias", "actor", "campaign", "vendor")
     }
 
     cl_cves = set(sig.get("cve_ids") or [])
-    cl_aliases = set((sig.get("vuln_aliases") or []) + (sig.get("campaign_names") or []))
-    # entity_keys is a flat list without type metadata; subtract known structured keys
-    # to reduce (but not fully eliminate) vendor-key asymmetry with art_others
-    cl_others = set(cluster_source.get("entity_keys") or []) - cl_cves - cl_aliases
+    cl_vuln_aliases = set(sig.get("vuln_aliases") or [])
+    cl_actors_campaigns = set(
+        (sig.get("primary_actors") or []) + (sig.get("campaign_names") or [])
+    )
+    cl_others = (
+        set(cluster_source.get("entity_keys") or [])
+        - cl_cves
+        - cl_vuln_aliases
+        - cl_actors_campaigns
+    )
 
     cve_overlap = 1.0 if art_cves & cl_cves else 0.0
-    alias_overlap = 1.0 if art_aliases & cl_aliases else 0.0
+    alias_overlap = 1.0 if art_vuln_aliases & cl_vuln_aliases else 0.0
+    actor_campaign_overlap = 1.0 if art_actors_campaigns & cl_actors_campaigns else 0.0
 
     union_others = art_others | cl_others
     entity_jaccard = (
@@ -78,6 +89,7 @@ def _compute_score(
     return (
         _W_CVE * cve_overlap
         + _W_ALIAS * alias_overlap
+        + _W_ACTOR * actor_campaign_overlap
         + _W_ENTITY * entity_jaccard
         + _W_EMBED * cosine
     )

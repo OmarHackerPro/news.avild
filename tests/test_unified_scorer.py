@@ -9,6 +9,7 @@ def _make_cluster(
     cve_ids: list[str] = None,
     vuln_aliases: list[str] = None,
     campaign_names: list[str] = None,
+    primary_actors: list[str] = None,
     entity_keys: list[str] = None,
     centroid: list[float] = None,
     article_count: int = 1,
@@ -25,7 +26,7 @@ def _make_cluster(
                 "vuln_aliases": vuln_aliases or [],
                 "campaign_names": campaign_names or [],
                 "affected_products": [],
-                "primary_actors": [],
+                "primary_actors": primary_actors or [],
                 "confidence": "medium",
             },
             "centroid_embedding": centroid,
@@ -48,17 +49,19 @@ def test_score_perfect_match_is_one():
     article_entities = _make_article_entities([
         ("cve", "CVE-2024-1234"),
         ("vuln_alias", "log4shell"),
+        ("actor", "apt29"),
         ("malware", "lockbit"),
     ])
     cluster = _make_cluster(
         "c1",
         cve_ids=["CVE-2024-1234"],
         vuln_aliases=["log4shell"],
+        primary_actors=["apt29"],
         entity_keys=["lockbit"],
         centroid=emb,
     )
     score = _compute_score(article_entities, cluster["_source"], emb)
-    # 0.45 + 0.25 + 0.15 * (1/1) + 0.15 * 1.0 = 1.0
+    # 0.10 + 0.15 + 0.25 + 0.20*(1/1) + 0.30*1.0 = 1.0
     assert abs(score - 1.0) < 0.01
 
 
@@ -67,7 +70,7 @@ def test_score_embedding_only_cannot_exceed_threshold():
     from app.ingestion.unified_scorer import _compute_score, ASSIGN_THRESHOLD
 
     emb = [1.0] + [0.0] * 1023
-    article_entities = []  # no entities
+    article_entities = []
     cluster = _make_cluster("c1", centroid=emb)
     score = _compute_score(article_entities, cluster["_source"], emb)
     assert score < ASSIGN_THRESHOLD
@@ -79,7 +82,7 @@ def test_score_cve_overlap_only():
     article_entities = _make_article_entities([("cve", "CVE-2024-9999")])
     cluster = _make_cluster("c1", cve_ids=["CVE-2024-9999"])
     score = _compute_score(article_entities, cluster["_source"], None)
-    assert abs(score - 0.45) < 0.01
+    assert abs(score - 0.10) < 0.01
 
 
 def test_score_alias_overlap_only():
@@ -88,10 +91,40 @@ def test_score_alias_overlap_only():
     article_entities = _make_article_entities([("vuln_alias", "heartbleed")])
     cluster = _make_cluster("c1", vuln_aliases=["heartbleed"])
     score = _compute_score(article_entities, cluster["_source"], None)
+    assert abs(score - 0.15) < 0.01
+
+
+def test_score_actor_overlap_only():
+    from app.ingestion.unified_scorer import _compute_score
+
+    article_entities = _make_article_entities([("actor", "volt-typhoon")])
+    cluster = _make_cluster("c1", primary_actors=["volt-typhoon"])
+    score = _compute_score(article_entities, cluster["_source"], None)
     assert abs(score - 0.25) < 0.01
 
 
-def test_score_cve_plus_alias_exceeds_threshold():
+def test_score_campaign_overlap_uses_actor_weight():
+    from app.ingestion.unified_scorer import _compute_score
+
+    article_entities = _make_article_entities([("campaign", "moveit-campaign")])
+    cluster = _make_cluster("c1", campaign_names=["moveit-campaign"])
+    score = _compute_score(article_entities, cluster["_source"], None)
+    assert abs(score - 0.25) < 0.01
+
+
+def test_score_actor_plus_embed_exceeds_threshold():
+    from app.ingestion.unified_scorer import _compute_score, ASSIGN_THRESHOLD
+
+    emb = [1.0] + [0.0] * 1023
+    article_entities = _make_article_entities([("actor", "lazarus-group")])
+    cluster = _make_cluster("c1", primary_actors=["lazarus-group"], centroid=emb)
+    score = _compute_score(article_entities, cluster["_source"], emb)
+    # 0.25 + 0.30 = 0.55 > 0.30 threshold
+    assert score >= ASSIGN_THRESHOLD
+
+
+def test_score_cve_plus_alias_below_threshold():
+    """CVE + alias alone no longer clears threshold — CVE articles belong in cve_topics."""
     from app.ingestion.unified_scorer import _compute_score, ASSIGN_THRESHOLD
 
     article_entities = _make_article_entities([
@@ -100,7 +133,8 @@ def test_score_cve_plus_alias_exceeds_threshold():
     ])
     cluster = _make_cluster("c1", cve_ids=["CVE-2024-1234"], vuln_aliases=["citrixbleed"])
     score = _compute_score(article_entities, cluster["_source"], None)
-    assert score >= ASSIGN_THRESHOLD
+    # 0.10 + 0.15 = 0.25 < 0.30
+    assert score < ASSIGN_THRESHOLD
 
 
 # ---------------------------------------------------------------------------
@@ -111,12 +145,9 @@ def test_score_cve_plus_alias_exceeds_threshold():
 async def test_find_best_cluster_returns_none_below_threshold():
     from app.ingestion.unified_scorer import find_best_cluster
 
-    article_entities = []
-    article_embedding = None
-
     with patch("app.ingestion.unified_scorer._get_candidates", new_callable=AsyncMock) as mock_cands:
         mock_cands.return_value = []
-        result = await find_best_cluster(article_entities, article_embedding)
+        result = await find_best_cluster([], None)
 
     assert result is None
 
@@ -125,12 +156,12 @@ async def test_find_best_cluster_returns_none_below_threshold():
 async def test_find_best_cluster_returns_highest_scoring():
     from app.ingestion.unified_scorer import find_best_cluster
 
-    low_cluster = _make_cluster("c-low", vuln_aliases=["log4shell"])
-    high_cluster = _make_cluster("c-high", cve_ids=["CVE-2024-1234"], vuln_aliases=["log4shell"])
+    low_cluster = _make_cluster("c-low", primary_actors=["apt29"])
+    high_cluster = _make_cluster("c-high", primary_actors=["apt29"], campaign_names=["cozy-bear-2024"])
 
     article_entities = _make_article_entities([
-        ("cve", "CVE-2024-1234"),
-        ("vuln_alias", "log4shell"),
+        ("actor", "apt29"),
+        ("campaign", "cozy-bear-2024"),
     ])
 
     with patch("app.ingestion.unified_scorer._get_candidates", new_callable=AsyncMock) as mock_cands:
@@ -142,10 +173,8 @@ async def test_find_best_cluster_returns_highest_scoring():
 
 @pytest.mark.asyncio
 async def test_find_best_cluster_returns_none_when_candidates_below_threshold():
-    """Returns None even when candidates exist, if best score is below ASSIGN_THRESHOLD."""
     from app.ingestion.unified_scorer import find_best_cluster
 
-    # Cluster with no shared CVEs/aliases/entities and no embedding — score = 0.0
     no_match_cluster = _make_cluster("c-nomatch")
     article_entities = _make_article_entities([("cve", "CVE-2024-9999")])
 
