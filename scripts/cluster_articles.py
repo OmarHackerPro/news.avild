@@ -282,12 +282,21 @@ async def main(args: argparse.Namespace) -> None:
     await _set_refresh_interval(client, _NORMAL_REFRESH_INTERVAL)
     console.print(f"[dim]Refresh interval restored to {_NORMAL_REFRESH_INTERVAL}.[/dim]")
 
+    # Count cve_topics created during this rebuild
+    cve_topic_count = 0
+    try:
+        resp = await _os_search(client, "cve_topics", {"query": {"match_all": {}}, "size": 0})
+        cve_topic_count = resp["hits"]["total"]["value"]
+    except Exception:
+        pass
+
     table = Table(title="Clustering Complete", show_header=True, header_style="bold magenta")
     table.add_column("Metric", style="cyan")
     table.add_column("Count", justify="right", style="bold")
     table.add_row("Processed", str(totals["processed"]))
     table.add_row("Skipped (already clustered)", str(totals["skipped"]))
     table.add_row("Errors", str(totals["errors"]), style="red" if totals["errors"] else "")
+    table.add_row("CVE topics in index", str(cve_topic_count))
     console.print(table)
 
 
