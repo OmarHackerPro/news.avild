@@ -16,6 +16,12 @@
     return window.CyberNews && window.CyberNews.t ? window.CyberNews.t(key) : key;
   }
 
+  function trackEvent(name, props) {
+    if (window.CyberNews && window.CyberNews.analytics) {
+      window.CyberNews.analytics.track(name, props);
+    }
+  }
+
   var lastState = null;
   var lastQuery = null;
 
@@ -89,10 +95,23 @@
     }
     mock.searchEntities(q)
       .then(function(data) {
-        showResults(data.results || [], data.query);
+        var results = data.results || [];
+        showResults(results, data.query);
+        trackEvent('search', {
+          query: q,
+          source: 'search_page',
+          results_count: results.length,
+          status: results.length ? 'results' : 'empty',
+        });
       })
       .catch(function(err) {
         showState('error', 'search.failedTitle', 'search.failedMsg', err && err.message ? err.message : null);
+        trackEvent('search', {
+          query: q,
+          source: 'search_page',
+          status: 'error',
+          error: err && err.message ? err.message : 'unknown',
+        });
       });
   }
 
