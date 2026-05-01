@@ -7,6 +7,7 @@ INDEX_SNAPSHOTS = "raw_feed_snapshots"
 INDEX_CLUSTERS = "clusters"
 INDEX_ENTITIES = "entities"
 INDEX_NVD_CACHE = "nvd_cache"
+INDEX_CVE_TOPICS = "cve_topics"
 
 _client: AsyncOpenSearch | None = None
 
@@ -259,6 +260,53 @@ _NVD_CACHE_MAPPING = {
 }
 
 
+_CVE_TOPICS_MAPPING = {
+    "settings": {
+        "number_of_shards": 1,
+        "number_of_replicas": 0,
+        "refresh_interval": "10s",
+        "index.knn": True,
+    },
+    "mappings": {
+        "dynamic": "strict",
+        "properties": {
+            "cve_id":            {"type": "keyword"},
+            "aliases":           {"type": "keyword"},
+            "cvss_score":        {"type": "half_float"},
+            "cvss_severity":     {"type": "keyword"},
+            "cvss_vector":       {"type": "keyword"},
+            "cisa_kev":          {"type": "boolean"},
+            "kev_added_at":      {"type": "date", "format": "date_optional_time||epoch_millis"},
+            "epss_score":        {"type": "half_float"},
+            "epss_percentile":   {"type": "half_float"},
+            "epss_updated_at":   {"type": "date", "format": "date_optional_time||epoch_millis"},
+            "nvd_description":   {"type": "text", "analyzer": "english"},
+            "nvd_last_modified": {"type": "date", "format": "date_optional_time||epoch_millis"},
+            "article_ids":       {"type": "keyword"},
+            "article_count":     {"type": "integer"},
+            "linked_event_ids":  {"type": "keyword"},
+            "cve_embedding": {
+                "type": "knn_vector",
+                "dimension": 1024,
+                "method": {
+                    "name": "hnsw",
+                    "space_type": "cosinesimil",
+                    "engine": "nmslib",
+                },
+            },
+            "created_at": {
+                "type": "date",
+                "format": "strict_date_time||strict_date_time_no_millis",
+            },
+            "updated_at": {
+                "type": "date",
+                "format": "strict_date_time||strict_date_time_no_millis",
+            },
+        },
+    },
+}
+
+
 def get_os_client() -> AsyncOpenSearch:
     global _client
     if _client is None:
@@ -295,6 +343,7 @@ async def ensure_indexes() -> None:
         (INDEX_CLUSTERS, _CLUSTERS_MAPPING),
         (INDEX_ENTITIES, _ENTITIES_MAPPING),
         (INDEX_NVD_CACHE, _NVD_CACHE_MAPPING),
+        (INDEX_CVE_TOPICS, _CVE_TOPICS_MAPPING),
     ]:
         try:
             exists = await client.indices.exists(index=index)
