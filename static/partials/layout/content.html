@@ -123,14 +123,28 @@
     </div>
     <h2 class="section-title" id="categoryTitle" data-i18n-key="sections.latestNews">Latest Security News</h2>
     <div class="news-grid" id="newsGrid"></div>
-    <div class="feed-empty" id="feedEmpty" hidden>
-      <i class="fas fa-inbox"></i>
-      <p>No clusters found. Try adjusting your filters or check back later.</p>
+    <div class="skeleton-grid" id="feedSkeleton" hidden aria-hidden="true">
+      <!-- skeleton cards injected by news-grid.js -->
     </div>
-    <div class="feed-error" id="feedError" hidden>
-      <i class="fas fa-exclamation-triangle"></i>
-      <p>Failed to load feed.</p>
-      <button class="feed-error-retry" id="feedRetryBtn">Retry</button>
+    <div class="state-block is-empty" id="feedEmpty" hidden role="status" aria-live="polite">
+      <div class="state-block-icon"><i class="fas fa-inbox"></i></div>
+      <p class="state-block-title" data-i18n-key="feed.emptyTitle">No stories match your filters</p>
+      <p class="state-block-message" data-i18n-key="feed.emptyMsg">Try widening the time range, clearing filters, or check back in a few minutes.</p>
+      <div class="state-block-actions">
+        <button type="button" class="state-block-btn" id="feedClearFiltersBtn" hidden>
+          <i class="fas fa-times"></i> <span data-i18n-key="feed.clearFilters">Clear filters</span>
+        </button>
+      </div>
+    </div>
+    <div class="state-block is-error" id="feedError" hidden role="alert">
+      <div class="state-block-icon"><i class="fas fa-exclamation-triangle"></i></div>
+      <p class="state-block-title" data-i18n-key="feed.errorTitle">Something went wrong</p>
+      <p class="state-block-message" id="feedErrorMsg" data-i18n-key="feed.errorMsg">We couldn't load the feed. Please try again.</p>
+      <div class="state-block-actions">
+        <button type="button" class="state-block-btn" id="feedRetryBtn">
+          <i class="fas fa-redo"></i> <span data-i18n-key="feed.retry">Retry</span>
+        </button>
+      </div>
     </div>
     <div class="load-indicator" id="loadIndicator">
       <div class="spinner"></div>
