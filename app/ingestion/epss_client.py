@@ -3,7 +3,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-_EPSS_URL = "https://api.first.org/data/1.0/epss"
+_EPSS_URL = "https://api.first.org/data/v1/epss"
 _TIMEOUT = 30.0
 _BATCH_SIZE = 100
 
