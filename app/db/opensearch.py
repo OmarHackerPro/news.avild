@@ -271,6 +271,7 @@ def get_os_client() -> AsyncOpenSearch:
             http_auth=(settings.OPENSEARCH_USER, settings.OPENSEARCH_PASSWORD)
             if settings.OPENSEARCH_USER
             else None,
+            timeout=60,  # kNN queries send 17KB+ vectors over WAN; 10s default is too short
         )
     return _client
 
