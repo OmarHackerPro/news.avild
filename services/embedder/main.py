@@ -1,3 +1,6 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
 import torch
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
@@ -8,6 +11,10 @@ _MODEL_NAME = "BAAI/bge-large-en-v1.5"
 _device = "cuda" if torch.cuda.is_available() else "cpu"
 _model = SentenceTransformer(_MODEL_NAME, device=_device)
 _model.encode("warmup", normalize_embeddings=True)
+
+# Run inference in a thread pool so the event loop stays unblocked.
+# GPU encode is synchronous; without this, concurrent requests queue on the loop.
+_executor = ThreadPoolExecutor(max_workers=1)
 
 app = FastAPI()
 
@@ -26,13 +33,21 @@ def health():
 
 
 @app.post("/embed")
-def embed(req: EmbedRequest):
-    vec = _model.encode(_INSTRUCTION + req.text, normalize_embeddings=True)
+async def embed(req: EmbedRequest):
+    loop = asyncio.get_event_loop()
+    vec = await loop.run_in_executor(
+        _executor,
+        lambda: _model.encode(_INSTRUCTION + req.text, normalize_embeddings=True),
+    )
     return {"embedding": vec.tolist()}
 
 
 @app.post("/embed/batch")
-def embed_batch(req: BatchEmbedRequest):
+async def embed_batch(req: BatchEmbedRequest):
     texts = [_INSTRUCTION + t for t in req.texts]
-    vecs = _model.encode(texts, normalize_embeddings=True, batch_size=32)
+    loop = asyncio.get_event_loop()
+    vecs = await loop.run_in_executor(
+        _executor,
+        lambda: _model.encode(texts, normalize_embeddings=True, batch_size=32),
+    )
     return {"embeddings": [v.tolist() for v in vecs]}
