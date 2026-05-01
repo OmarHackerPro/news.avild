@@ -167,6 +167,8 @@ async def merge_into_cluster(
 
     # Compute new_latest_at in Python — avoids Painless String/ZonedDateTime comparison
     _pub = published_at or now
+    if isinstance(_pub, datetime):
+        _pub = _pub.strftime("%Y-%m-%dT%H:%M:%SZ")
     new_latest_at = max(_pub, old_latest_at) if old_latest_at else _pub
 
     # Merge event_signature fields
