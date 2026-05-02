@@ -4,15 +4,38 @@
   var STORAGE_KEY = 'digestSubscription';
   var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-  var TOPIC_LABELS = {
-    'breaking': 'Breaking',
-    'threat-intel': 'Threat Intel',
-    'malware': 'Malware',
-    'apt': 'APT',
-    'breaches': 'Breaches',
-    'pentest': 'Pentest',
-    'bug-bounty': 'Bug Bounty',
+  var TOPIC_KEYS = {
+    'breaking': 'nav.breaking',
+    'threat-intel': 'nav.threatIntel',
+    'malware': 'nav.malware',
+    'apt': 'nav.apt',
+    'breaches': 'nav.breaches',
+    'pentest': 'nav.pentest',
+    'bug-bounty': 'nav.bugBounty',
   };
+
+  var SEV_KEYS = {
+    'low': 'severity.low',
+    'medium': 'severity.medium',
+    'high': 'severity.high',
+    'critical': 'severity.critical',
+  };
+
+  function tr(key, fallback) {
+    if (window.CyberNews && window.CyberNews.t) {
+      var v = window.CyberNews.t(key);
+      if (v && v !== key) return v;
+    }
+    return fallback;
+  }
+
+  function topicLabel(topic) {
+    return tr(TOPIC_KEYS[topic] || '', topic);
+  }
+
+  function sevLabel(sev) {
+    return tr(SEV_KEYS[sev] || '', capitalize(sev));
+  }
 
   var els = {};
 
@@ -79,6 +102,12 @@
       setEditMode(false);
       trackEvent('edit_cancel');
     });
+
+    window.addEventListener('cybernews:languageChange', function() {
+      renderStatus(loadSubscription());
+      renderPreview();
+      setEditMode(els.subscribeSection ? !els.subscribeSection.hidden : true);
+    });
   });
 
   function setEditMode(editing) {
@@ -87,7 +116,9 @@
     if (els.previewSection) els.previewSection.hidden = subscribed && !editing;
     if (els.cancelEditBtn) els.cancelEditBtn.hidden = !subscribed || !editing;
     if (els.subscribeLabel) {
-      els.subscribeLabel.textContent = subscribed ? 'Update subscription' : 'Subscribe';
+      els.subscribeLabel.textContent = subscribed
+        ? tr('digest.updateBtn', 'Update subscription')
+        : tr('digest.subscribeBtn', 'Subscribe');
     }
   }
 
@@ -155,7 +186,7 @@
       return;
     }
     if (data.topics.length === 0) {
-      showToast('Pick at least one topic to include in your digest.', 'error');
+      showToast(tr('digest.toastNoTopics', 'Pick at least one topic to include in your digest.'), 'error');
       trackEvent('subscribe_invalid', { reason: 'no_topics' });
       return;
     }
@@ -165,7 +196,12 @@
     renderStatus(sub);
     setEditMode(false);
     renderPreview();
-    showToast(wasSubscribed ? 'Subscription updated.' : 'Subscribed! Digest settings saved locally in your browser.', 'success');
+    showToast(
+      wasSubscribed
+        ? tr('digest.toastUpdated', 'Subscription updated.')
+        : tr('digest.toastSubscribed', 'Subscribed! Digest settings saved locally in your browser.'),
+      'success'
+    );
     trackEvent(wasSubscribed ? 'update' : 'subscribe', {
       frequency: data.frequency,
       topics: data.topics,
@@ -178,7 +214,7 @@
     clearSubscription();
     renderStatus(null);
     setEditMode(true);
-    showToast('You have been unsubscribed.', 'success');
+    showToast(tr('digest.toastUnsubscribed', 'You have been unsubscribed.'), 'success');
     trackEvent('unsubscribe');
   }
 
@@ -202,46 +238,59 @@
     if (!els.statusCard) return;
     if (!sub) {
       els.statusCard.hidden = true;
-      if (els.subscribeLabel) els.subscribeLabel.textContent = 'Subscribe';
+      if (els.subscribeLabel) els.subscribeLabel.textContent = tr('digest.subscribeBtn', 'Subscribe');
       return;
     }
     els.statusCard.hidden = false;
     if (els.statusEmail) els.statusEmail.textContent = sub.email;
     var parts = [];
-    parts.push(capitalize(sub.frequency) + ' digest');
+    parts.push(sub.frequency === 'weekly'
+      ? tr('digest.statusWeeklyDigest', 'Weekly digest')
+      : tr('digest.statusDailyDigest', 'Daily digest'));
     if (Array.isArray(sub.topics) && sub.topics.length) {
-      parts.push(sub.topics.length + ' ' + (sub.topics.length === 1 ? 'topic' : 'topics'));
+      var topicLine = sub.topics.length === 1
+        ? tr('digest.statusTopicSingular', '1 topic')
+        : tr('digest.statusTopicPlural', '{n} topics').replace('{n}', sub.topics.length);
+      parts.push(topicLine);
     }
     if (sub.minSeverity && sub.minSeverity !== 'all') {
-      parts.push(capitalize(sub.minSeverity) + '+ severity');
+      parts.push(sevLabel(sub.minSeverity) + tr('digest.statusSeveritySuffix', '+ severity'));
     }
     if (els.statusMeta) els.statusMeta.textContent = parts.join(' · ');
-    if (els.subscribeLabel) els.subscribeLabel.textContent = 'Update subscription';
+    if (els.subscribeLabel) els.subscribeLabel.textContent = tr('digest.updateBtn', 'Update subscription');
   }
 
   function renderPreview() {
     var data = readForm();
     if (els.previewBadge) {
-      els.previewBadge.textContent = data.frequency === 'weekly' ? 'Weekly Digest' : 'Daily Digest';
+      els.previewBadge.textContent = data.frequency === 'weekly'
+        ? tr('digest.badgeWeekly', 'Weekly Digest')
+        : tr('digest.badgeDaily', 'Daily Digest');
     }
     if (els.previewEmailEcho) {
-      els.previewEmailEcho.textContent = data.email && EMAIL_RE.test(data.email) ? data.email : 'your email';
+      els.previewEmailEcho.textContent = data.email && EMAIL_RE.test(data.email)
+        ? data.email
+        : tr('digest.previewYourEmail', 'your email');
     }
     if (els.previewSubject) {
       var count = mockArticleCount(data);
-      var topic = data.topics[0] ? (TOPIC_LABELS[data.topics[0]] || data.topics[0]) : 'security';
-      var freqWord = data.frequency === 'weekly' ? 'weekly' : 'daily';
-      els.previewSubject.textContent = 'Your ' + freqWord + ' ' + topic.toLowerCase() + ' digest — ' + count + ' ' + (count === 1 ? 'story' : 'stories') + ' to read';
+      var topic = data.topics[0] ? topicLabel(data.topics[0]) : tr('digest.subscribeTitle', 'security');
+      var freqWord = data.frequency === 'weekly'
+        ? tr('digest.weekly', 'Weekly')
+        : tr('digest.daily', 'Daily');
+      els.previewSubject.textContent = freqWord + ' · ' + topic + ' · ' + count;
     }
     if (els.previewArticles) {
       var articles = buildMockArticles(data);
       if (articles.length === 0) {
-        els.previewArticles.innerHTML = '<li class="digest-preview-empty">No topics selected — pick at least one to see a preview.</li>';
+        els.previewArticles.innerHTML = '<li class="digest-preview-empty">' +
+          escHtml(tr('digest.previewEmpty', 'No topics selected — pick at least one to see a preview.')) +
+          '</li>';
       } else {
         els.previewArticles.innerHTML = articles.map(function(a) {
           return (
             '<li class="digest-preview-article">' +
-              '<span class="digest-preview-sev sev-' + escHtml(a.sev) + '">' + capitalize(a.sev) + '</span>' +
+              '<span class="digest-preview-sev sev-' + escHtml(a.sev) + '">' + escHtml(sevLabel(a.sev)) + '</span>' +
               '<div>' +
                 '<p class="digest-preview-title">' + escHtml(a.title) + '</p>' +
                 '<p class="digest-preview-meta">' + escHtml(a.topic) + ' · ' + escHtml(a.ago) + '</p>' +

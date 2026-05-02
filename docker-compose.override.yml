@@ -35,15 +35,7 @@ services:
       - embedder-model-cache:/model-cache
     environment:
       TRANSFORMERS_CACHE: /model-cache
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     restart: unless-stopped
-
 
 volumes:
   embedder-model-cache:

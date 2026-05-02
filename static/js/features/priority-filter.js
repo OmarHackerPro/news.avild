@@ -7,6 +7,10 @@
 
   var PRESETS_KEY = 'cn.filterPresets.v1';
 
+  function t(key) {
+    return window.CyberNews && window.CyberNews.t ? window.CyberNews.t(key) : key;
+  }
+
   function arraysEqual(a, b) {
     if (a === b) return true;
     if (!a || !b || a.length !== b.length) return false;
@@ -244,7 +248,7 @@
     var list = document.getElementById('fmdPresetsList');
     if (list) {
       if (presets.length === 0) {
-        list.innerHTML = '<div class="fmd-presets-empty">No saved filters yet. Configure options below and click "Save as preset".</div>';
+        list.innerHTML = '<div class="fmd-presets-empty">' + t('sidebar.noSavedFilters') + '</div>';
       } else {
         list.innerHTML = presets.map(function(p) {
           var isActive = presetsEqual(current, p.filters);
@@ -268,7 +272,7 @@
     if (bar && chips) {
       bar.hidden = false; // always visible so users can discover the "Save current" button
       if (presets.length === 0) {
-        chips.innerHTML = '<span class="sfb-empty">No saved filters yet</span>';
+        chips.innerHTML = '<span class="sfb-empty">' + t('sidebar.noSavedFilters') + '</span>';
       } else {
         chips.innerHTML = presets.map(function(p) {
           var isActive = presetsEqual(current, p.filters);
@@ -545,5 +549,9 @@
   syncOptionsToState();
   updateFilterCount();
   renderPresets();
+
+  window.addEventListener('cybernews:languageChange', function() {
+    renderPresets();
+  });
 
 })();
