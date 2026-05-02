@@ -4,14 +4,14 @@
       <div class="breaking-ticker-wrap" aria-live="polite" aria-label="Breaking news ticker">
         <div class="breaking-ticker-inner">
           <div class="breaking-ticker-track">
-            <span class="breaking-ticker-item">Critical Zero-Day in Popular VPN Software Being Actively Exploited <span class="breaking-time">19 minutes ago</span></span>
-            <span class="breaking-ticker-item">Major Healthcare Provider Hit by Ransomware Attack <span class="breaking-time">2 hours ago</span></span>
-            <span class="breaking-ticker-item">CISA Issues Emergency Directive for Federal Agencies <span class="breaking-time">4 hours ago</span></span>
+            <span class="breaking-ticker-item"><span data-i18n-key="breaking.item1">Critical Zero-Day in Popular VPN Software Being Actively Exploited</span> <span class="breaking-time" data-i18n-key="breaking.item1.time">19 minutes ago</span></span>
+            <span class="breaking-ticker-item"><span data-i18n-key="breaking.item2">Major Healthcare Provider Hit by Ransomware Attack</span> <span class="breaking-time" data-i18n-key="breaking.item2.time">2 hours ago</span></span>
+            <span class="breaking-ticker-item"><span data-i18n-key="breaking.item3">CISA Issues Emergency Directive for Federal Agencies</span> <span class="breaking-time" data-i18n-key="breaking.item3.time">4 hours ago</span></span>
           </div>
           <div class="breaking-ticker-track" aria-hidden="true">
-            <span class="breaking-ticker-item">Critical Zero-Day in Popular VPN Software Being Actively Exploited <span class="breaking-time">19 minutes ago</span></span>
-            <span class="breaking-ticker-item">Major Healthcare Provider Hit by Ransomware Attack <span class="breaking-time">2 hours ago</span></span>
-            <span class="breaking-ticker-item">CISA Issues Emergency Directive for Federal Agencies <span class="breaking-time">4 hours ago</span></span>
+            <span class="breaking-ticker-item"><span data-i18n-key="breaking.item1">Critical Zero-Day in Popular VPN Software Being Actively Exploited</span> <span class="breaking-time" data-i18n-key="breaking.item1.time">19 minutes ago</span></span>
+            <span class="breaking-ticker-item"><span data-i18n-key="breaking.item2">Major Healthcare Provider Hit by Ransomware Attack</span> <span class="breaking-time" data-i18n-key="breaking.item2.time">2 hours ago</span></span>
+            <span class="breaking-ticker-item"><span data-i18n-key="breaking.item3">CISA Issues Emergency Directive for Federal Agencies</span> <span class="breaking-time" data-i18n-key="breaking.item3.time">4 hours ago</span></span>
           </div>
         </div>
       </div>
@@ -58,11 +58,11 @@
           <div class="fmd-group fmd-presets">
             <div class="fmd-group-label fmd-label-presets">
               <i class="far fa-bookmark"></i>
-              <span>Saved filters</span>
+              <span data-i18n-key="filter.savedFilters">Saved filters</span>
             </div>
             <div class="fmd-presets-list" id="fmdPresetsList" aria-live="polite"></div>
             <div class="fmd-preset-save-row" id="fmdPresetSaveRow" hidden>
-              <input type="text" class="fmd-preset-input" id="fmdPresetName" placeholder="Filter name" maxlength="40" autocomplete="off">
+              <input type="text" class="fmd-preset-input" id="fmdPresetName" placeholder="Filter name" data-i18n-placeholder="sidebar.filterNamePlaceholder" maxlength="40" autocomplete="off">
               <button type="button" class="fmd-preset-confirm" id="fmdPresetSaveConfirm" aria-label="Save preset"><i class="fas fa-check"></i></button>
               <button type="button" class="fmd-preset-cancel" id="fmdPresetSaveCancel" aria-label="Cancel"><i class="fas fa-times"></i></button>
             </div>
@@ -77,30 +77,30 @@
             </div>
           </div>
           <div class="fmd-group">
-            <div class="fmd-group-label fmd-label-severity"><i class="fas fa-shield-alt"></i> <span>Severity</span></div>
+            <div class="fmd-group-label fmd-label-severity"><i class="fas fa-shield-alt"></i> <span data-i18n-key="filter.severity.group">Severity</span></div>
             <div class="fmd-options">
-              <button class="fmd-opt active" data-fmd-filter="severity" data-fmd-value="all">All</button>
-              <button class="fmd-opt fmd-sev-critical" data-fmd-filter="severity" data-fmd-value="critical">Critical</button>
-              <button class="fmd-opt fmd-sev-high" data-fmd-filter="severity" data-fmd-value="high">High</button>
-              <button class="fmd-opt fmd-sev-medium" data-fmd-filter="severity" data-fmd-value="medium">Medium</button>
-              <button class="fmd-opt fmd-sev-low" data-fmd-filter="severity" data-fmd-value="low">Low</button>
+              <button class="fmd-opt active" data-fmd-filter="severity" data-fmd-value="all" data-i18n-key="filter.all">All</button>
+              <button class="fmd-opt fmd-sev-critical" data-fmd-filter="severity" data-fmd-value="critical" data-i18n-key="priority.critical">Critical</button>
+              <button class="fmd-opt fmd-sev-high" data-fmd-filter="severity" data-fmd-value="high" data-i18n-key="priority.high">High</button>
+              <button class="fmd-opt fmd-sev-medium" data-fmd-filter="severity" data-fmd-value="medium" data-i18n-key="priority.medium">Medium</button>
+              <button class="fmd-opt fmd-sev-low" data-fmd-filter="severity" data-fmd-value="low" data-i18n-key="priority.low">Low</button>
             </div>
           </div>
           <div class="fmd-group">
-            <div class="fmd-group-label fmd-label-state"><i class="fas fa-bolt"></i> <span>State</span></div>
+            <div class="fmd-group-label fmd-label-state"><i class="fas fa-bolt"></i> <span data-i18n-key="filter.state.group">State</span></div>
             <div class="fmd-options">
-              <button class="fmd-opt active" data-fmd-filter="state" data-fmd-value="all">All</button>
-              <button class="fmd-opt fmd-state-new" data-fmd-filter="state" data-fmd-value="new">New</button>
-              <button class="fmd-opt fmd-state-developing" data-fmd-filter="state" data-fmd-value="developing">Developing</button>
-              <button class="fmd-opt fmd-state-confirmed" data-fmd-filter="state" data-fmd-value="confirmed">Confirmed</button>
-              <button class="fmd-opt fmd-state-resolved" data-fmd-filter="state" data-fmd-value="resolved">Resolved</button>
+              <button class="fmd-opt active" data-fmd-filter="state" data-fmd-value="all" data-i18n-key="filter.all">All</button>
+              <button class="fmd-opt fmd-state-new" data-fmd-filter="state" data-fmd-value="new" data-i18n-key="filter.state.new">New</button>
+              <button class="fmd-opt fmd-state-developing" data-fmd-filter="state" data-fmd-value="developing" data-i18n-key="filter.state.developing">Developing</button>
+              <button class="fmd-opt fmd-state-confirmed" data-fmd-filter="state" data-fmd-value="confirmed" data-i18n-key="filter.state.confirmed">Confirmed</button>
+              <button class="fmd-opt fmd-state-resolved" data-fmd-filter="state" data-fmd-value="resolved" data-i18n-key="filter.state.resolved">Resolved</button>
             </div>
           </div>
           <div class="fmd-group">
-            <div class="fmd-group-label fmd-label-sort"><i class="fas fa-sort"></i> <span>Sort</span></div>
+            <div class="fmd-group-label fmd-label-sort"><i class="fas fa-sort"></i> <span data-i18n-key="filter.sort.group">Sort</span></div>
             <div class="fmd-options">
-              <button class="fmd-opt active" data-fmd-filter="sort" data-fmd-value="latest"><i class="far fa-clock"></i> Latest</button>
-              <button class="fmd-opt" data-fmd-filter="sort" data-fmd-value="score"><i class="fas fa-fire"></i> Top</button>
+              <button class="fmd-opt active" data-fmd-filter="sort" data-fmd-value="latest"><i class="far fa-clock"></i> <span data-i18n-key="filter.sort.latest">Latest</span></button>
+              <button class="fmd-opt" data-fmd-filter="sort" data-fmd-value="score"><i class="fas fa-fire"></i> <span data-i18n-key="filter.sort.top">Top</span></button>
             </div>
           </div>
           <div class="fmd-footer">
@@ -110,13 +110,13 @@
       </div>
     </div>
     <div class="saved-filters-bar" id="savedFiltersBar" hidden>
-      <div class="sfb-label"><i class="far fa-bookmark"></i> <span>My filters</span></div>
+      <div class="sfb-label"><i class="far fa-bookmark"></i> <span data-i18n-key="sidebar.myFilters">My Filters</span></div>
       <div class="sfb-chips" id="savedFiltersChips"></div>
       <button type="button" class="sfb-add-btn" id="savedFiltersAddBtn" aria-label="Save current filter as preset" title="Save current filter as preset">
-        <i class="fas fa-plus"></i> <span>Save current</span>
+        <i class="fas fa-plus"></i> <span data-i18n-key="sidebar.saveCurrent">Save current</span>
       </button>
       <div class="sfb-save-row" id="savedFiltersSaveRow" hidden>
-        <input type="text" class="fmd-preset-input" id="sfbPresetName" placeholder="Filter name" maxlength="40" autocomplete="off">
+        <input type="text" class="fmd-preset-input" id="sfbPresetName" placeholder="Filter name" data-i18n-placeholder="sidebar.filterNamePlaceholder" maxlength="40" autocomplete="off">
         <button type="button" class="fmd-preset-confirm" id="sfbPresetSaveConfirm" aria-label="Save preset"><i class="fas fa-check"></i></button>
         <button type="button" class="fmd-preset-cancel" id="sfbPresetSaveCancel" aria-label="Cancel"><i class="fas fa-times"></i></button>
       </div>
