@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Float, Integer, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -26,6 +27,9 @@ class FeedSource(Base):
     )
     extract_cvss: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false"
+    )
+    junk_tags: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
     )
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="true"
@@ -64,4 +68,5 @@ class FeedSource(Base):
             "credibility_weight": self.credibility_weight,
             "extract_cves": self.extract_cves,
             "extract_cvss": self.extract_cvss,
+            "junk_tags": self.junk_tags or [],
         }
