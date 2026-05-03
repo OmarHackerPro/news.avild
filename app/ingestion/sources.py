@@ -12,10 +12,21 @@ class FeedSource(TypedDict):
     credibility_weight: NotRequired[float]   # score multiplier; default 1.0
     extract_cves: NotRequired[bool]          # extract CVE IDs from advisory HTML
     extract_cvss: NotRequired[bool]          # extract CVSS score from advisory HTML
+    junk_tags: NotRequired[list[str]]        # blog-nav labels to discard; default []
 
-# Bootstrap seed data only.
-# Runtime ingestion and source management read from the feed_sources DB table.
-# This file exists to provision defaults for fresh environments and tests.
+# ============================================================
+# BOOTSTRAP SEED DATA — not the live source list.
+#
+# The ingestion pipeline reads EXCLUSIVELY from the PostgreSQL
+# feed_sources table at runtime.  This list only exists to
+# provision a fresh environment (or tests) via:
+#
+#   docker compose exec ingestion python scripts/seed_sources.py
+#
+# To add a permanent new source → add it here, then run the
+# seeder above.  Do NOT add sources directly to this list and
+# expect the running ingester to pick them up automatically.
+# ============================================================
 SEED_SOURCES: list[FeedSource] = [
     FeedSource(
         name="The Hacker News",
@@ -56,6 +67,7 @@ SEED_SOURCES: list[FeedSource] = [
         default_category="breaking",
         default_severity=None,
         normalizer="securityweek",
+        junk_tags=["featured", "in other news"],
     ),
     FeedSource(
         name="Krebs on Security",
@@ -64,6 +76,7 @@ SEED_SOURCES: list[FeedSource] = [
         default_category="deep-dives",
         default_severity=None,
         normalizer="krebs",
+        junk_tags=["a little sunshine", "the coming storm", "ne'er-do-well news", "web fraud 2.0", "breadcrumbs"],
     ),
     FeedSource(
         name="Schneier on Security",
@@ -72,6 +85,7 @@ SEED_SOURCES: list[FeedSource] = [
         default_category="deep-dives",
         default_severity=None,
         normalizer="generic",
+        junk_tags=["uncategorized", "schneier news"],
     ),
     FeedSource(
         name="Unit 42",
@@ -112,6 +126,7 @@ SEED_SOURCES: list[FeedSource] = [
         default_category="research",
         default_severity=None,
         normalizer="generic",
+        junk_tags=["my software", "update", "announcement", "beta"],
     ),
     FeedSource(
         name="Dark Reading",
@@ -144,6 +159,7 @@ SEED_SOURCES: list[FeedSource] = [
         default_category="research",
         default_severity=None,
         normalizer="generic",
+        junk_tags=["blog", "research (insikt)"],
     ),
     FeedSource(
         name="Red Canary",
@@ -152,6 +168,7 @@ SEED_SOURCES: list[FeedSource] = [
         default_category="research",
         default_severity=None,
         normalizer="generic",
+        junk_tags=["news & events", "product updates", "testing and validation"],
     ),
     FeedSource(
         name="CyberScoop",
@@ -169,6 +186,107 @@ SEED_SOURCES: list[FeedSource] = [
         default_severity=None,
         normalizer="securelist",
         credibility_weight=1.2,
+        extract_cves=True,
+        junk_tags=["full", "large", "medium", "thumbnail"],
+    ),
+    # --- Tier 1 additions ---
+    FeedSource(
+        name="Microsoft MSRC",
+        url="https://api.msrc.microsoft.com/update-guide/rss",
+        default_type="advisory",
+        default_category="breaking",
+        default_severity=None,
+        normalizer="generic",
+        credibility_weight=1.5,
+        extract_cves=True,
+    ),
+    FeedSource(
+        name="Talos Intelligence",
+        url="https://blog.talosintelligence.com/rss",
+        default_type="analysis",
+        default_category="research",
+        default_severity=None,
+        normalizer="generic",
+        credibility_weight=1.2,
+        extract_cves=True,
+    ),
+    FeedSource(
+        name="Mandiant Blog",
+        url="https://www.mandiant.com/resources/blog/rss.xml",
+        default_type="report",
+        default_category="research",
+        default_severity=None,
+        normalizer="generic",
+        credibility_weight=1.3,
+    ),
+    FeedSource(
+        name="CrowdStrike Blog",
+        url="https://www.crowdstrike.com/blog/feed/",
+        default_type="report",
+        default_category="research",
+        default_severity=None,
+        normalizer="generic",
+        credibility_weight=1.2,
+    ),
+    FeedSource(
+        name="Cisco Security Advisories",
+        url="https://tools.cisco.com/security/center/psirtrss20/CiscoSecurityAdvisory.xml",
+        default_type="advisory",
+        default_category="breaking",
+        default_severity=None,
+        normalizer="generic",
+        credibility_weight=1.3,
+        extract_cves=True,
+    ),
+    FeedSource(
+        name="NCSC UK",
+        url="https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml",
+        default_type="advisory",
+        default_category="breaking",
+        default_severity=None,
+        normalizer="generic",
+        credibility_weight=1.5,
+        extract_cves=True,
+    ),
+    FeedSource(
+        name="Check Point Research",
+        url="https://research.checkpoint.com/feed/",
+        default_type="analysis",
+        default_category="research",
+        default_severity=None,
+        normalizer="generic",
+        credibility_weight=1.2,
+    ),
+    FeedSource(
+        name="ESET WeLiveSecurity",
+        url="https://www.welivesecurity.com/en/feed/",
+        default_type="analysis",
+        default_category="research",
+        default_severity=None,
+        normalizer="generic",
+        credibility_weight=1.1,
+        extract_cves=True,
+    ),
+    # --- Tier 2 additions ---
+    FeedSource(
+        name="Sophos News",
+        url="https://www.sophos.com/en-us/blog/feed?id=blt6f15f4f7deaf4242",
+        default_type="analysis",
+        default_category="research",
+        default_severity=None,
+        normalizer="generic",
+        credibility_weight=1.1,
+    ),
+    # Content is primarily in Japanese; CVE IDs are still extractable.
+    # Revisit for translation support before enabling clustering signal.
+    FeedSource(
+        name="JPCERT/CC",
+        url="https://www.jpcert.or.jp/rss/jpcert.rdf",
+        default_type="advisory",
+        default_category="breaking",
+        default_severity=None,
+        normalizer="generic",
+        credibility_weight=1.3,
         extract_cves=True,
     ),
 ]

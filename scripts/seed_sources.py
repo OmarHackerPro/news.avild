@@ -44,6 +44,7 @@ async def seed_sources(*, dry_run: bool = False) -> None:
             "credibility_weight": s.get("credibility_weight", 1.0),
             "extract_cves": s.get("extract_cves", False),
             "extract_cvss": s.get("extract_cvss", False),
+            "junk_tags": s.get("junk_tags", []),
         }
         for s in SEED_SOURCES
     ]
@@ -71,6 +72,7 @@ async def seed_sources(*, dry_run: bool = False) -> None:
                             "credibility_weight": row["credibility_weight"],
                             "extract_cves": row["extract_cves"],
                             "extract_cvss": row["extract_cvss"],
+                            "junk_tags": row["junk_tags"],
                         },
                     )
                 )
