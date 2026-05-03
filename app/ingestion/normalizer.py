@@ -46,7 +46,7 @@ def strip_html(raw: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _slugify(text: str) -> str:
-    text = text.lower()
+    text = _html.unescape(text).lower()
     text = re.sub(r"[^\w\s-]", "", text)
     text = re.sub(r"[\s_]+", "-", text)
     text = re.sub(r"-+", "-", text)
