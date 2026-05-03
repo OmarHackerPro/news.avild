@@ -103,18 +103,11 @@ def _prepare_article_doc(article: NormalizedArticle) -> tuple[str, dict]:
 
 
 async def upsert_article(article: NormalizedArticle) -> bool:
-    """Index one article. Skips if a document with the same slug or source URL exists,
-    or if the article is sponsored content.
+    """Index one article. Skips if a document with the same slug or source URL exists.
 
-    Returns True if a new document was indexed, False if it was a duplicate/filtered.
+    Returns True if a new document was indexed, False if it was a duplicate.
     """
     slug, doc = _prepare_article_doc(article)
-
-    # Drop sponsored/advertorial content
-    author = (doc.get("author") or "").lower()
-    if author.startswith("sponsored"):
-        logger.debug("Skipping sponsored content: %s", slug)
-        return False
 
     # URL-based dedup: same source_url under a different slug
     url_hash = doc.get("source_url_hash")
