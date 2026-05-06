@@ -90,6 +90,8 @@
   gap: 1rem;
 }
 
+.skeleton-grid[hidden] { display: none; }
+
 .skeleton-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
