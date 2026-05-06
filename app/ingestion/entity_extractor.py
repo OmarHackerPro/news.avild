@@ -399,3 +399,24 @@ async def extract_entities(
             merged.append(e)
             seen_keys.add(key)
     return merged
+
+
+def merge_entities(text_entities: list[dict], tag_entities: list[dict]) -> list[dict]:
+    """Merge text-derived and tag-derived entity lists, deduplicating by normalized_key.
+
+    Text entities get sources=["text"]. Tag entities already carry sources=["tag"].
+    Overlapping keys have their sources lists merged.
+    """
+    merged: dict[str, dict] = {}
+    for e in text_entities:
+        key = e["normalized_key"]
+        merged[key] = {**e, "sources": ["text"]}
+    for e in tag_entities:
+        key = e["normalized_key"]
+        if key in merged:
+            existing_sources = merged[key].get("sources", ["text"])
+            new_sources = e.get("sources", ["tag"])
+            merged[key]["sources"] = sorted(set(existing_sources) | set(new_sources))
+        else:
+            merged[key] = {**e}
+    return list(merged.values())

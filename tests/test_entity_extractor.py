@@ -159,3 +159,39 @@ async def test_extract_entities_falls_back_to_regex_when_llm_returns_empty():
 
     keys = [e["normalized_key"] for e in entities]
     assert "lockbit" in keys
+
+
+# ---------------------------------------------------------------------------
+# merge_entities() tests
+# ---------------------------------------------------------------------------
+
+from app.ingestion.entity_extractor import merge_entities
+
+
+def test_merge_entities_no_overlap():
+    text = [{"type": "vendor", "name": "Ivanti", "normalized_key": "ivanti"}]
+    tag = [{"type": "malware", "name": "LockBit", "normalized_key": "lockbit", "source": "tag", "sources": ["tag"]}]
+    result = merge_entities(text, tag)
+    keys = [e["normalized_key"] for e in result]
+    assert "ivanti" in keys
+    assert "lockbit" in keys
+    assert len(result) == 2
+
+
+def test_merge_entities_overlap_merges_sources():
+    text = [{"type": "vendor", "name": "Ivanti", "normalized_key": "ivanti"}]
+    tag = [{"type": "vendor", "name": "Ivanti", "normalized_key": "ivanti", "source": "tag", "sources": ["tag"]}]
+    result = merge_entities(text, tag)
+    assert len(result) == 1
+    ivanti = result[0]
+    assert set(ivanti["sources"]) == {"text", "tag"}
+
+
+def test_merge_entities_text_entity_gets_sources_field():
+    text = [{"type": "vendor", "name": "Cisco", "normalized_key": "cisco"}]
+    result = merge_entities(text, [])
+    assert result[0]["sources"] == ["text"]
+
+
+def test_merge_entities_empty_inputs():
+    assert merge_entities([], []) == []
