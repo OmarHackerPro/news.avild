@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="google" content="notranslate">
   {% include "_seo.html" %}
-  <link rel="stylesheet" href="/static/css/main/main.css?v=5">
+  <link rel="stylesheet" href="/static/css/main/main.css?v=6">
   <link rel="stylesheet" href="/static/css/layout/navbar.css?v=5">
   <link rel="stylesheet" href="/static/css/pages/entity.css">
   <link rel="stylesheet" href="/static/css/components/analytics-panel.css">
@@ -127,6 +127,23 @@
 
   <main class="layout">
     <div class="content-area entity-page">
+      <div id="entityLoading" class="state-block" role="status" aria-live="polite">
+        <div class="state-spinner"></div>
+        <p class="state-block-message" data-i18n-key="entity.loading">Loading entity…</p>
+      </div>
+      <div id="entityError" class="state-block is-error" hidden role="alert">
+        <div class="state-block-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <p class="state-block-title" data-i18n-key="entity.errorTitle">Something went wrong</p>
+        <p class="state-block-message" id="entityErrorMsg" data-i18n-key="entity.errorMsg">We couldn't load this entity. Please try again.</p>
+        <div class="state-block-actions">
+          <button type="button" class="state-block-btn" id="entityRetryBtn">
+            <i class="fas fa-redo"></i> <span data-i18n-key="feed.retry">Retry</span>
+          </button>
+          <a href="/search" class="state-block-btn secondary">
+            <i class="fas fa-arrow-left"></i> <span data-i18n-key="entity.backToSearch">Back to Search</span>
+          </a>
+        </div>
+      </div>
       <div id="entityPageContent" hidden></div>
       <div id="entityNotFound" class="entity-not-found" hidden></div>
     </div>

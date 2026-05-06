@@ -30,17 +30,32 @@
     var title = titleKey ? t(titleKey) : '';
     var message = msgKey ? (err || t(msgKey)) : '';
     stateEl.className = 'search-state ' + type;
+    var iconClass;
+    if (type === 'error') iconClass = 'fas fa-exclamation-circle';
+    else if (type === 'empty' && titleKey === 'search.noResultsTitle') iconClass = 'fas fa-folder-open';
+    else iconClass = 'fas fa-search';
+    var head = type === 'loading'
+      ? '<div class="spinner"></div>'
+      : '<div class="state-icon"><i class="' + iconClass + '"></i></div>';
+    var actions = '';
+    if (type === 'error') {
+      actions = '<div class="state-actions"><button type="button" class="state-block-btn" id="searchRetryBtn"><i class="fas fa-redo"></i> ' + t('feed.retry') + '</button></div>';
+    }
     stateEl.innerHTML =
-      (type === 'loading'
-        ? '<div class="spinner"></div>'
-        : '<div class="state-icon">' +
-          (type === 'error' ? '<i class="fas fa-exclamation-circle"></i>' : '<i class="fas fa-search"></i>') +
-          '</div>') +
+      head +
       '<div class="state-title">' + (title || '') + '</div>' +
-      (message ? '<div class="state-message">' + message + '</div>' : '');
+      (message ? '<div class="state-message">' + message + '</div>' : '') +
+      actions;
     stateEl.hidden = false;
     if (resultsList) resultsList.innerHTML = '';
     if (resultsHeading) resultsHeading.hidden = true;
+
+    var retry = document.getElementById('searchRetryBtn');
+    if (retry) {
+      retry.addEventListener('click', function() {
+        if (lastQuery) runSearch(lastQuery);
+      });
+    }
   }
 
   function showResults(results, query) {
