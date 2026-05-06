@@ -43,7 +43,9 @@ NEWS_MAPPING = {
             "body_source": {"type": "keyword"},
             "is_teaser": {"type": "boolean"},
             "image_url":    {"type": "keyword", "index": False},
-            "tags":         {"type": "keyword"},
+            "tags":              {"type": "keyword"},   # legacy — present on pre-backfill docs
+            "raw_tags":          {"type": "keyword"},
+            "normalized_topics": {"type": "keyword"},
             "keywords":     {"type": "keyword"},
             "published_at": {
                 "type": "date",
