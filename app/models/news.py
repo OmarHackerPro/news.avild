@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field
 class NewsItem(BaseModel):
     id: str = Field(json_schema_extra={"example": "cisa-warns-fortinet-rce-cve-2026-12345"})
     slug: str = Field(json_schema_extra={"example": "cisa-warns-fortinet-rce-cve-2026-12345"})
-    tags: List[str] = Field(json_schema_extra={"example": ["vulnerability", "zero-day", "fortinet"]})
+    raw_tags: List[str] = Field(default=[], json_schema_extra={"example": ["Malware", "Ransomware", "zero-day"]})
+    normalized_topics: List[str] = Field(default=[], json_schema_extra={"example": ["malware", "vulnerability"]})
     title: str = Field(json_schema_extra={"example": "CISA Warns of Critical Fortinet FortiOS RCE Vulnerability"})
     desc: Optional[str] = Field(None, json_schema_extra={"example": "CISA has added CVE-2026-12345 to its Known Exploited Vulnerabilities catalog after active exploitation was confirmed in the wild."})
     summary: Optional[str] = Field(None, json_schema_extra={"example": "CISA has added CVE-2026-12345 to its Known Exploited Vulnerabilities catalog after active exploitation was confirmed in the wild. The vulnerability affects FortiOS versions prior to 7.4.3 and allows remote code execution without authentication."})
