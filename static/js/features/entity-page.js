@@ -5,7 +5,18 @@
 (function() {
   var container = document.getElementById('entityPageContent');
   var notFoundEl = document.getElementById('entityNotFound');
+  var loadingEl = document.getElementById('entityLoading');
+  var errorEl = document.getElementById('entityError');
+  var errorMsgEl = document.getElementById('entityErrorMsg');
+  var retryBtn = document.getElementById('entityRetryBtn');
   if (!container) return;
+
+  function showState(state) {
+    if (loadingEl)  loadingEl.hidden  = (state !== 'loading');
+    if (errorEl)    errorEl.hidden    = (state !== 'error');
+    if (notFoundEl) notFoundEl.hidden = (state !== 'notfound');
+    if (container)  container.hidden  = (state !== 'content');
+  }
 
   function escapeHtml(s) {
     if (!s) return '';
@@ -99,27 +110,40 @@
       '</header>' +
       relatedClustersHtml +
       relatedEntitiesHtml;
-    container.hidden = false;
-    if (notFoundEl) notFoundEl.hidden = true;
+    showState('content');
   }
 
   function showNotFound() {
-    container.hidden = true;
     if (notFoundEl) {
-      notFoundEl.hidden = false;
       notFoundEl.innerHTML =
-        '<div class="state-icon"><i class="fas fa-question-circle"></i></div>' +
-        '<div class="state-title">Entity not found</div>' +
-        '<div class="state-message">The requested entity may not exist or the link may be invalid.</div>' +
-        '<a href="search.html" class="entity-back"><i class="fas fa-arrow-left"></i> Back to Search</a>';
+        '<div class="state-block-icon"><i class="fas fa-question-circle"></i></div>' +
+        '<p class="state-block-title">Entity not found</p>' +
+        '<p class="state-block-message">The requested entity may not exist or the link may be invalid.</p>' +
+        '<div class="state-block-actions">' +
+          '<a href="/search" class="state-block-btn"><i class="fas fa-arrow-left"></i> Back to Search</a>' +
+        '</div>';
+      notFoundEl.classList.add('state-block', 'is-empty');
     }
+    showState('notfound');
+  }
+
+  function showError(message) {
+    if (errorMsgEl && message) errorMsgEl.textContent = message;
+    showState('error');
   }
 
   function init() {
-    var entity = getEntity();
-    if (entity) render(entity);
-    else showNotFound();
+    showState('loading');
+    try {
+      var entity = getEntity();
+      if (entity) render(entity);
+      else showNotFound();
+    } catch (e) {
+      showError(e && e.message ? e.message : null);
+    }
   }
+
+  if (retryBtn) retryBtn.addEventListener('click', init);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

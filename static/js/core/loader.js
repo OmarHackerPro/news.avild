@@ -5,7 +5,7 @@
 (function() {
   var partialsBase = '/static/partials/';
   var jsBase = '/static/js/';
-  var jsVersion = '12';
+  var jsVersion = '13';
 
   function fetchHtml(path) {
     return fetch(partialsBase + path + '?v=' + jsVersion, { cache: 'no-cache' }).then(function(r) {
