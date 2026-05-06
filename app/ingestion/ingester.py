@@ -15,7 +15,8 @@ from app.db.models.source_category import SourceCategory
 from app.db.opensearch import INDEX_NEWS, INDEX_SNAPSHOTS, get_os_client, NEWS_MAPPING
 from app.db.session import AsyncSessionLocal
 from app.ingestion.clusterer import cluster_article
-from app.ingestion.entity_extractor import extract_entities
+from app.ingestion.entity_extractor import extract_entities, merge_entities
+from app.ingestion.tag_classifier import classify_tags
 from app.ingestion.entity_store import store_article_entities
 from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle, normalize_article
 from app.ingestion.sources import FeedSource
@@ -83,7 +84,8 @@ def _prepare_article_doc(article: NormalizedArticle) -> tuple[str, dict]:
         doc["updated_at"] = doc["updated_at"].isoformat()
     if doc.get("cvss_score") is not None:
         doc["cvss_score"] = float(doc["cvss_score"])
-    doc.setdefault("tags", [])
+    doc.setdefault("raw_tags", [])
+    doc.setdefault("normalized_topics", [])
     doc.setdefault("keywords", [])
     doc.setdefault("cve_ids", [])
     doc.setdefault("content_html", None)
@@ -367,22 +369,36 @@ async def ingest_source(
             else:
                 article["credibility_weight"] = source.get("credibility_weight", 1.0)
 
+            # Concurrent: tag classification + text entity extraction
+            source_junk_tags = source.get("junk_tags") or []
+            article_slug = article.get("slug")
+            tag_result, text_entities = await asyncio.gather(
+                asyncio.to_thread(
+                    classify_tags,
+                    article.get("tags") or [],
+                    source_junk_tags,
+                ),
+                extract_entities(article, slug=article_slug, db_session=None),
+            )
+
+            # Rename tags field before storing
+            article["raw_tags"] = tag_result["clean_tags"]
+            article["normalized_topics"] = tag_result["normalized_topics"]
+            article.pop("tags", None)
+
             inserted = await (overwrite_article if update else upsert_article)(article)
             if inserted:
                 stats["inserted"] += 1
                 entities = []
                 try:
-                    article_slug = article.get("slug")
                     if not article_slug:
-                        logger.warning("[%s] Article missing slug — LLM NER skipped", name)
-                    entities = await extract_entities(article, slug=article_slug, db_session=None)
-                    if entities:
-                        await store_article_entities(
-                            article["slug"], entities,
-                        )
-                        # Write entity names back to article keywords
+                        logger.warning("[%s] Article missing slug — entity store skipped", name)
+                    all_entities = merge_entities(text_entities, tag_result["tag_entities"])
+                    entities = all_entities
+                    if all_entities:
+                        await store_article_entities(article["slug"], all_entities)
                         keyword_list = list(dict.fromkeys(
-                            e["name"] for e in entities
+                            e["name"] for e in all_entities
                         ))
                         try:
                             await get_os_client().update(
