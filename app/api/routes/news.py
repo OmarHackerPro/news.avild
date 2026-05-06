@@ -14,7 +14,8 @@ router = APIRouter(prefix="/news", tags=["news"])
 
 # Fields returned for list endpoints (lightweight)
 _LIST_SOURCE_FIELDS = [
-    "slug", "title", "desc", "summary", "tags", "keywords", "published_at",
+    "slug", "title", "desc", "summary", "raw_tags", "normalized_topics",
+    "keywords", "published_at",
     "severity", "type", "category", "author", "source_name",
     "source_url", "image_url", "cvss_score", "cve_ids",
     "body_quality", "body_source", "is_teaser",
@@ -46,7 +47,8 @@ def _hit_to_item(hit: dict) -> NewsItem:
     return NewsItem(
         id=hit["_id"],
         slug=src.get("slug") or hit["_id"],
-        tags=src.get("tags") or [],
+        raw_tags=src.get("raw_tags") or src.get("tags") or [],
+        normalized_topics=src.get("normalized_topics") or [],
         title=src["title"],
         desc=_clean_truncated_text(raw_desc) if raw_desc else None,
         summary=_clean_truncated_text(raw_summary) if raw_summary else None,
@@ -76,7 +78,8 @@ def _hit_to_detail(hit: dict) -> NewsDetail:
     return NewsDetail(
         id=hit["_id"],
         slug=src.get("slug") or hit["_id"],
-        tags=src.get("tags") or [],
+        raw_tags=src.get("raw_tags") or src.get("tags") or [],
+        normalized_topics=src.get("normalized_topics") or [],
         title=src["title"],
         desc=_clean_truncated_text(raw_desc) if raw_desc else None,
         summary=_clean_truncated_text(raw_summary) if raw_summary else None,
@@ -112,6 +115,7 @@ def _build_filters(
     min_cvss: Optional[float] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
+    topics: Optional[List[str]] = None,
 ) -> List[dict]:
     """Build OpenSearch bool filter clauses from query parameters."""
     filters: List[dict] = []
@@ -124,11 +128,13 @@ def _build_filters(
     if source_name:
         filters.append({"term": {"source_name": source_name}})
     if tag:
-        filters.append({"term": {"tags": tag}})
+        filters.append({"term": {"raw_tags": tag}})
     if cve:
         filters.append({"term": {"cve_ids": cve}})
     if min_cvss is not None:
         filters.append({"range": {"cvss_score": {"gte": min_cvss}}})
+    if topics:
+        filters.append({"terms": {"normalized_topics": topics}})
     date_range: dict = {}
     if date_from:
         date_range["gte"] = date_from
@@ -160,7 +166,8 @@ async def get_news(
     type: Optional[str] = Query(None, description="Filter by type (news|analysis|report|advisory)"),
     severity: Optional[str] = Query(None, description="Filter by severity"),
     source_name: Optional[str] = Query(None, description="Filter by source name"),
-    tag: Optional[str] = Query(None, description="Filter by tag"),
+    tag: Optional[str] = Query(None, description="Filter by raw tag"),
+    topic: List[str] = Query(default=[], description="Filter by normalized topic (e.g. malware, vulnerability). Multiple values use OR logic."),
     cve: Optional[str] = Query(None, description="Filter by CVE ID"),
     min_cvss: Optional[float] = Query(None, ge=0, le=10, description="Minimum CVSS score"),
     date_from: Optional[str] = Query(None, description="Start date (ISO-8601)"),
@@ -174,10 +181,11 @@ async def get_news(
         category=category, type=type, severity=severity,
         source_name=source_name, tag=tag, cve=cve,
         min_cvss=min_cvss, date_from=date_from, date_to=date_to,
+        topics=topic or None,
     )
 
     if q:
-        must = [{"multi_match": {"query": q, "fields": ["title^3", "desc", "summary^1.5", "tags^2", "keywords"]}}]
+        must = [{"multi_match": {"query": q, "fields": ["title^3", "desc", "summary^1.5", "raw_tags^2", "keywords"]}}]
     else:
         must = []
 
