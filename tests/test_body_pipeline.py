@@ -3,19 +3,43 @@ from app.ingestion.body_pipeline import maybe_extract_body
 
 
 @pytest.mark.asyncio
-async def test_skip_when_rss_already_good():
-    """If content_html from RSS is already >= threshold, don't fetch."""
-    rss_body = "x" * 2000
+async def test_rss_full_runs_through_extraction():
+    """RSS body >= threshold is cleaned via extract_fn before storing."""
+    rss_html = "<p>" + ("a" * 2000) + "</p>"
+    article = {
+        "slug": "test",
+        "source_url": "https://example.com/article",
+        "content_html": rss_html,
+    }
+    source = {"min_body_chars": 1500}
+    cleaned = "a" * 2000
+
+    def fake_extract(html):
+        return cleaned
+
+    result = await maybe_extract_body(article, source, fetch_fn=None, extract_fn=fake_extract)
+    assert result["body_source"] == "rss-full"
+    assert result["body_quality"] == "ok"
+    assert result["content_html"] == cleaned
+
+
+@pytest.mark.asyncio
+async def test_rss_full_falls_back_to_original_when_extract_returns_none():
+    """Plain-text RSS feeds: Trafilatura returns None, we keep the original body."""
+    rss_body = "plain text " * 200  # 2200 chars, passes threshold
     article = {
         "slug": "test",
         "source_url": "https://example.com/article",
         "content_html": rss_body,
     }
     source = {"min_body_chars": 1500}
-    result = await maybe_extract_body(article, source, fetch_fn=None, extract_fn=None)
+
+    def fake_extract(html):
+        return None
+
+    result = await maybe_extract_body(article, source, fetch_fn=None, extract_fn=fake_extract)
     assert result["body_source"] == "rss-full"
-    assert result["body_quality"] == "ok"
-    assert "content_html" not in result
+    assert result["content_html"] == rss_body  # fallback to original
 
 
 @pytest.mark.asyncio
@@ -23,7 +47,11 @@ async def test_uses_default_threshold_when_source_missing_override():
     rss_body = "x" * 2000
     article = {"slug": "t", "source_url": "https://example.com", "content_html": rss_body}
     source = {}  # no min_body_chars
-    result = await maybe_extract_body(article, source, fetch_fn=None, extract_fn=None)
+
+    def fake_extract(html):
+        return html
+
+    result = await maybe_extract_body(article, source, fetch_fn=None, extract_fn=fake_extract)
     assert result["body_source"] == "rss-full"
     assert result["body_quality"] == "ok"
 

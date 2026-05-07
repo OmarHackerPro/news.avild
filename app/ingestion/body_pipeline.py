@@ -47,9 +47,13 @@ async def maybe_extract_body(
     rss_body = article_doc.get("content_html") or ""
 
     if len(rss_body) >= threshold:
+        # Strip HTML/entities via Trafilatura; fall back to raw if it returns nothing
+        # (plain-text feeds have nothing to strip, Trafilatura returns None on them)
+        cleaned = extract(rss_body) or rss_body
         return {
             "body_source": "rss-full",
-            "body_quality": classify_length(len(rss_body), threshold),
+            "body_quality": classify_length(len(cleaned), threshold),
+            "content_html": cleaned,
         }
 
     # Fetch path

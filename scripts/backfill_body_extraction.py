@@ -45,6 +45,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--pilot", action="store_true", help="3-5 articles per top-25 source")
     p.add_argument("--dry-run", action="store_true", help="log without writing")
     p.add_argument("--limit", type=int, default=None, help="cap total processed articles")
+    p.add_argument("--reclean-rss", action="store_true",
+                   help="re-process rss-full articles to strip raw HTML via Trafilatura")
     return p.parse_args()
 
 
@@ -85,6 +87,7 @@ async def _process_one(
     sources_by_name: dict,
     global_sem: asyncio.Semaphore,
     host_sem: _PerHostSemaphore,
+    force: bool = False,
 ) -> dict | None:
     """Run maybe_extract_body for a single article, return bulk-update doc or None."""
     src = hit["_source"]
@@ -96,7 +99,7 @@ async def _process_one(
     }
     source_dict = sources_by_name.get(src.get("source_name", ""), {})
 
-    if not _is_retry_eligible(src):
+    if not force and not _is_retry_eligible(src):
         return None
 
     async with global_sem, host_sem.get(article_doc["source_url"]):
@@ -130,23 +133,21 @@ async def _load_sources() -> dict[str, dict]:
     return {s.name: {"min_body_chars": s.min_body_chars} for s in sources}
 
 
-async def _eligible_articles(client, limit: int | None):
-    """Yield batches of 50 articles with body_quality missing or 'failed'."""
+async def _eligible_articles(client, limit: int | None, reclean_rss: bool = False):
+    """Yield batches of 50 articles eligible for (re-)processing."""
+    should = [
+        {"bool": {"must_not": {"exists": {"field": "body_quality"}}}},
+        {"term": {"body_quality": "failed"}},
+        {"term": {"body_quality": "empty"}},
+    ]
+    if reclean_rss:
+        should.append({"term": {"body_source": "rss-full"}})
     body = {
         "size": 50,
         "_source": ["slug", "source_url", "source_name", "content_html",
                     "body_quality", "body_source", "fetch_attempt_count",
                     "last_fetch_attempt_at"],
-        "query": {
-            "bool": {
-                "should": [
-                    {"bool": {"must_not": {"exists": {"field": "body_quality"}}}},
-                    {"term": {"body_quality": "failed"}},
-                    {"term": {"body_quality": "empty"}},
-                ],
-                "minimum_should_match": 1,
-            }
-        },
+        "query": {"bool": {"should": should, "minimum_should_match": 1}},
         "sort": [{"published_at": {"order": "desc"}}],
     }
     yielded = 0
@@ -205,7 +206,8 @@ async def _pilot_articles(client, sources_by_name: dict):
 async def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     args = parse_args()
-    logger.info("backfill starting | pilot=%s dry_run=%s limit=%s", args.pilot, args.dry_run, args.limit)
+    logger.info("backfill starting | pilot=%s dry_run=%s reclean_rss=%s limit=%s",
+                args.pilot, args.dry_run, args.reclean_rss, args.limit)
 
     client = get_os_client()
     sources_by_name = await _load_sources()
@@ -213,7 +215,7 @@ async def main() -> None:
     if args.pilot:
         article_iter = _pilot_articles(client, sources_by_name)
     else:
-        article_iter = _eligible_articles(client, args.limit)
+        article_iter = _eligible_articles(client, args.limit, reclean_rss=args.reclean_rss)
 
     processed = 0
     successes = 0
@@ -227,7 +229,7 @@ async def main() -> None:
 
     async for batch in article_iter:
         tasks = [
-            _process_one(hit, sources_by_name, global_sem, host_sem)
+            _process_one(hit, sources_by_name, global_sem, host_sem, force=args.reclean_rss)
             for hit in batch
         ]
         results = await asyncio.gather(*tasks, return_exceptions=False)
