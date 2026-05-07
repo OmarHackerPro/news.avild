@@ -36,3 +36,29 @@ def test_classify_connection_error():
 def test_classify_no_error_returns_none():
     body = '<html><body>Real article content here</body></html>'
     assert classify_fetch_error(status=200, body=body, exc=None) is None
+
+
+from urllib.robotparser import RobotFileParser
+from app.ingestion.body_fetcher import RobotsCache
+
+
+def test_robots_cache_allows_when_no_robots(monkeypatch):
+    cache = RobotsCache()
+    rp = RobotFileParser()
+    rp.parse([])
+    cache._cache["example.com"] = (rp, 9999999999)
+    assert cache.is_url_allowed("https://example.com/article") is True
+
+
+def test_robots_cache_disallows_per_robots(monkeypatch):
+    cache = RobotsCache()
+    rp = RobotFileParser()
+    rp.parse(["User-agent: *", "Disallow: /private/"])
+    cache._cache["example.com"] = (rp, 9999999999)
+    assert cache.is_url_allowed("https://example.com/private/secret") is False
+    assert cache.is_url_allowed("https://example.com/public/article") is True
+
+
+def test_robots_cache_unknown_host_returns_true_default():
+    cache = RobotsCache()
+    assert cache.is_url_allowed("https://newsite.example.com/x", default_on_unknown=True) is True
