@@ -179,7 +179,7 @@ async def _pilot_articles(client, sources_by_name: dict):
         "size": 0,
         "aggs": {
             "by_source": {
-                "terms": {"field": "source_name.keyword", "size": 25},
+                "terms": {"field": "source_name", "size": 25},
                 "aggs": {
                     "samples": {
                         "top_hits": {
