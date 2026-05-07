@@ -24,6 +24,10 @@ email-validator>=2.0.0
 # HTTP
 requests>=2.32.0
 
+# Body extraction
+trafilatura==1.12.2
+curl-cffi==0.7.4
+
 # Anthropic SDK (LLM NER)
 anthropic>=0.40.0
 
