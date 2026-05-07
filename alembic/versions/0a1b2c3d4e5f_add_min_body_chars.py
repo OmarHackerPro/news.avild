@@ -20,9 +20,10 @@ def upgrade() -> None:
         "feed_sources",
         sa.Column("min_body_chars", sa.Integer(), nullable=True),
     )
-    op.execute("UPDATE feed_sources SET min_body_chars = 200 WHERE name ILIKE '%MSRC%' OR name ILIKE '%Microsoft Security%'")
-    op.execute("UPDATE feed_sources SET min_body_chars = 200 WHERE name ILIKE '%NVD%' OR url LIKE '%nist.gov%'")
-    op.execute("UPDATE feed_sources SET min_body_chars = 400 WHERE name ILIKE '%CISA%'")
+    # MSRC/NVD sources not yet seeded in feed_sources — these are no-ops until added.
+    op.execute("UPDATE feed_sources SET min_body_chars = 200 WHERE name IN ('Microsoft MSRC', 'Microsoft Security Response Center')")
+    op.execute("UPDATE feed_sources SET min_body_chars = 200 WHERE name IN ('NVD', 'NIST NVD') OR url LIKE '%nist.gov%'")
+    op.execute("UPDATE feed_sources SET min_body_chars = 400 WHERE name IN ('CISA Advisories', 'CISA News')")
     op.execute("UPDATE feed_sources SET min_body_chars = 800 WHERE name = 'Krebs on Security'")
 
 
