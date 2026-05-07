@@ -41,6 +41,12 @@ NEWS_MAPPING = {
             "content_source": {"type": "keyword"},
             "body_quality": {"type": "keyword"},
             "body_source": {"type": "keyword"},
+            "body_fetch_error": {"type": "keyword"},
+            "last_fetch_attempt_at": {
+                "type": "date",
+                "format": "strict_date_time||strict_date_time_no_millis",
+            },
+            "fetch_attempt_count": {"type": "integer"},
             "is_teaser": {"type": "boolean"},
             "image_url":    {"type": "keyword", "index": False},
             "tags":              {"type": "keyword"},   # legacy — present on pre-backfill docs
