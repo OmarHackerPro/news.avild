@@ -62,3 +62,69 @@ def test_robots_cache_disallows_per_robots(monkeypatch):
 def test_robots_cache_unknown_host_returns_true_default():
     cache = RobotsCache()
     assert cache.is_url_allowed("https://newsite.example.com/x", default_on_unknown=True) is True
+
+
+import pytest
+from app.ingestion.body_fetcher import fetch_body, FetchResult
+
+
+@pytest.mark.asyncio
+async def test_fetch_body_success(monkeypatch):
+    class FakeResp:
+        status_code = 200
+        text = "<html><body><article>Real content</article></body></html>"
+        headers = {"content-type": "text/html"}
+
+    class FakeSession:
+        async def get(self, url, **kwargs):
+            return FakeResp()
+        async def close(self):
+            pass
+
+    monkeypatch.setattr("app.ingestion.body_fetcher._SESSION", None)
+    monkeypatch.setattr("app.ingestion.body_fetcher._make_session", lambda: FakeSession())
+
+    result = await fetch_body("https://example.com/article")
+    assert result.error is None
+    assert result.status == 200
+    assert "Real content" in result.body
+
+
+@pytest.mark.asyncio
+async def test_fetch_body_404(monkeypatch):
+    class FakeResp:
+        status_code = 404
+        text = ""
+        headers = {}
+
+    class FakeSession:
+        async def get(self, url, **kwargs):
+            return FakeResp()
+        async def close(self):
+            pass
+
+    monkeypatch.setattr("app.ingestion.body_fetcher._SESSION", None)
+    monkeypatch.setattr("app.ingestion.body_fetcher._make_session", lambda: FakeSession())
+
+    result = await fetch_body("https://example.com/missing")
+    assert result.error == "404"
+    assert result.status == 404
+    assert result.body is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_body_timeout(monkeypatch):
+    import asyncio
+
+    class FakeSession:
+        async def get(self, url, **kwargs):
+            raise asyncio.TimeoutError()
+        async def close(self):
+            pass
+
+    monkeypatch.setattr("app.ingestion.body_fetcher._SESSION", None)
+    monkeypatch.setattr("app.ingestion.body_fetcher._make_session", lambda: FakeSession())
+
+    result = await fetch_body("https://slow.example.com/x")
+    assert result.error == "timeout"
+    assert result.body is None
