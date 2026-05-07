@@ -31,6 +31,9 @@ class FeedSource(Base):
     junk_tags: Mapped[list] = mapped_column(
         JSONB, nullable=False, server_default="[]"
     )
+    min_body_chars: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="true"
     )
@@ -69,4 +72,5 @@ class FeedSource(Base):
             "extract_cves": self.extract_cves,
             "extract_cvss": self.extract_cvss,
             "junk_tags": self.junk_tags or [],
+            "min_body_chars": self.min_body_chars,
         }
