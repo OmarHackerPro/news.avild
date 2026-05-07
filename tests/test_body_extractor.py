@@ -12,8 +12,9 @@ from app.ingestion.body_extractor import classify_length, extract_text
     # Per-source override (NVD = 200)
     (250, 200, "ok"),
     (200, 200, "ok"),
-    (199, 200, "weak"),  # falls into [threshold/3, threshold) bucket
-    (66, 200, "empty"),  # below threshold/3 = 66
+    (199, 200, "weak"),  # falls into [ceil(200/3), threshold) = [67, 200) bucket
+    (67, 200, "weak"),   # exact weak_floor boundary: ceil(200/3) = 67
+    (66, 200, "empty"),  # below ceil(200/3) = 67, so empty
 ])
 def test_classify_length(length, threshold, expected):
     assert classify_length(length, threshold) == expected

@@ -39,8 +39,8 @@ def extract_text(html: Optional[str]) -> Optional[str]:
             favor_recall=True,        # tolerate sites with thin metadata
             include_comments=False,
             include_tables=False,
-            no_fallback=False,        # let trafilatura try its readability fallback
+            no_fallback=False,        # False = "use fallback" — keep readability-lxml active
         )
-        return result
+        return result or None  # normalize empty string to None
     except Exception:
         return None
