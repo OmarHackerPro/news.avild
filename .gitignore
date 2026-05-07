@@ -32,3 +32,6 @@ cursor.zip
 
 # User uploads (avatars, etc.)
 static/uploads/
+
+# Git worktrees
+.worktrees/
