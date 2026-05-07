@@ -1,0 +1,1 @@
+[{"op":"add","path":"/index_permissions/-","value":{"index_patterns":["cve_topics"],"allowed_actions":["crud","create_index"]}}]

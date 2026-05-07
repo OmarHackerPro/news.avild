@@ -1,0 +1,31 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "10s",
+    "index.knn": true
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "cve_id":            {"type": "keyword"},
+      "aliases":           {"type": "keyword"},
+      "cvss_score":        {"type": "half_float"},
+      "cvss_severity":     {"type": "keyword"},
+      "cvss_vector":       {"type": "keyword"},
+      "cisa_kev":          {"type": "boolean"},
+      "kev_added_at":      {"type": "date", "format": "date_optional_time||epoch_millis"},
+      "epss_score":        {"type": "half_float"},
+      "epss_percentile":   {"type": "half_float"},
+      "epss_updated_at":   {"type": "date", "format": "date_optional_time||epoch_millis"},
+      "nvd_description":   {"type": "text", "analyzer": "english"},
+      "nvd_last_modified": {"type": "date", "format": "date_optional_time||epoch_millis"},
+      "article_ids":       {"type": "keyword"},
+      "article_count":     {"type": "integer"},
+      "linked_event_ids":  {"type": "keyword"},
+      "cve_embedding":     {"type": "knn_vector", "dimension": 1024, "method": {"name": "hnsw", "space_type": "cosinesimil", "engine": "nmslib"}},
+      "created_at":        {"type": "date", "format": "strict_date_time||strict_date_time_no_millis"},
+      "updated_at":        {"type": "date", "format": "strict_date_time||strict_date_time_no_millis"}
+    }
+  }
+}
