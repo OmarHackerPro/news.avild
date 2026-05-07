@@ -28,6 +28,7 @@ class ClusterSummary(BaseModel):
     top_article: NewsItem
     categories: List[str] = Field(json_schema_extra={"example": ["breaking", "research"]})
     score: Optional[Decimal] = Field(None, json_schema_extra={"example": 87.5})
+    max_cvss: Optional[float] = Field(None, json_schema_extra={"example": 9.8})
     confidence: Optional[str] = Field(None, json_schema_extra={"example": "high"})
     top_factors: List[ScoringFactor] = Field(default_factory=list)
     latest_at: str = Field(json_schema_extra={"example": "2026-03-15T14:22:00Z"})  # ISO-8601
