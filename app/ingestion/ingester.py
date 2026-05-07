@@ -93,6 +93,9 @@ def _prepare_article_doc(article: NormalizedArticle) -> tuple[str, dict]:
     doc.setdefault("content_source", None)
     doc.setdefault("body_quality", "empty")
     doc.setdefault("body_source", "none")
+    doc.setdefault("body_fetch_error", None)
+    doc.setdefault("last_fetch_attempt_at", None)
+    doc.setdefault("fetch_attempt_count", 0)
     doc.setdefault("is_teaser", False)
     if doc.get("source_url"):
         doc["source_url_hash"] = hashlib.sha256(doc["source_url"].encode()).hexdigest()[:16]
@@ -423,6 +426,25 @@ async def ingest_source(
                     logger.exception(
                         "[%s] Clustering failed for '%s'",
                         name, article.get("slug"),
+                    )
+
+                # Body extraction
+                from app.ingestion.body_pipeline import maybe_extract_body
+                try:
+                    body_updates = await maybe_extract_body(
+                        article_doc=dict(article),
+                        source_dict={"min_body_chars": source.get("min_body_chars")},
+                    )
+                    if body_updates:
+                        await get_os_client().update(
+                            index=INDEX_NEWS,
+                            id=article["slug"],
+                            body={"doc": body_updates},
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        "[%s] Body extraction failed for '%s': %s",
+                        name, article.get("slug"), exc,
                     )
             else:
                 stats["skipped"] += 1

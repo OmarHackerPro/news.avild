@@ -61,7 +61,7 @@ class TestPrepareArticleDoc:
             "published_at": "2026-03-19T12:00:00+00:00",
         }
         _, doc = _prepare_article_doc(article)
-        assert doc["tags"] == []
+        assert doc["raw_tags"] == []
         assert doc["keywords"] == []
         assert doc["cve_ids"] == []
         assert doc["content_html"] is None
@@ -69,4 +69,7 @@ class TestPrepareArticleDoc:
         assert doc["content_source"] is None
         assert doc["body_quality"] == "empty"
         assert doc["body_source"] == "none"
+        assert doc["body_fetch_error"] is None
+        assert doc["last_fetch_attempt_at"] is None
+        assert doc["fetch_attempt_count"] == 0
         assert doc["is_teaser"] is False
