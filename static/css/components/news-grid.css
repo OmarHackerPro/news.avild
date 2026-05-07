@@ -184,8 +184,8 @@
 .sort-toggle {
   display: flex;
   gap: 4px;
-  margin-left: auto;
 }
+.news-priority-bar > .sort-toggle { margin-right: auto; }
 .sort-btn {
   background: transparent;
   border: 1px solid var(--border);

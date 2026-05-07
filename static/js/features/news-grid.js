@@ -60,8 +60,10 @@
   // ── Compute date_from from time filter value ──
   function dateFromFilter() {
     var tf = window.mainFilterTime || '24h';
+    // Topic filter restricts by topic; widen from 24h to 7d so results appear
+    if (window.mainFilterTopic && tf === '24h') tf = '7d';
     if (tf === 'all') return null;
-    var ms = { '1h': 3600000, '24h': 86400000, '7d': 604800000 };
+    var ms = { '1h': 3600000, '24h': 86400000, '7d': 604800000, '30d': 2592000000 };
     var delta = ms[tf] || 86400000;
     return new Date(Date.now() - delta).toISOString();
   }
@@ -77,6 +79,7 @@
     if (cat) params.set('category', cat);
     var df = dateFromFilter();
     if (df) params.set('date_from', df);
+    if (window.mainFilterTopic) params.set('topic', window.mainFilterTopic);
     return params;
   }
 
@@ -152,10 +155,12 @@
       sourceCountHtml = '<span class="card-sources"><i class="fas fa-layer-group"></i> ' + cluster.article_count + ' ' + sourcesLabel + '</span>';
     }
 
-    // Score (shown when sorting by score)
+    // Sort-context badge
     var scoreHtml = '';
-    if ((window.currentSort === 'score') && cluster.score != null) {
+    if (window.currentSort === 'score' && cluster.score != null) {
       scoreHtml = '<span class="card-score"><i class="fas fa-fire"></i> ' + Number(cluster.score).toFixed(1) + '</span>';
+    } else if (window.currentSort === 'severity' && cluster.max_cvss != null) {
+      scoreHtml = '<span class="card-score"><i class="fas fa-shield-alt"></i> CVSS ' + Number(cluster.max_cvss).toFixed(1) + '</span>';
     }
 
     var readLabel = (window.CyberNews && window.CyberNews.t) ? window.CyberNews.t('card.read') : 'Read';
@@ -219,6 +224,8 @@
     if (window.mainFilterSeverity && window.mainFilterSeverity !== 'all') return true;
     if (window.mainFilterState && window.mainFilterState !== 'all') return true;
     if (window.currentSort && window.currentSort !== 'latest') return true;
+    if (window.vendorNeutralFilter) return true;
+    if (window.mainFilterTopic) return true;
     return false;
   }
 
