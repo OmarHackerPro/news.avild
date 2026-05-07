@@ -24,7 +24,9 @@
     time: '24h',
     severity: 'all',
     state: [],
-    sort: 'latest'
+    sort: 'latest',
+    vendorNeutral: false,
+    topic: null
   };
 
   // Globals read by news-grid.js
@@ -33,6 +35,8 @@
   window.mainFilterSeverity = DEFAULTS.severity;
   window.mainFilterState = DEFAULTS.state;
   window.currentSort = DEFAULTS.sort;
+  window.vendorNeutralFilter = DEFAULTS.vendorNeutral;
+  window.mainFilterTopic = DEFAULTS.topic;
 
   // Hide priority pills (backend does not expose priority yet)
   var priorityPills = document.querySelector('.priority-pills');
@@ -49,6 +53,8 @@
     if (window.mainFilterSeverity !== DEFAULTS.severity) count++;
     if (window.mainFilterState.length > 0) count++;
     if (window.currentSort !== DEFAULTS.sort) count++;
+    if (window.vendorNeutralFilter) count++;
+    if (window.mainFilterTopic) count++;
     var badge = document.getElementById('mainFilterCount');
     if (!badge) return;
     badge.textContent = count;
@@ -116,20 +122,11 @@
     if (!dropdown.contains(e.target)) {
       dropdown.classList.remove('open');
       trigger.setAttribute('aria-expanded', 'false');
-      cancelPresetSaveUI('dropdown');
+      cancelPresetSaveUI();
       cancelRenameUI();
     }
   });
 
-  /* ── Click outside the visible saved-filters bar: close inline UIs ── */
-  document.addEventListener('click', function(e) {
-    var bar = document.getElementById('savedFiltersBar');
-    if (!bar) return;
-    if (bar.contains(e.target)) return;
-    var saveRow = document.getElementById('savedFiltersSaveRow');
-    if (saveRow && !saveRow.hidden) cancelPresetSaveUI('bar');
-    if (barRenameState.id) cancelBarRename();
-  });
 
   /* ── Filter panel option buttons ── */
   document.addEventListener('click', function(e) {
@@ -168,6 +165,34 @@
     }
   });
 
+  /* ── Topic tag filter ── */
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.tag-btn[data-topic]');
+    if (!btn) return;
+    var topic = btn.getAttribute('data-topic');
+    window.mainFilterTopic = (window.mainFilterTopic === topic) ? null : topic;
+    document.querySelectorAll('.tag-btn[data-topic]').forEach(function(b) {
+      b.classList.toggle('active', b.getAttribute('data-topic') === window.mainFilterTopic);
+    });
+    updateFilterCount();
+    renderPresets();
+    reapplyFeed();
+  });
+
+  /* ── Vendor-neutral toggle ── */
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#vendorNeutralBtn')) return;
+    window.vendorNeutralFilter = !window.vendorNeutralFilter;
+    var btn = document.getElementById('vendorNeutralBtn');
+    if (btn) {
+      btn.classList.toggle('active', window.vendorNeutralFilter);
+      btn.setAttribute('aria-pressed', String(window.vendorNeutralFilter));
+    }
+    updateFilterCount();
+    renderPresets();
+    reapplyFeed();
+  });
+
   /* ── Reset button ── */
   document.addEventListener('click', function(e) {
     if (!e.target.closest('#mainFilterReset')) return;
@@ -175,6 +200,11 @@
     window.mainFilterSeverity = DEFAULTS.severity;
     window.mainFilterState = DEFAULTS.state;
     window.currentSort = DEFAULTS.sort;
+    window.vendorNeutralFilter = DEFAULTS.vendorNeutral;
+    window.mainFilterTopic = DEFAULTS.topic;
+    var vnBtn = document.getElementById('vendorNeutralBtn');
+    if (vnBtn) { vnBtn.classList.remove('active'); vnBtn.setAttribute('aria-pressed', 'false'); }
+    document.querySelectorAll('.tag-btn[data-topic]').forEach(function(b) { b.classList.remove('active'); });
     syncOptionsToState();
     updateFilterCount();
     renderPresets();
@@ -266,29 +296,6 @@
       }
     }
 
-    // ── Visible saved-filters bar (main UI) ──
-    var bar = document.getElementById('savedFiltersBar');
-    var chips = document.getElementById('savedFiltersChips');
-    if (bar && chips) {
-      bar.hidden = false; // always visible so users can discover the "Save current" button
-      if (presets.length === 0) {
-        chips.innerHTML = '<span class="sfb-empty">' + t('sidebar.noSavedFilters') + '</span>';
-      } else {
-        chips.innerHTML = presets.map(function(p) {
-          var isActive = presetsEqual(current, p.filters);
-          return (
-            '<div class="sfb-chip' + (isActive ? ' active' : '') + '" data-preset-id="' + escHtml(p.id) + '">' +
-              '<button type="button" class="sfb-chip-apply" title="Apply filter">' +
-                '<i class="fas fa-bookmark"></i>' +
-                '<span class="sfb-chip-name">' + escHtml(p.name) + '</span>' +
-              '</button>' +
-              '<button type="button" class="sfb-chip-edit" aria-label="Rename preset" title="Rename"><i class="fas fa-pen"></i></button>' +
-              '<button type="button" class="sfb-chip-del" aria-label="Delete preset" title="Delete"><i class="fas fa-times"></i></button>' +
-            '</div>'
-          );
-        }).join('');
-      }
-    }
   }
 
   function applyPreset(preset) {
@@ -305,40 +312,22 @@
     reapplyFeed();
   }
 
-  function showPresetSaveUI(target) {
-    // target: 'dropdown' | 'bar'
-    var rowId = target === 'bar' ? 'savedFiltersSaveRow' : 'fmdPresetSaveRow';
-    var inputId = target === 'bar' ? 'sfbPresetName' : 'fmdPresetName';
-    var row = document.getElementById(rowId);
-    var input = document.getElementById(inputId);
+  function showPresetSaveUI() {
+    var row = document.getElementById('fmdPresetSaveRow');
+    var input = document.getElementById('fmdPresetName');
     if (!row || !input) return;
     row.hidden = false;
     input.value = '';
     input.focus();
-
-    if (target === 'bar') {
-      // Hide the "+ Save current" trigger while the input row is active
-      var addBtn = document.getElementById('savedFiltersAddBtn');
-      if (addBtn) addBtn.hidden = true;
-    }
   }
 
-  function cancelPresetSaveUI(target) {
-    if (target === 'bar' || !target) {
-      var barRow = document.getElementById('savedFiltersSaveRow');
-      if (barRow) barRow.hidden = true;
-      var addBtn = document.getElementById('savedFiltersAddBtn');
-      if (addBtn) addBtn.hidden = false;
-    }
-    if (target === 'dropdown' || !target) {
-      var ddRow = document.getElementById('fmdPresetSaveRow');
-      if (ddRow) ddRow.hidden = true;
-    }
+  function cancelPresetSaveUI() {
+    var row = document.getElementById('fmdPresetSaveRow');
+    if (row) row.hidden = true;
   }
 
-  function confirmPresetSave(target) {
-    var inputId = target === 'bar' ? 'sfbPresetName' : 'fmdPresetName';
-    var input = document.getElementById(inputId);
+  function confirmPresetSave() {
+    var input = document.getElementById('fmdPresetName');
     if (!input) return;
     var name = (input.value || '').trim();
     if (!name) { input.focus(); return; }
@@ -346,7 +335,7 @@
     var id = 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     presets.push({ id: id, name: name, filters: currentFilterSnapshot() });
     savePresets(presets);
-    cancelPresetSaveUI(target);
+    cancelPresetSaveUI();
     renderPresets();
   }
 
@@ -392,104 +381,11 @@
     renderPresets();
   }
 
-  /* ── Inline rename UI (visible bar chips) ── */
-  var barRenameState = { id: null, original: null };
-
-  function cancelBarRename() {
-    if (!barRenameState.id) return;
-    barRenameState.id = null;
-    barRenameState.original = null;
-    renderPresets();
-  }
-
-  function startBarRename(chip, presetId) {
-    var presets = loadPresets();
-    var preset = presets.find(function(p) { return p.id === presetId; });
-    if (!preset) return;
-    barRenameState.id = presetId;
-    barRenameState.original = preset.name;
-    chip.innerHTML =
-      '<input type="text" class="fmd-preset-input sfb-rename-input" maxlength="40" value="' + escHtml(preset.name) + '" autocomplete="off">' +
-      '<button type="button" class="fmd-preset-confirm sfb-chip-confirm" aria-label="Save rename"><i class="fas fa-check"></i></button>' +
-      '<button type="button" class="fmd-preset-cancel sfb-chip-cancel" aria-label="Cancel rename"><i class="fas fa-times"></i></button>';
-    var input = chip.querySelector('input');
-    if (input) { input.focus(); input.select(); }
-  }
-
-  function commitBarRename(newName) {
-    if (!barRenameState.id) return;
-    var name = (newName || '').trim();
-    if (!name) { cancelBarRename(); return; }
-    var presets = loadPresets();
-    var p = presets.find(function(p) { return p.id === barRenameState.id; });
-    if (p) { p.name = name; savePresets(presets); }
-    barRenameState.id = null;
-    barRenameState.original = null;
-    renderPresets();
-  }
-
   /* ── Delegated click handlers for presets ── */
   document.addEventListener('click', function(e) {
-    if (e.target.closest('#fmdPresetSaveConfirm')) {
-      confirmPresetSave('dropdown');
-      return;
-    }
-    if (e.target.closest('#fmdPresetSaveCancel')) {
-      cancelPresetSaveUI('dropdown');
-      return;
-    }
+    if (e.target.closest('#fmdPresetSaveConfirm')) { confirmPresetSave(); return; }
+    if (e.target.closest('#fmdPresetSaveCancel')) { cancelPresetSaveUI(); return; }
 
-    // Visible bar controls
-    if (e.target.closest('#savedFiltersAddBtn')) {
-      showPresetSaveUI('bar');
-      return;
-    }
-    if (e.target.closest('#sfbPresetSaveConfirm')) {
-      confirmPresetSave('bar');
-      return;
-    }
-    if (e.target.closest('#sfbPresetSaveCancel')) {
-      cancelPresetSaveUI('bar');
-      return;
-    }
-
-    // Visible bar chip interactions
-    var barChip = e.target.closest('.sfb-chip');
-    if (barChip) {
-      var barId = barChip.getAttribute('data-preset-id');
-      if (!barId) return;
-      if (e.target.closest('.sfb-chip-del')) {
-        e.stopPropagation();
-        if (window.confirm('Delete this saved filter?')) deletePreset(barId);
-        return;
-      }
-      if (e.target.closest('.sfb-chip-edit')) {
-        e.stopPropagation();
-        startBarRename(barChip, barId);
-        return;
-      }
-      if (e.target.closest('.sfb-chip-apply')) {
-        if (barRenameState.id === barId) return;
-        var barPreset = loadPresets().find(function(p) { return p.id === barId; });
-        if (barPreset) applyPreset(barPreset);
-        return;
-      }
-      // Confirm/cancel inline bar rename
-      if (barRenameState.id === barId) {
-        if (e.target.closest('.sfb-chip-confirm')) {
-          var barInput = barChip.querySelector('input.sfb-rename-input');
-          commitBarRename(barInput ? barInput.value : barRenameState.original);
-          return;
-        }
-        if (e.target.closest('.sfb-chip-cancel')) {
-          cancelBarRename();
-          return;
-        }
-      }
-      return;
-    }
-
-    // Dropdown chip interactions
     var chip = e.target.closest('.fmd-preset-chip');
     if (!chip) return;
     var presetId = chip.getAttribute('data-preset-id');
@@ -511,17 +407,13 @@
       if (preset) applyPreset(preset);
       return;
     }
-
     if (renameState.id) {
       if (e.target.closest('.fmd-preset-confirm')) {
         var input = chip.querySelector('input.fmd-preset-rename-input');
         commitRename(input ? input.value : renameState.original);
         return;
       }
-      if (e.target.closest('.fmd-preset-cancel')) {
-        cancelRenameUI();
-        return;
-      }
+      if (e.target.closest('.fmd-preset-cancel')) { cancelRenameUI(); return; }
     }
   });
 
@@ -531,17 +423,11 @@
     if (!target || !target.classList) return;
 
     if (target.id === 'fmdPresetName') {
-      if (e.key === 'Enter') { e.preventDefault(); confirmPresetSave('dropdown'); }
-      else if (e.key === 'Escape') { e.preventDefault(); cancelPresetSaveUI('dropdown'); }
-    } else if (target.id === 'sfbPresetName') {
-      if (e.key === 'Enter') { e.preventDefault(); confirmPresetSave('bar'); }
-      else if (e.key === 'Escape') { e.preventDefault(); cancelPresetSaveUI('bar'); }
+      if (e.key === 'Enter') { e.preventDefault(); confirmPresetSave(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancelPresetSaveUI(); }
     } else if (target.classList.contains('fmd-preset-rename-input')) {
       if (e.key === 'Enter') { e.preventDefault(); commitRename(target.value); }
       else if (e.key === 'Escape') { e.preventDefault(); cancelRenameUI(); }
-    } else if (target.classList.contains('sfb-rename-input')) {
-      if (e.key === 'Enter') { e.preventDefault(); commitBarRename(target.value); }
-      else if (e.key === 'Escape') { e.preventDefault(); cancelBarRename(); }
     }
   });
 

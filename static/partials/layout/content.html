@@ -18,29 +18,21 @@
     </div>
   </section>
 
-  <section id="threat-intel" class="section filter-section">
-    <div class="topic-tags">
-      <button class="tag-btn" data-i18n-key="tags.cve">CVE-2026-0001 (147)</button>
-      <button class="tag-btn" data-i18n-key="tags.ransomware">Ransomware (89)</button>
-      <button class="tag-btn" data-i18n-key="tags.apt29">APT29 (67)</button>
-      <button class="tag-btn" data-i18n-key="tags.zeroDay">Zero-Day (52)</button>
-      <button class="tag-btn" data-i18n-key="tags.supplyChain">Supply Chain (41)</button>
-      <button class="tag-btn" data-i18n-key="tags.cisa">CISA (38)</button>
-    </div>
-    <div class="filter-controls">
-      <label class="toggle-label">
-        <span data-i18n-key="filters.vendorNeutral">Vendor-neutral only</span>
-        <input type="checkbox" class="toggle-input">
-        <span class="toggle-slider"></span>
-      </label>
-<div class="filter-clear-wrapper">
-        <button type="button" class="filter-clear-btn" id="filterClearBtn" aria-label="Clear all filters" title="Clear all filters"><i class="fas fa-times"></i></button>
-        <span class="filter-count" id="filterCount">0</span>
-      </div>
-    </div>
-  </section>
-
   <section id="malware" class="section news-section">
+    <div class="topic-tags" id="topicTags">
+      <button class="tag-btn" data-topic="vulnerability">Vulnerability</button>
+      <button class="tag-btn" data-topic="malware">Malware</button>
+      <button class="tag-btn" data-topic="data-breach">Data Breach</button>
+      <button class="tag-btn" data-topic="nation-state">Nation-State</button>
+      <button class="tag-btn" data-topic="phishing">Phishing</button>
+      <button class="tag-btn" data-topic="supply-chain">Supply Chain</button>
+      <button class="tag-btn" data-topic="ics-ot">ICS/OT</button>
+      <button class="tag-btn" data-topic="privacy">Privacy</button>
+      <button class="tag-btn" data-topic="ai-security">AI Security</button>
+      <button class="tag-btn" data-topic="funding">Funding</button>
+      <button class="tag-btn" data-topic="policy-law">Policy &amp; Law</button>
+      <button class="tag-btn" data-topic="cryptography">Cryptography</button>
+    </div>
     <div class="news-priority-bar">
       <div class="priority-pills">
         <button class="priority-pill active" data-priority="all" data-i18n-key="priority.all">All</button>
@@ -49,6 +41,16 @@
         <button class="priority-pill priority-medium" data-priority="medium"><i class="fas fa-circle"></i> <span data-i18n-key="priority.medium">Medium</span></button>
         <button class="priority-pill priority-low" data-priority="low"><i class="fas fa-circle"></i> <span data-i18n-key="priority.low">Low</span></button>
       </div>
+      <div class="sort-toggle" role="tablist" aria-label="Sort">
+        <button type="button" class="sort-btn active" data-sort="latest" role="tab"><i class="far fa-clock"></i> <span data-i18n-key="filter.sort.latest">Latest</span></button>
+        <button type="button" class="sort-btn" data-sort="score" role="tab"><i class="fas fa-fire"></i> <span data-i18n-key="filter.sort.top">Top</span></button>
+        <button type="button" class="sort-btn" data-sort="coverage" role="tab"><i class="fas fa-layer-group"></i> <span data-i18n-key="filter.sort.coverage">Coverage</span></button>
+        <button type="button" class="sort-btn" data-sort="severity" role="tab"><i class="fas fa-skull-crossbones"></i> <span data-i18n-key="filter.sort.severity">Severity</span></button>
+        <button type="button" class="sort-btn" data-sort="trending" role="tab"><i class="fas fa-chart-line"></i> <span data-i18n-key="filter.sort.trending">Trending</span></button>
+      </div>
+      <button type="button" class="vendor-neutral-btn" id="vendorNeutralBtn" aria-pressed="false">
+        <i class="fas fa-shield-alt"></i> <span data-i18n-key="filters.vendorNeutral">Vendor-neutral</span>
+      </button>
       <div class="filter-main-wrap">
         <button type="button" class="filter-main-btn" id="mainFilterTrigger" aria-expanded="false">
           <i class="fas fa-sliders-h"></i> <span data-i18n-key="filter.btn">Filter</span>
@@ -70,9 +72,10 @@
           <div class="fmd-group">
             <div class="fmd-group-label fmd-label-time"><i class="far fa-clock"></i> <span data-i18n-key="filter.time.group">Time</span></div>
             <div class="fmd-options">
+              <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="1h" data-i18n-key="filters.time.lastHour">Last hour</button>
               <button class="fmd-opt active" data-fmd-filter="time" data-fmd-value="24h" data-i18n-key="filters.time.last24h">Last 24h</button>
-              <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="1h" data-i18n-key="filters.time.lastHour">Last 1h</button>
               <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="7d" data-i18n-key="filters.time.last7d">Last 7 days</button>
+              <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="30d" data-i18n-key="filters.time.last30d">Last 30 days</button>
               <button class="fmd-opt" data-fmd-filter="time" data-fmd-value="all" data-i18n-key="filters.time.all">All time</button>
             </div>
           </div>
@@ -101,24 +104,15 @@
             <div class="fmd-options">
               <button class="fmd-opt active" data-fmd-filter="sort" data-fmd-value="latest"><i class="far fa-clock"></i> <span data-i18n-key="filter.sort.latest">Latest</span></button>
               <button class="fmd-opt" data-fmd-filter="sort" data-fmd-value="score"><i class="fas fa-fire"></i> <span data-i18n-key="filter.sort.top">Top</span></button>
+              <button class="fmd-opt" data-fmd-filter="sort" data-fmd-value="coverage"><i class="fas fa-layer-group"></i> <span data-i18n-key="filter.sort.coverage">Coverage</span></button>
+              <button class="fmd-opt" data-fmd-filter="sort" data-fmd-value="severity"><i class="fas fa-skull-crossbones"></i> <span data-i18n-key="filter.sort.severity">Severity</span></button>
+              <button class="fmd-opt" data-fmd-filter="sort" data-fmd-value="trending"><i class="fas fa-chart-line"></i> <span data-i18n-key="filter.sort.trending">Trending</span></button>
             </div>
           </div>
           <div class="fmd-footer">
             <button type="button" class="fmd-reset" id="mainFilterReset" data-i18n-key="filter.reset">Reset all</button>
           </div>
         </div>
-      </div>
-    </div>
-    <div class="saved-filters-bar" id="savedFiltersBar" hidden>
-      <div class="sfb-label"><i class="far fa-bookmark"></i> <span data-i18n-key="sidebar.myFilters">My Filters</span></div>
-      <div class="sfb-chips" id="savedFiltersChips"></div>
-      <button type="button" class="sfb-add-btn" id="savedFiltersAddBtn" aria-label="Save current filter as preset" title="Save current filter as preset">
-        <i class="fas fa-plus"></i> <span data-i18n-key="sidebar.saveCurrent">Save current</span>
-      </button>
-      <div class="sfb-save-row" id="savedFiltersSaveRow" hidden>
-        <input type="text" class="fmd-preset-input" id="sfbPresetName" placeholder="Filter name" data-i18n-placeholder="sidebar.filterNamePlaceholder" maxlength="40" autocomplete="off">
-        <button type="button" class="fmd-preset-confirm" id="sfbPresetSaveConfirm" aria-label="Save preset"><i class="fas fa-check"></i></button>
-        <button type="button" class="fmd-preset-cancel" id="sfbPresetSaveCancel" aria-label="Cancel"><i class="fas fa-times"></i></button>
       </div>
     </div>
     <h2 class="section-title" id="categoryTitle" data-i18n-key="sections.latestNews">Latest Security News</h2>
