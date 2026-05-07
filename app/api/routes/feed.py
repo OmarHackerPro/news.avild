@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Query
 
 from app.api.routes.news import _hit_to_item
 from app.api.routes.clusters import _fetch_articles_for_slugs
-from app.db.opensearch import INDEX_CLUSTERS, get_os_client
+from app.db.opensearch import INDEX_CLUSTERS, INDEX_NEWS, get_os_client
 from app.models.cluster import ClusterListResponse, ClusterSummary, ScoringFactor
 
 router = APIRouter(prefix="/feed", tags=["feed"])
@@ -28,14 +28,36 @@ router = APIRouter(prefix="/feed", tags=["feed"])
 )
 async def get_feed(
     view: str = Query("global", enum=["global", "personal"], description="Feed view"),
-    sort: str = Query("latest", enum=["latest", "score"], description="Sort order"),
+    sort: str = Query("latest", enum=["latest", "score", "coverage", "severity", "trending"], description="Sort order"),
     category: Optional[str] = Query(None, description="Filter by category"),
     date_from: Optional[str] = Query(None, description="Start date (ISO-8601)"),
     date_to: Optional[str] = Query(None, description="End date (ISO-8601)"),
+    types: str = Query("news,analysis,report", description="Comma-separated content types to include"),
+    topic: Optional[str] = Query(None, description="Filter by normalized topic (e.g. malware, vulnerability)"),
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     filters: list[dict] = []
+
+    # Topic filter: pre-query articles by topic → collect cluster_ids → filter clusters
+    if topic:
+        topic_resp = await get_os_client().search(
+            index=INDEX_NEWS,
+            body={
+                "query": {"term": {"normalized_topics": topic}},
+                "_source": ["cluster_id"],
+                "size": 1000,
+            },
+        )
+        topic_cluster_ids = list({
+            h["_source"]["cluster_id"]
+            for h in topic_resp["hits"]["hits"]
+            if h["_source"].get("cluster_id")
+        })
+        if not topic_cluster_ids:
+            return ClusterListResponse(items=[], total=0)
+        filters.append({"terms": {"_id": topic_cluster_ids}})
+
     if category:
         filters.append({"term": {"categories": category}})
     if date_from or date_to:
@@ -46,11 +68,18 @@ async def get_feed(
             range_clause["lte"] = date_to
         filters.append({"range": {"latest_at": range_clause}})
 
-    sort_field = "latest_at" if sort == "latest" else "score"
-    sort_clause = [{sort_field: {"order": "desc"}}]
-    # Secondary sort to break ties deterministically
-    if sort_field != "latest_at":
-        sort_clause.append({"latest_at": {"order": "desc"}})
+    if sort == "latest":
+        sort_clause = [{"latest_at": {"order": "desc"}}]
+    elif sort == "score":
+        sort_clause = [{"score": {"order": "desc"}}, {"latest_at": {"order": "desc"}}]
+    elif sort == "coverage":
+        sort_clause = [{"article_count": {"order": "desc"}}, {"latest_at": {"order": "desc"}}]
+    elif sort == "severity":
+        sort_clause = [{"max_cvss": {"order": "desc", "missing": "_last"}}, {"latest_at": {"order": "desc"}}]
+    elif sort == "trending":
+        sort_clause = [{"article_count": {"order": "desc"}}, {"updated_at": {"order": "desc"}}]
+    else:
+        sort_clause = [{"latest_at": {"order": "desc"}}]
 
     body: dict = {
         "query": {"bool": {"filter": filters}} if filters else {"match_all": {}},
@@ -72,8 +101,10 @@ async def get_feed(
         ids = h["_source"].get("article_ids", [])
         top_slugs.append(ids[0] if ids else None)
 
+    allowed_types = [t.strip() for t in types.split(",") if t.strip()]
+
     unique_slugs = [s for s in top_slugs if s]
-    article_hits = await _fetch_articles_for_slugs(unique_slugs)
+    article_hits = await _fetch_articles_for_slugs(unique_slugs, allowed_types=allowed_types or None)
     slug_to_article = {h["_id"]: _hit_to_item(h) for h in article_hits}
 
     items = []
@@ -90,6 +121,7 @@ async def get_feed(
                 top_article=slug_to_article[top_slug],
                 categories=src.get("categories", []),
                 score=Decimal(str(src["score"])) if src.get("score") is not None else None,
+                max_cvss=src.get("max_cvss"),
                 confidence=src.get("confidence"),
                 top_factors=[ScoringFactor(**f) for f in (src.get("top_factors") or [])],
                 latest_at=src.get("latest_at", ""),

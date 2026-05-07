@@ -13,14 +13,37 @@ from app.models.errors import ErrorResponse
 router = APIRouter(prefix="/clusters", tags=["clusters"])
 
 
-async def _fetch_articles_for_slugs(slugs: list[str]) -> list[dict]:
-    """Fetch article hits from OpenSearch by slug list."""
+async def _fetch_articles_for_slugs(
+    slugs: list[str],
+    allowed_types: list[str] | None = None,
+    topic: str | None = None,
+) -> list[dict]:
+    """Fetch article hits from OpenSearch by slug list.
+
+    allowed_types: if provided, only return articles whose type is in this list.
+    topic: if provided, only return articles that have this normalized_topic.
+    """
     if not slugs:
         return []
+    filters: list[dict] = []
+    if allowed_types:
+        filters.append({"terms": {"type": allowed_types}})
+    if topic:
+        filters.append({"term": {"normalized_topics": topic}})
+
+    if filters:
+        query: dict = {
+            "bool": {
+                "must": {"ids": {"values": slugs}},
+                "filter": filters,
+            }
+        }
+    else:
+        query = {"ids": {"values": slugs}}
     resp = await get_os_client().search(
         index=INDEX_NEWS,
         body={
-            "query": {"ids": {"values": slugs}},
+            "query": query,
             "size": len(slugs),
             "sort": [{"published_at": {"order": "desc"}}],
             "_source": [
@@ -93,6 +116,7 @@ async def list_clusters(
                 top_article=top_article,
                 categories=src.get("categories", []),
                 score=Decimal(str(src["score"])) if src.get("score") is not None else None,
+                max_cvss=src.get("max_cvss"),
                 confidence=src.get("confidence"),
                 top_factors=[ScoringFactor(**f) for f in (src.get("top_factors") or [])],
                 latest_at=src.get("latest_at", ""),
@@ -121,7 +145,19 @@ async def get_cluster(cluster_id: str):
     hits = await _fetch_articles_for_slugs(article_ids)
     articles = [_hit_to_item(h) for h in hits]
 
-    tags = list({t for a in articles for t in a.tags})
+    # Lazily correct stale article_count (e.g. after article purges)
+    actual_count = len(articles)
+    if actual_count != src.get("article_count", 0):
+        import asyncio
+        asyncio.ensure_future(
+            get_os_client().update(
+                index=INDEX_CLUSTERS,
+                id=cluster_id,
+                body={"doc": {"article_count": actual_count}},
+            )
+        )
+
+    tags = list({t for a in articles for t in a.raw_tags})
     dates = [a.published_at for a in articles if a.published_at]
 
     timeline = [

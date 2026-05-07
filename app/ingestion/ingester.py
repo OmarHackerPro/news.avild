@@ -369,16 +369,13 @@ async def ingest_source(
             else:
                 article["credibility_weight"] = source.get("credibility_weight", 1.0)
 
-            # Concurrent: tag classification + text entity extraction
+            # Tag classification (sync, needed before upsert to populate raw_tags/normalized_topics)
             source_junk_tags = source.get("junk_tags") or []
             article_slug = article.get("slug")
-            tag_result, text_entities = await asyncio.gather(
-                asyncio.to_thread(
-                    classify_tags,
-                    article.get("tags") or [],
-                    source_junk_tags,
-                ),
-                extract_entities(article, slug=article_slug, db_session=None),
+            tag_result = await asyncio.to_thread(
+                classify_tags,
+                article.get("tags") or [],
+                source_junk_tags,
             )
 
             # Rename tags field before storing
@@ -393,6 +390,8 @@ async def ingest_source(
                 try:
                     if not article_slug:
                         logger.warning("[%s] Article missing slug — entity store skipped", name)
+                    # LLM NER only runs on new articles, not duplicates
+                    text_entities = await extract_entities(article, slug=article_slug, db_session=None)
                     all_entities = merge_entities(text_entities, tag_result["tag_entities"])
                     entities = all_entities
                     if all_entities:
