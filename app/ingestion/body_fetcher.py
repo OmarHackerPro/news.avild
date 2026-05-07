@@ -1,17 +1,42 @@
 """HTTP body fetcher with anti-bot tier (curl-cffi + headers + cookies + robots).
 
 Public surface:
-    fetch_body(url) -> FetchResult
-    fetch_text(url) -> Optional[str]
-    classify_fetch_error(status, body, exc) -> Optional[str]
+    fetch_body(url, *, timeout, extra_headers) -> FetchResult
+    fetch_text(url, *, timeout) -> Optional[str]
+    classify_fetch_error(*, status, body, exc) -> Optional[str]
     RobotsCache
 """
 import asyncio
+import time
+from dataclasses import dataclass
 from typing import Optional
+from urllib.parse import urlparse
+from urllib.robotparser import RobotFileParser
 
 
 _CF_CHALLENGE_TITLE = "<title>Just a moment...</title>"
 _CF_CHL_SCRIPT_TOKEN = "cf-chl-"
+_ROBOTS_TTL_SECONDS = 24 * 60 * 60  # 24h
+_DEFAULT_TIMEOUT_SECONDS = 8
+
+_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
+_DEFAULT_HEADERS = {
+    "User-Agent": _USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "DNT": "1",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+}
+
+# Module-level session for cookie + connection persistence per process.
+# Tests monkeypatch _SESSION=None + _make_session to inject fakes.
+_SESSION = None
 
 
 def classify_fetch_error(
@@ -40,13 +65,6 @@ def classify_fetch_error(
         return "cloudflare-challenge"
 
     return None
-
-
-import time
-from urllib.parse import urlparse
-from urllib.robotparser import RobotFileParser
-
-_ROBOTS_TTL_SECONDS = 24 * 60 * 60  # 24h
 
 
 class RobotsCache:
@@ -91,30 +109,6 @@ class RobotsCache:
         self._cache[host] = (rp, time.time() + _ROBOTS_TTL_SECONDS)
 
 
-from dataclasses import dataclass
-
-
-_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/120.0.0.0 Safari/537.36"
-)
-_DEFAULT_HEADERS = {
-    "User-Agent": _USER_AGENT,
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    "DNT": "1",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-}
-_DEFAULT_TIMEOUT_SECONDS = 8
-
-# Module-level session for cookie + connection persistence per process.
-# Tests monkeypatch _make_session to inject fakes.
-_SESSION = None
-
-
 @dataclass
 class FetchResult:
     status: Optional[int]
@@ -152,6 +146,7 @@ async def fetch_body(
     """
     headers = {**_DEFAULT_HEADERS, **(extra_headers or {})}
     session = _get_session()
+    status = None
 
     for attempt in range(2):  # original + at most 1 retry on 429/503
         try:
@@ -190,8 +185,8 @@ async def fetch_body(
             error=err,
         )
 
-    # Both attempts exhausted on 429/503
-    return FetchResult(status=503, body=None, error="503")
+    # Both attempts exhausted on 429/503 — return the last seen status
+    return FetchResult(status=status, body=None, error=str(status))
 
 
 async def fetch_text(url: str, *, timeout: int = 10) -> Optional[str]:

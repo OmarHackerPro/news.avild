@@ -42,7 +42,7 @@ from urllib.robotparser import RobotFileParser
 from app.ingestion.body_fetcher import RobotsCache
 
 
-def test_robots_cache_allows_when_no_robots(monkeypatch):
+def test_robots_cache_allows_when_no_robots():
     cache = RobotsCache()
     rp = RobotFileParser()
     rp.parse([])
@@ -50,7 +50,7 @@ def test_robots_cache_allows_when_no_robots(monkeypatch):
     assert cache.is_url_allowed("https://example.com/article") is True
 
 
-def test_robots_cache_disallows_per_robots(monkeypatch):
+def test_robots_cache_disallows_per_robots():
     cache = RobotsCache()
     rp = RobotFileParser()
     rp.parse(["User-agent: *", "Disallow: /private/"])
@@ -64,7 +64,6 @@ def test_robots_cache_unknown_host_returns_true_default():
     assert cache.is_url_allowed("https://newsite.example.com/x", default_on_unknown=True) is True
 
 
-import pytest
 from app.ingestion.body_fetcher import fetch_body, FetchResult
 
 
@@ -128,3 +127,42 @@ async def test_fetch_body_timeout(monkeypatch):
     result = await fetch_body("https://slow.example.com/x")
     assert result.error == "timeout"
     assert result.body is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_body_429_retry_succeeds(monkeypatch):
+    """First attempt returns 429; second attempt returns 200 — result should be success."""
+    calls = []
+
+    class FakeResp200:
+        status_code = 200
+        text = "<html><body>Real content</body></html>"
+        headers = {}
+
+    class FakeResp429:
+        status_code = 429
+        text = ""
+        headers = {}
+
+    class FakeSession:
+        async def get(self, url, **kwargs):
+            calls.append(1)
+            if len(calls) == 1:
+                return FakeResp429()
+            return FakeResp200()
+
+        async def close(self):
+            pass
+
+    async def fast_sleep(_):
+        pass
+
+    monkeypatch.setattr("app.ingestion.body_fetcher._SESSION", None)
+    monkeypatch.setattr("app.ingestion.body_fetcher._make_session", lambda: FakeSession())
+    monkeypatch.setattr("asyncio.sleep", fast_sleep)
+
+    result = await fetch_body("https://example.com/article")
+    assert result.error is None
+    assert result.status == 200
+    assert "Real content" in result.body
+    assert len(calls) == 2
