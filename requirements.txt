@@ -28,6 +28,9 @@ requests>=2.32.0
 trafilatura==1.12.2
 curl-cffi==0.7.4
 
+# Messaging
+twilio
+
 # Anthropic SDK (LLM NER)
 anthropic>=0.40.0
 
