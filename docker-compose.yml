@@ -75,10 +75,10 @@ services:
       - db
     command: >-
       sh -c 'while true; do
-        python scripts/send_daily_brief.py;
-        SECS=$$(python3 -c "import datetime; now = datetime.datetime.utcnow(); nxt = now.replace(hour=8, minute=0, second=0, microsecond=0); nxt = nxt if now < nxt else nxt + __import__(\"datetime\").timedelta(days=1); print(max(int((nxt - now).total_seconds()), 60))");
+        SECS=$$(python3 -c "import datetime; now=datetime.datetime.now(datetime.timezone.utc); nxt=now.replace(hour=8,minute=0,second=0,microsecond=0); nxt=nxt+datetime.timedelta(days=1) if now>=nxt else nxt; print(max(int((nxt-now).total_seconds()),60))");
         echo "=== Sleeping $${SECS}s until next 08:00 UTC ===";
         sleep $$SECS;
+        python scripts/send_daily_brief.py;
       done'
 
   db:

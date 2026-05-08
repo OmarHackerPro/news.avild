@@ -63,7 +63,15 @@ async def run_brief_pipeline(
             logger.info("Brief already sent for %s; skipping (use --force to override)", today)
             return {"skipped": True, "dry_run": False, "cluster_count": 0, "body": ""}
 
-    clusters = await fetch_top_clusters(os_client, top_n=top_n, hours=hours)
+    try:
+        clusters = await fetch_top_clusters(os_client, top_n=top_n, hours=hours)
+    except Exception as exc:
+        err_msg = f"OpenSearch error: {exc}"
+        logger.error("Brief pipeline: cluster fetch failed for %s: %s", today, exc)
+        if not dry_run:
+            await _write_brief_log(db_session, today, 0, "", "failed", err_msg)
+        return {"skipped": False, "dry_run": dry_run, "cluster_count": 0, "body": ""}
+
     if not clusters:
         logger.warning("No clusters found for brief date %s", today)
         if not dry_run:

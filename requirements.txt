@@ -29,7 +29,7 @@ trafilatura==1.12.2
 curl-cffi==0.7.4
 
 # Messaging
-twilio
+twilio>=9.0,<10
 
 # Anthropic SDK (LLM NER)
 anthropic>=0.40.0

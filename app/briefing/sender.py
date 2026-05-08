@@ -38,6 +38,8 @@ def _send_stub(text: str, output_dir: str, date_str: str | None) -> bool:
 
 
 async def _send_twilio(text: str) -> bool:
+    import asyncio
+
     try:
         from twilio.rest import Client  # noqa: PLC0415
     except ImportError:
@@ -53,13 +55,17 @@ async def _send_twilio(text: str) -> bool:
         logger.error("WHATSAPP_PHONE_NUMBER not set; cannot send")
         return False
 
-    try:
+    def _sync_send():
         client = Client(sid, token)
         client.messages.create(
             from_=f"whatsapp:{from_number}" if not from_number.startswith("whatsapp:") else from_number,
             to=f"whatsapp:{to_number}" if not to_number.startswith("whatsapp:") else to_number,
             body=text,
         )
+
+    try:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, _sync_send)
         logger.info("WhatsApp brief sent to %s", to_number)
         return True
     except Exception as exc:

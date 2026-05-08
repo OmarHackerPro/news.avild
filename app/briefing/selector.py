@@ -32,7 +32,7 @@ async def fetch_top_clusters(
         resp = await client.search(index=INDEX_CLUSTERS, body=body)
     except Exception as exc:
         logger.error("OpenSearch cluster query failed: %s", exc)
-        return []
+        raise
 
     clusters = []
     for hit in resp["hits"]["hits"]:
