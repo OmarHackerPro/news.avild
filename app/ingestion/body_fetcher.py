@@ -17,7 +17,7 @@ from urllib.robotparser import RobotFileParser
 _CF_CHALLENGE_TITLE = "<title>Just a moment...</title>"
 _CF_CHL_SCRIPT_TOKEN = "cf-chl-"
 _ROBOTS_TTL_SECONDS = 24 * 60 * 60  # 24h
-_DEFAULT_TIMEOUT_SECONDS = 8
+_DEFAULT_TIMEOUT_SECONDS = 20
 
 _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -120,7 +120,7 @@ def _make_session():
     """Build the HTTP session. curl-cffi preferred; httpx fallback."""
     try:
         from curl_cffi.requests import AsyncSession
-        return AsyncSession(impersonate="chrome120")
+        return AsyncSession(impersonate="chrome131")
     except Exception:
         import httpx
         return httpx.AsyncClient(http2=True, follow_redirects=True)

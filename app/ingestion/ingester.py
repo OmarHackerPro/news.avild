@@ -393,8 +393,11 @@ async def ingest_source(
                 try:
                     if not article_slug:
                         logger.warning("[%s] Article missing slug — entity store skipped", name)
-                    # LLM NER only runs on new articles, not duplicates
-                    text_entities = await extract_entities(article, slug=article_slug, db_session=None)
+                    # LLM NER only runs on new articles, not duplicates. Use a real
+                    # session so results are cached in ner_cache (prevents re-billing
+                    # if the backfill script later processes the same slug).
+                    async with AsyncSessionLocal() as ner_session:
+                        text_entities = await extract_entities(article, slug=article_slug, db_session=ner_session)
                     all_entities = merge_entities(text_entities, tag_result["tag_entities"])
                     entities = all_entities
                     if all_entities:

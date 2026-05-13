@@ -1,11 +1,13 @@
 """Send the WhatsApp brief.
 
 Stub mode (default): writes brief to a file and logs to stdout.
-Live mode: sends via Twilio when TWILIO_ACCOUNT_SID is set.
+Live mode: sends via WAHA when WAHA_API_KEY is set.
 """
 import logging
 import os
 from pathlib import Path
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +20,8 @@ async def send_brief(
     date_str: str | None = None,
 ) -> bool:
     """Send or stub-send the brief. Returns True on success."""
-    twilio_sid = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
-
-    if twilio_sid:
-        return await _send_twilio(text)
+    if os.environ.get("WAHA_API_KEY", "").strip():
+        return await _send_waha(text)
 
     return _send_stub(text, output_dir=output_dir, date_str=date_str)
 
@@ -37,37 +37,25 @@ def _send_stub(text: str, output_dir: str, date_str: str | None) -> bool:
     return True
 
 
-async def _send_twilio(text: str) -> bool:
-    import asyncio
+async def _send_waha(text: str) -> bool:
+    url = os.environ.get("WAHA_URL", "http://waha:3000").rstrip("/")
+    api_key = os.environ["WAHA_API_KEY"]
+    chat_id = os.environ.get("WAHA_CHAT_ID", "")
 
-    try:
-        from twilio.rest import Client  # noqa: PLC0415
-    except ImportError:
-        logger.error("twilio package not installed; cannot send live message")
+    if not chat_id:
+        logger.error("WAHA_CHAT_ID not set; cannot send")
         return False
 
-    sid = os.environ["TWILIO_ACCOUNT_SID"]
-    token = os.environ["TWILIO_AUTH_TOKEN"]
-    from_number = os.environ.get("TWILIO_FROM_NUMBER", "")
-    to_number = os.environ.get("WHATSAPP_PHONE_NUMBER", "")
-
-    if not to_number:
-        logger.error("WHATSAPP_PHONE_NUMBER not set; cannot send")
-        return False
-
-    def _sync_send():
-        client = Client(sid, token)
-        client.messages.create(
-            from_=f"whatsapp:{from_number}" if not from_number.startswith("whatsapp:") else from_number,
-            to=f"whatsapp:{to_number}" if not to_number.startswith("whatsapp:") else to_number,
-            body=text,
-        )
-
     try:
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, _sync_send)
-        logger.info("WhatsApp brief sent to %s", to_number)
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"{url}/api/sendText",
+                headers={"X-Api-Key": api_key},
+                json={"chatId": chat_id, "text": text, "session": "default"},
+            )
+            resp.raise_for_status()
+        logger.info("WhatsApp brief sent to %s via WAHA", chat_id)
         return True
     except Exception as exc:
-        logger.error("Twilio send failed: %s", exc)
+        logger.error("WAHA send failed: %s", exc)
         return False

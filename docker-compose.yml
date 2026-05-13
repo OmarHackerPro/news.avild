@@ -54,6 +54,21 @@ services:
         sleep 3600;
       done'
 
+  waha:
+    image: devlikeapro/waha
+    restart: unless-stopped
+    environment:
+      WAHA_API_KEY: ${WAHA_API_KEY:-}
+      WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME:-admin}
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD:-}
+      WHATSAPP_DEFAULT_ENGINE: ${WHATSAPP_DEFAULT_ENGINE:-NOWEB}
+      WAHA_LOG_FORMAT: ${WAHA_LOG_FORMAT:-PRETTY}
+      WAHA_PRINT_QR: ${WAHA_PRINT_QR:-True}
+    volumes:
+      - waha_sessions:/app/.sessions
+    ports:
+      - "3000:3000"
+
   briefing:
     build:
       context: .
@@ -65,14 +80,14 @@ services:
       OPENSEARCH_USER: ${OPENSEARCH_USER:-}
       OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      WHATSAPP_PHONE_NUMBER: ${WHATSAPP_PHONE_NUMBER:-}
-      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
-      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
-      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      WAHA_URL: ${WAHA_URL:-http://waha:3000}
+      WAHA_API_KEY: ${WAHA_API_KEY:-}
+      WAHA_CHAT_ID: ${WAHA_CHAT_ID:-}
     volumes:
       - brief_outputs:/app/briefs
     depends_on:
       - db
+      - waha
     command: >-
       sh -c 'while true; do
         SECS=$$(python3 -c "import datetime; now=datetime.datetime.now(datetime.timezone.utc); nxt=now.replace(hour=8,minute=0,second=0,microsecond=0); nxt=nxt+datetime.timedelta(days=1) if now>=nxt else nxt; print(max(int((nxt-now).total_seconds()),60))");
@@ -97,3 +112,4 @@ volumes:
   postgres_data:
   avatar_uploads:
   brief_outputs:
+  waha_sessions:
