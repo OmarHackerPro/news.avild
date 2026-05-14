@@ -114,7 +114,7 @@ class NerModel:
         self,
         entities: list[ExtractedEntity],
         text: str,
-        gap: int = 2,
+        gap: int = 1,
     ) -> list[ExtractedEntity]:
         """Merge same-type entities whose spans are within `gap` chars.
 
