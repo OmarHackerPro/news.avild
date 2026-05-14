@@ -31,6 +31,7 @@ services:
       OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
       NER_SIDECAR_URL: ${NER_SIDECAR_URL:-http://ner:8001}
       NER_ACTIVE_MODEL: ${NER_ACTIVE_MODEL:-haiku-4-5}
+      NER_EVAL_ADMIN_SECRET: ${NER_EVAL_ADMIN_SECRET:-}
     volumes:
       - avatar_uploads:/app/static/uploads/avatars
     depends_on:
