@@ -25,7 +25,7 @@ LABEL_MAP: dict[str, str] = {
     "CVE": "cve",
 }
 
-MODEL_ID = os.getenv("NER_MODEL_ID", "attack-vector/SecureModernBERT-NER")
+MODEL_ID = os.getenv("NER_MODEL_PATH", os.getenv("NER_MODEL_ID", "attack-vector/SecureModernBERT-NER"))
 MODEL_REVISION = os.getenv("NER_MODEL_REVISION", "main")
 MAX_TOKENS = int(os.getenv("NER_MAX_TOKENS", "4096"))
 CONFIDENCE_THRESHOLD = float(os.getenv("NER_CONFIDENCE_THRESHOLD", "0.5"))
@@ -58,9 +58,11 @@ class NerModel:
             return cls._instance
         inst = cls()
         start = time.perf_counter()
-        logger.info("Loading NER model %s@%s on CPU", MODEL_ID, MODEL_REVISION)
-        inst.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=MODEL_REVISION)
-        inst.model = AutoModelForTokenClassification.from_pretrained(MODEL_ID, revision=MODEL_REVISION)
+        logger.info("Loading NER model %s on CPU", MODEL_ID)
+        local = os.path.isdir(MODEL_ID)
+        kwargs = {} if local else {"revision": MODEL_REVISION}
+        inst.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, **kwargs)
+        inst.model = AutoModelForTokenClassification.from_pretrained(MODEL_ID, **kwargs)
         inst.model.to(inst._device)
         inst.model.eval()
         inst._id2label = inst.model.config.id2label

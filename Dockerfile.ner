@@ -10,12 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 COPY requirements.ner.txt .
 RUN pip install --no-cache-dir --timeout 300 -r requirements.ner.txt
 
-# Bake model into image at build time for reproducibility & offline cold-start
-ARG NER_MODEL_ID=attack-vector/SecureModernBERT-NER
-ARG NER_MODEL_REVISION=main
-ENV HF_HOME=/app/.hf_cache
-RUN python -c "from huggingface_hub import snapshot_download; \
-    snapshot_download('${NER_MODEL_ID}', revision='${NER_MODEL_REVISION}', cache_dir='/app/.hf_cache', ignore_patterns=['optimizer.pt', 'optimizer.*'])"
+# Model files baked in from local ner_model/ — no runtime download needed
+COPY ner_model/ /app/model/
+ENV NER_MODEL_PATH=/app/model
 
 # App code
 COPY app/services/ner_sidecar/ /app/app/services/ner_sidecar/
