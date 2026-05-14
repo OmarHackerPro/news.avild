@@ -82,7 +82,7 @@ def _parse_published_at(val) -> Optional[datetime]:
 _MAX_ARTICLE_CVES_FOR_CVE_TOPIC = 5  # articles with >5 CVEs skip CVE topic upsert
 
 _ROUNDUP_KEYWORDS = frozenset([
-    "patch tuesday", "monthly", "cve landscape", "roundup", "weekly digest",
+    "patch tuesday", "monthly roundup", "cve landscape", "roundup", "weekly digest",
 ])
 _ROUNDUP_CVE_THRESHOLD = 10  # articles with >10 CVEs treated as roundup clusters
 

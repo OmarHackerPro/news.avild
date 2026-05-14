@@ -305,6 +305,7 @@ async def test_cluster_article_no_cve_skips_cve_flow():
     ("FortiOS RCE CVE-2026-1234 actively exploited", ["CVE-2026-1234"], False),
     ("Lazarus Group targets financial institutions", [], False),
     ("Threat landscape shifts after CVSS overhaul", [], False),
+    ("Google monthly security updates for May 2026", [], False),
     # exactly 10 CVEs — not a roundup (threshold is >10)
     ("Multiple CVEs fixed", [f"CVE-2026-{i:04d}" for i in range(10)], False),
 ])
