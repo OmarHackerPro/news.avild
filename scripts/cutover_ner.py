@@ -12,6 +12,7 @@ This script does NOT modify .env or restart containers automatically — operato
 do those steps manually so the cutover stays observable and rollback stays one
 config change away.
 """
+import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import asyncio
 import datetime
 import json

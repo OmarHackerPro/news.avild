@@ -9,6 +9,7 @@ non-vuln_alias entries are preserved untouched. Existing vuln_alias entries
 (if any) are merged by normalized_key, with the canonical list taking
 precedence on display-name conflicts.
 """
+import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import asyncio
 import json
 import re

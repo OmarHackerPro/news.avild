@@ -9,6 +9,7 @@ For each ner_cache row under model_version='haiku-4-5':
 
 At the end, print a summary of agree / only-haiku / only-local counts per type.
 """
+import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import asyncio
 import logging
 from datetime import datetime
