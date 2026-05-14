@@ -112,6 +112,10 @@ async def upsert_article(article: NormalizedArticle) -> bool:
 
     Returns True if a new document was indexed, False if it was a duplicate.
     """
+    if (article.get("author") or "").lower().startswith("sponsored"):
+        logger.debug("Skipping sponsored article: %s", article.get("slug"))
+        return False
+
     slug, doc = _prepare_article_doc(article)
 
     # URL-based dedup: same source_url under a different slug

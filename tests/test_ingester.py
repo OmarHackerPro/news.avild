@@ -1,5 +1,9 @@
 from datetime import datetime, timezone
-from app.ingestion.ingester import _prepare_article_doc
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from app.ingestion.ingester import _prepare_article_doc, upsert_article
 
 
 class TestPrepareArticleDoc:
@@ -73,3 +77,49 @@ class TestPrepareArticleDoc:
         assert doc["last_fetch_attempt_at"] is None
         assert doc["fetch_attempt_count"] == 0
         assert doc["is_teaser"] is False
+
+
+
+class TestUpsertArticleSponsored:
+    @pytest.mark.asyncio
+    async def test_sponsored_author_skipped_without_touching_opensearch(self):
+        article = {
+            "slug": "sponsored-post-abc12345",
+            "author": "Sponsored by Acme Corp",
+            "title": "Why you need our product",
+            "source_name": "BleepingComputer",
+        }
+        with patch("app.ingestion.ingester.get_os_client") as mock_client:
+            result = await upsert_article(article)
+        assert result is False
+        mock_client.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_sponsored_lowercase_variant_also_skipped(self):
+        article = {
+            "slug": "sponsored-post-def12345",
+            "author": "sponsored by Keep Aware",
+            "title": "Browser security whitepaper",
+            "source_name": "BleepingComputer",
+        }
+        with patch("app.ingestion.ingester.get_os_client") as mock_client:
+            result = await upsert_article(article)
+        assert result is False
+        mock_client.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_non_sponsored_author_proceeds_to_opensearch(self):
+        article = {
+            "slug": "real-article-ghi12345",
+            "author": "Lawrence Abrams",
+            "title": "New ransomware campaign targets hospitals",
+            "source_name": "BleepingComputer",
+            "published_at": "2026-05-14T10:00:00+00:00",
+            "guid": "https://bc.com/1",
+        }
+        os_mock = AsyncMock()
+        os_mock.count.return_value = {"count": 0}
+        os_mock.index = AsyncMock()
+        with patch("app.ingestion.ingester.get_os_client", return_value=os_mock):
+            await upsert_article(article)
+        os_mock.index.assert_awaited()
