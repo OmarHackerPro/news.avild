@@ -18,7 +18,7 @@ router = APIRouter(prefix="/admin/ner-eval", tags=["admin"])
 
 def _check_admin(request: Request) -> None:
     secret = request.headers.get("x-admin-secret") or request.query_params.get("admin_secret")
-    if not settings.ADMIN_SECRET or secret != settings.ADMIN_SECRET:
+    if not settings.NER_EVAL_ADMIN_SECRET or secret != settings.NER_EVAL_ADMIN_SECRET:
         raise HTTPException(status_code=403, detail="Admin auth required")
 
 

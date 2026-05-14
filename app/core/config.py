@@ -39,8 +39,8 @@ class Settings:
     # Base URL for password-reset email links
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:8000")
 
-    # Admin secret — required for /api/admin/* endpoints
-    ADMIN_SECRET: str = os.getenv("ADMIN_SECRET", "")
+    # Admin secret — required for /api/admin/ner-eval endpoints
+    NER_EVAL_ADMIN_SECRET: str = os.getenv("NER_EVAL_ADMIN_SECRET", "")
 
     # OpenSearch
     OPENSEARCH_URL: str = os.getenv("OPENSEARCH_URL", "")
