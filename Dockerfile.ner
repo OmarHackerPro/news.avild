@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 
 # Python deps
 COPY requirements.ner.txt .
-RUN pip install --no-cache-dir -r requirements.ner.txt
+RUN pip install --no-cache-dir --timeout 300 -r requirements.ner.txt
 
 # Bake model into image at build time for reproducibility & offline cold-start
 ARG NER_MODEL_ID=attack-vector/SecureModernBERT-NER
