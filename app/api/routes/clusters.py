@@ -81,7 +81,12 @@ async def list_clusters(
         filters.append({"range": {"created_at": range_clause}})
 
     body: dict = {
-        "query": {"bool": {"filter": filters}} if filters else {"match_all": {}},
+        "query": {
+            "bool": {
+                "filter": filters,
+                "must_not": [{"term": {"is_roundup": True}}],
+            }
+        },
         "sort": [{"created_at": {"order": "desc"}}],
         "from": offset,
         "size": limit,
