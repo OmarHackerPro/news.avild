@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,8 +16,24 @@ from app.db.opensearch import INDEX_NEWS, get_os_client
 router = APIRouter(prefix="/admin/ner-eval", tags=["admin"])
 
 
+_LOGIN_PAGE = """<!doctype html><html><head><meta charset="utf-8">
+<title>NER Eval Login</title>
+<style>body{{font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f5f5}}
+form{{background:#fff;padding:2em;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1);min-width:300px}}
+h2{{margin:0 0 1em}}input{{width:100%;padding:.6em;font-size:1em;box-sizing:border-box;border:1px solid #ccc;border-radius:4px}}
+button{{margin-top:.8em;width:100%;padding:.7em;background:#333;color:#fff;border:none;border-radius:4px;font-size:1em;cursor:pointer}}
+.err{{color:#c00;margin-top:.5em;font-size:.9em}}</style></head>
+<body><form method="post"><h2>NER Eval</h2>
+<input type="password" name="secret" placeholder="Admin secret" autofocus>
+{err}<button type="submit">Enter</button></form></body></html>"""
+
+
 def _check_admin(request: Request) -> None:
-    secret = request.headers.get("x-admin-secret") or request.query_params.get("admin_secret")
+    secret = (
+        request.headers.get("x-admin-secret")
+        or request.query_params.get("admin_secret")
+        or request.cookies.get("ner_eval_secret")
+    )
     if not settings.NER_EVAL_ADMIN_SECRET or secret != settings.NER_EVAL_ADMIN_SECRET:
         raise HTTPException(status_code=403, detail="Admin auth required")
 
@@ -28,6 +44,22 @@ class VerdictIn(BaseModel):
     entity_normalized_key: str
     source: str
     verdict: str  # correct | wrong | skip
+
+
+@router.get("/login", response_class=HTMLResponse)
+async def login_page() -> HTMLResponse:
+    return HTMLResponse(_LOGIN_PAGE.format(err=""))
+
+
+@router.post("/login")
+async def login_submit(request: Request) -> Response:
+    form = await request.form()
+    secret = form.get("secret", "")
+    if secret != settings.NER_EVAL_ADMIN_SECRET:
+        return HTMLResponse(_LOGIN_PAGE.format(err='<p class="err">Wrong secret.</p>'), status_code=401)
+    response = RedirectResponse(url="/api/admin/ner-eval", status_code=303)
+    response.set_cookie("ner_eval_secret", secret, httponly=True, samesite="strict")
+    return response
 
 
 @router.get("", response_class=HTMLResponse)
