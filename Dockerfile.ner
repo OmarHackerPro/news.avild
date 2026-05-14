@@ -15,7 +15,7 @@ ARG NER_MODEL_ID=attack-vector/SecureModernBERT-NER
 ARG NER_MODEL_REVISION=main
 ENV HF_HOME=/app/.hf_cache
 RUN python -c "from huggingface_hub import snapshot_download; \
-    snapshot_download('${NER_MODEL_ID}', revision='${NER_MODEL_REVISION}', cache_dir='/app/.hf_cache')"
+    snapshot_download('${NER_MODEL_ID}', revision='${NER_MODEL_REVISION}', cache_dir='/app/.hf_cache', ignore_patterns=['optimizer.pt', 'optimizer.*'])"
 
 # App code
 COPY app/services/ner_sidecar/ /app/app/services/ner_sidecar/
