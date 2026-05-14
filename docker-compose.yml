@@ -29,6 +29,8 @@ services:
       OPENSEARCH_URL: ${OPENSEARCH_URL:-}
       OPENSEARCH_USER: ${OPENSEARCH_USER:-}
       OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
+      NER_SIDECAR_URL: ${NER_SIDECAR_URL:-http://ner:8001}
+      NER_ACTIVE_MODEL: ${NER_ACTIVE_MODEL:-haiku-4-5}
     volumes:
       - avatar_uploads:/app/static/uploads/avatars
     depends_on:
@@ -44,8 +46,11 @@ services:
       OPENSEARCH_URL: ${OPENSEARCH_URL:-}
       OPENSEARCH_USER: ${OPENSEARCH_USER:-}
       OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
+      NER_SIDECAR_URL: ${NER_SIDECAR_URL:-http://ner:8001}
+      NER_ACTIVE_MODEL: ${NER_ACTIVE_MODEL:-haiku-4-5}
     depends_on:
       - db
+      - ner
     command: >
       sh -c 'while true; do
         echo "=== Starting feed ingestion: $$(date -Iseconds) ===";
@@ -79,6 +84,8 @@ services:
       OPENSEARCH_URL: ${OPENSEARCH_URL:-}
       OPENSEARCH_USER: ${OPENSEARCH_USER:-}
       OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
+      NER_SIDECAR_URL: ${NER_SIDECAR_URL:-http://ner:8001}
+      NER_ACTIVE_MODEL: ${NER_ACTIVE_MODEL:-haiku-4-5}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       WAHA_URL: ${WAHA_URL:-http://waha:3000}
       WAHA_API_KEY: ${WAHA_API_KEY:-}
@@ -95,6 +102,26 @@ services:
         sleep $$SECS;
         python scripts/send_daily_brief.py;
       done'
+
+  ner:
+    build:
+      context: .
+      dockerfile: Dockerfile.ner
+    restart: unless-stopped
+    environment:
+      NER_MODEL_ID: attack-vector/SecureModernBERT-NER
+      NER_MODEL_REVISION: ${NER_MODEL_REVISION:-main}
+      NER_MAX_TOKENS: "4096"
+      NER_CONFIDENCE_THRESHOLD: "0.5"
+      NER_MODEL_VERSION: securebert-v1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    expose:
+      - "8001"
 
   db:
     image: postgres:16-alpine

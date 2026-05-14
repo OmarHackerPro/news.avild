@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head>
+  <meta charset="utf-8">
+  <title>NER Eval — Pending</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 900px; margin: 2em auto; padding: 0 1em; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.5em 1em; border-bottom: 1px solid #ddd; text-align: left; }
+    th { background: #f5f5f5; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .count { font-variant-numeric: tabular-nums; color: #888; }
+  </style>
+</head><body>
+  <h1>NER Eval — Pending Adjudication</h1>
+  <p><a href="/api/admin/ner-eval/metrics?admin_secret={{ admin_secret }}">View metrics</a></p>
+  <table>
+    <thead><tr><th>Article</th><th>Pending entities</th></tr></thead>
+    <tbody>
+      {% for row in pending %}
+      <tr>
+        <td><a href="/api/admin/ner-eval/article/{{ row.slug }}?admin_secret={{ admin_secret }}">{{ row.slug }}</a></td>
+        <td class="count">{{ row.pending_count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body></html>

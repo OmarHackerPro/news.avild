@@ -1,7 +1,11 @@
-"""Claude Haiku NER — extracts security entities from article text.
+"""Claude Haiku NER — BACKFILL / EVAL ONLY as of 2026-05-14.
 
-Caches results in Postgres ner_cache table. Pass db_session=None to skip cache
-(useful for unit tests and one-off calls).
+The hot ingestion path now uses app.ingestion.ner_client (local sidecar).
+This module is preserved for one-off backfills, A/B comparisons, and the
+ner_eval_judgments harness. Do not call from production ingestion code.
+
+Caches results in Postgres ner_cache table under model_version='haiku-4-5'.
+Pass db_session=None to skip cache (useful for unit tests and one-off calls).
 """
 import json
 import logging
@@ -80,7 +84,10 @@ _TOOL = {
 
 async def _get_cached(slug: str, session: AsyncSession) -> Optional[list[dict]]:
     result = await session.execute(
-        text("SELECT entities_json FROM ner_cache WHERE slug = :slug"),
+        text(
+            "SELECT entities_json FROM ner_cache "
+            "WHERE slug = :slug AND model_version = 'haiku-4-5'"
+        ),
         {"slug": slug},
     )
     row = result.fetchone()
@@ -90,9 +97,9 @@ async def _get_cached(slug: str, session: AsyncSession) -> Optional[list[dict]]:
 async def _write_cache(slug: str, entities: list[dict], session: AsyncSession) -> None:
     await session.execute(
         text(
-            "INSERT INTO ner_cache (slug, entities_json, extracted_at) "
-            "VALUES (:slug, :entities, NOW()) "
-            "ON CONFLICT (slug) DO NOTHING"
+            "INSERT INTO ner_cache (slug, model_version, entities_json, extracted_at) "
+            "VALUES (:slug, 'haiku-4-5', :entities, NOW()) "
+            "ON CONFLICT (slug, model_version) DO NOTHING"
         ),
         {"slug": slug, "entities": json.dumps(entities)},
     )

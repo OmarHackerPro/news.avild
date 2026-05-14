@@ -47,5 +47,10 @@ class Settings:
     OPENSEARCH_USER: str = os.getenv("OPENSEARCH_USER", "")
     OPENSEARCH_PASSWORD: str = os.getenv("OPENSEARCH_PASSWORD", "")
 
+    # Local NER sidecar
+    NER_SIDECAR_URL: str = os.getenv("NER_SIDECAR_URL", "http://ner:8001")
+    NER_ACTIVE_MODEL: str = os.getenv("NER_ACTIVE_MODEL", "haiku-4-5")
+    NER_REQUEST_TIMEOUT_S: float = float(os.getenv("NER_REQUEST_TIMEOUT_S", "30"))
+
 
 settings = Settings()
