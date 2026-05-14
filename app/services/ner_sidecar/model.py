@@ -107,7 +107,41 @@ class NerModel:
         label_ids = label_ids.tolist()
         labels = [self._id2label[i] for i in label_ids]
 
-        return self._merge_bio(labels, scores, offsets, text)
+        raw = self._merge_bio(labels, scores, offsets, text)
+        return self._post_merge(raw, text)
+
+    def _post_merge(
+        self,
+        entities: list[ExtractedEntity],
+        text: str,
+        gap: int = 2,
+    ) -> list[ExtractedEntity]:
+        """Merge same-type entities whose spans are within `gap` chars.
+
+        ByteLevel BPE splits words into subword tokens; a single O-tagged
+        subword (e.g. the 'I' in 'Ivanti' or '-' in 'CVE-2021-44228') causes
+        _merge_bio to prematurely flush and produce fragments. Merging spans
+        within 2 chars reunites those fragments without risk of joining
+        genuinely separate entities (which need ≥4 chars of separation).
+        """
+        if len(entities) <= 1:
+            return entities
+        entities = sorted(entities, key=lambda e: e.char_offset)
+        merged = [entities[0]]
+        for ent in entities[1:]:
+            prev = merged[-1]
+            prev_end = prev.char_offset + len(prev.name)
+            if prev.type == ent.type and (ent.char_offset - prev_end) <= gap:
+                new_end = ent.char_offset + len(ent.name)
+                merged[-1] = ExtractedEntity(
+                    type=prev.type,
+                    name=text[prev.char_offset:new_end].strip(),
+                    score=(prev.score + ent.score) / 2,
+                    char_offset=prev.char_offset,
+                )
+            else:
+                merged.append(ent)
+        return merged
 
     def _merge_bio(
         self,
