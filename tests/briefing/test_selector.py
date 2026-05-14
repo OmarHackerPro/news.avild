@@ -43,3 +43,17 @@ async def test_fetch_top_clusters_empty_index():
 
     result = await fetch_top_clusters(mock_client, top_n=7, hours=24)
     assert result == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_top_clusters_excludes_roundups():
+    mock_client = MagicMock()
+    mock_client.search = AsyncMock(return_value={
+        "hits": {"hits": [], "total": {"value": 0}}
+    })
+
+    await fetch_top_clusters(mock_client, top_n=7, hours=24)
+
+    call_body = mock_client.search.call_args.kwargs["body"]
+    must_not = call_body["query"]["bool"]["must_not"]
+    assert {"term": {"is_roundup": True}} in must_not

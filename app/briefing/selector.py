@@ -22,8 +22,9 @@ async def fetch_top_clusters(
         "size": top_n,
         "_source": _SOURCE_FIELDS,
         "query": {
-            "range": {
-                "latest_at": {"gte": f"now-{hours}h"}
+            "bool": {
+                "filter": [{"range": {"latest_at": {"gte": f"now-{hours}h"}}}],
+                "must_not": [{"term": {"is_roundup": True}}],
             }
         },
         "sort": [{"score": {"order": "desc"}}],
