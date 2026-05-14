@@ -376,25 +376,27 @@ async def extract_entities(
     slug: str | None = None,
     db_session=None,
 ) -> list[dict]:
-    """Extract entities from article. LLM NER runs first if slug is provided; regex fills gaps."""
-    llm_entities: list[dict] = []
+    """Extract entities from article. Local NER runs first if slug is provided; regex fills gaps."""
+    model_entities: list[dict] = []
     if slug:
-        from app.ingestion.ner_llm import extract_entities_llm
-        llm_entities = await extract_entities_llm(
+        from app.ingestion.ner_client import extract_entities_local
+        body = article.get("content_html") or article.get("summary") or article.get("desc") or ""
+        if body:
+            body = strip_html(body)
+        model_entities = await extract_entities_local(
             slug=slug,
             title=article.get("title") or "",
-            summary=article.get("summary") or article.get("desc") or "",
+            body=body,
             db_session=db_session,
         )
 
     regex_entities = _extract_regex(article)
 
-    seen_keys = {e["normalized_key"] for e in llm_entities}
-    merged = list(llm_entities)
+    seen_keys = {e["normalized_key"] for e in model_entities}
+    merged = list(model_entities)
     for e in regex_entities:
         key = e["normalized_key"]
-        # suppress if exact match OR if LLM already has a more-specific variant
-        # (e.g. lockbit-3.0 in seen_keys suppresses lockbit from regex)
+        # suppress if exact match OR if model already has a more-specific variant
         if key not in seen_keys and not any(k.startswith(key + "-") for k in seen_keys):
             merged.append(e)
             seen_keys.add(key)
