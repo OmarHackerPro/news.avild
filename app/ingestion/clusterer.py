@@ -81,6 +81,18 @@ def _parse_published_at(val) -> Optional[datetime]:
 
 _MAX_ARTICLE_CVES_FOR_CVE_TOPIC = 5  # articles with >5 CVEs are treated as roundups
 
+_ROUNDUP_KEYWORDS = frozenset([
+    "patch tuesday", "monthly", "landscape", "roundup", "weekly digest",
+])
+_ROUNDUP_CVE_THRESHOLD = 10
+
+
+def _is_roundup(label: str, cve_ids: list[str]) -> bool:
+    label_lower = label.lower()
+    if any(kw in label_lower for kw in _ROUNDUP_KEYWORDS):
+        return True
+    return len(cve_ids) > _ROUNDUP_CVE_THRESHOLD
+
 
 async def cluster_article(
     article: dict,

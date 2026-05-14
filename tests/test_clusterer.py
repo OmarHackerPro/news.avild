@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from app.ingestion.clusterer import _build_event_signature, _updated_centroid
+from app.ingestion.clusterer import _build_event_signature, _updated_centroid, _is_roundup
 
 
 # ---------------------------------------------------------------------------
@@ -286,3 +286,26 @@ async def test_cluster_article_no_cve_skips_cve_flow():
 
     mock_upsert.assert_not_awaited()
     mock_stubs.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# _is_roundup — pure heuristic
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("label,cve_ids,expected", [
+    # keyword matches
+    ("Patch Tuesday May 2026: 80 fixes", [], True),
+    ("March 2026 CVE Landscape: 31 High-Impact Vulnerabilities", [], True),
+    ("Weekly Digest: Top Security Stories", [], True),
+    ("Monthly Roundup: April Threats", [], True),
+    ("Weekly Digest Cybersecurity News", [], True),
+    # CVE count threshold
+    ("FortiOS RCE", [f"CVE-2026-{i:04d}" for i in range(11)], True),
+    # normal articles — not a roundup
+    ("FortiOS RCE CVE-2026-1234 actively exploited", ["CVE-2026-1234"], False),
+    ("Lazarus Group targets financial institutions", [], False),
+    # exactly 10 CVEs — not a roundup (threshold is >10)
+    ("Multiple CVEs fixed", [f"CVE-2026-{i:04d}" for i in range(10)], False),
+])
+def test_is_roundup(label, cve_ids, expected):
+    assert _is_roundup(label, cve_ids) is expected
