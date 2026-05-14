@@ -330,6 +330,7 @@ async def create_cluster(
     doc = {
         "label": article.get("title", ""),
         "state": "new",
+        "is_roundup": _is_roundup(article.get("title", ""), cve_ids),
         "summary": "",
         "why_it_matters": "",
         "score": 0.0,

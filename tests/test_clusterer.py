@@ -310,3 +310,53 @@ async def test_cluster_article_no_cve_skips_cve_flow():
 ])
 def test_is_roundup(label, cve_ids, expected):
     assert _is_roundup(label, cve_ids) is expected
+
+
+# ---------------------------------------------------------------------------
+# create_cluster — sets is_roundup
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_create_cluster_sets_is_roundup_true_for_roundup_label():
+    os_mock = AsyncMock()
+    os_mock.index.return_value = {"_id": "cluster-roundup-001"}
+    os_mock.update.return_value = {}
+
+    article = {
+        "slug": "patch-tuesday-may-2026",
+        "title": "Patch Tuesday May 2026: 80 fixes",
+        "cve_ids": [f"CVE-2026-{i:04d}" for i in range(80)],
+        "published_at": "2026-05-01T10:00:00Z",
+        "source_name": "Microsoft",
+    }
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import create_cluster
+        await create_cluster(article, [], embedding=[0.1] * 1024)
+
+    indexed = os_mock.index.call_args.kwargs["body"]
+    assert indexed["is_roundup"] is True
+
+
+@pytest.mark.asyncio
+async def test_create_cluster_sets_is_roundup_false_for_normal_article():
+    os_mock = AsyncMock()
+    os_mock.index.return_value = {"_id": "cluster-normal-001"}
+    os_mock.update.return_value = {}
+
+    article = {
+        "slug": "fortios-rce-001",
+        "title": "FortiOS RCE CVE-2026-1234 actively exploited",
+        "cve_ids": ["CVE-2026-1234"],
+        "published_at": "2026-04-27T10:00:00Z",
+        "source_name": "BleepingComputer",
+    }
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import create_cluster
+        await create_cluster(article, [], embedding=[0.1] * 1024)
+
+    indexed = os_mock.index.call_args.kwargs["body"]
+    assert indexed["is_roundup"] is False

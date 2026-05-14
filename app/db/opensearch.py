@@ -203,6 +203,7 @@ _CLUSTERS_MAPPING = {
                 },
             },
             "merged_into": {"type": "keyword"},
+            "is_roundup":     {"type": "boolean"},
         },
     },
 }
