@@ -35,3 +35,6 @@ static/uploads/
 
 # Git worktrees
 .worktrees/
+
+# Local NER model weights (baked into Docker image, not tracked in git)
+ner_model/
