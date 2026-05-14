@@ -1,0 +1,85 @@
+<!doctype html>
+<html><head>
+  <meta charset="utf-8">
+  <title>NER Eval — {{ slug }}</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 1100px; margin: 2em auto; padding: 0 1em; }
+    .grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 2em; }
+    .body { white-space: pre-wrap; font-size: 0.92em; line-height: 1.5; background: #fafafa; padding: 1em; border: 1px solid #eee; max-height: 70vh; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+    th, td { padding: 0.4em 0.5em; border-bottom: 1px solid #eee; text-align: left; }
+    .src-haiku { background: #fff5e6; }
+    .src-local { background: #e6f3ff; }
+    .src-both  { background: #e6ffe6; }
+    .verdict-buttons button { margin-right: 0.3em; cursor: pointer; }
+    .verdict-correct { color: #060; }
+    .verdict-wrong   { color: #c00; }
+    .verdict-skip    { color: #888; }
+    .zone-new-input  { color: #b58; font-size: 0.85em; }
+    .zone-shared     { color: #888; font-size: 0.85em; }
+    .done { opacity: 0.4; }
+  </style>
+</head><body>
+  <h1>{{ title or slug }}</h1>
+  <p><a href="/api/admin/ner-eval?admin_secret={{ admin_secret }}">&laquo; Back to list</a></p>
+  <div class="grid">
+    <div>
+      <h3>Body</h3>
+      <div class="body">{{ body }}</div>
+    </div>
+    <div>
+      <h3>Entities ({{ judgments|length }})</h3>
+      <table id="entities">
+        <thead><tr><th>Source</th><th>Type</th><th>Key</th><th>Zone</th><th>Verdict</th></tr></thead>
+        <tbody>
+        {% for j in judgments %}
+          <tr class="src-{{ j.source }} {% if j.verdict %}done{% endif %}"
+              data-type="{{ j.entity_type }}"
+              data-key="{{ j.entity_normalized_key }}"
+              data-source="{{ j.source }}">
+            <td>{{ j.source }}</td>
+            <td>{{ j.entity_type }}</td>
+            <td>{{ j.entity_normalized_key }}</td>
+            <td class="zone-{{ j.input_zone or 'shared' }}">{{ j.input_zone or '' }}</td>
+            <td class="verdict-buttons">
+              {% if j.verdict %}
+                <span class="verdict-{{ j.verdict }}">{{ j.verdict }}</span>
+              {% else %}
+                <button onclick="submitVerdict(this, 'correct')">&#10003; correct</button>
+                <button onclick="submitVerdict(this, 'wrong')">&#10007; wrong</button>
+                <button onclick="submitVerdict(this, 'skip')">? skip</button>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <script>
+    const ADMIN_SECRET = "{{ admin_secret }}";
+    const SLUG = "{{ slug }}";
+    async function submitVerdict(btn, verdict) {
+      const row = btn.closest("tr");
+      const payload = {
+        slug: SLUG,
+        entity_type: row.dataset.type,
+        entity_normalized_key: row.dataset.key,
+        source: row.dataset.source,
+        verdict: verdict,
+      };
+      const resp = await fetch("/api/admin/ner-eval/verdict?admin_secret=" + encodeURIComponent(ADMIN_SECRET), {
+        method: "POST",
+        headers: {"content-type": "application/json"},
+        body: JSON.stringify(payload),
+      });
+      if (resp.ok) {
+        row.classList.add("done");
+        row.querySelector(".verdict-buttons").innerHTML =
+          '<span class="verdict-' + verdict + '">' + verdict + '</span>';
+      } else {
+        alert("Failed: " + resp.status);
+      }
+    }
+  </script>
+</body></html>
