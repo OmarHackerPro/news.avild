@@ -45,8 +45,9 @@ async def list_pending(
     )
     pending = [{"slug": r[0], "pending_count": r[1]} for r in rows.fetchall()]
     return templates.TemplateResponse(
+        request,
         "admin_ner_eval_list.html",
-        {"request": request, "pending": pending, "admin_secret": settings.NER_EVAL_ADMIN_SECRET},
+        {"pending": pending, "admin_secret": settings.NER_EVAL_ADMIN_SECRET},
     )
 
 
@@ -86,9 +87,9 @@ async def adjudicate_article(
     ]
 
     return templates.TemplateResponse(
+        request,
         "admin_ner_eval_article.html",
         {
-            "request": request,
             "slug": slug,
             "title": title,
             "body": body,
