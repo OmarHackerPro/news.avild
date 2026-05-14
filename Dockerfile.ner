@@ -1,0 +1,27 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python deps
+COPY requirements.ner.txt .
+RUN pip install --no-cache-dir -r requirements.ner.txt
+
+# Bake model into image at build time for reproducibility & offline cold-start
+ARG NER_MODEL_ID=attack-vector/SecureModernBERT-NER
+ARG NER_MODEL_REVISION=main
+ENV HF_HOME=/app/.hf_cache
+RUN python -c "from huggingface_hub import snapshot_download; \
+    snapshot_download('${NER_MODEL_ID}', revision='${NER_MODEL_REVISION}', cache_dir='/app/.hf_cache')"
+
+# App code
+COPY app/services/ner_sidecar/ /app/app/services/ner_sidecar/
+
+# Sidecar listens on 8001 internally
+ENV PORT=8001
+EXPOSE 8001
+
+CMD ["uvicorn", "app.services.ner_sidecar.main:app", "--host", "0.0.0.0", "--port", "8001"]
