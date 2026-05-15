@@ -128,13 +128,14 @@ async def cluster_article(
     """
     content_type = article.get("content_type", "news")
     cve_ids: list[str] = article.get("cve_ids") or []
-    embedding = await embed_text(_build_embed_input(article))
-    ref_time = _parse_published_at(article.get("published_at"))
 
-    # KEV catalog: annotate existing clusters, then exit — no incident clustering
+    # KEV catalog: annotate existing clusters, then exit — skip embedding (not needed)
     if content_type == "kev_catalog":
         await _mark_kev_clusters(cve_ids)
         return
+
+    embedding = await embed_text(_build_embed_input(article))
+    ref_time = _parse_published_at(article.get("published_at"))
 
     # CVE topic flow (all non-kev types participate)
     if cve_ids:

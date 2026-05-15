@@ -478,3 +478,61 @@ async def test_news_article_creates_cluster_with_is_advisory_false():
 
     indexed = os_mock.index.call_args.kwargs["body"]
     assert indexed["is_advisory"] is False
+
+
+@pytest.mark.asyncio
+async def test_product_advisory_merges_when_cluster_found():
+    """product_advisory articles merge into an existing cluster if one matches."""
+    from app.ingestion.clusterer import cluster_article
+
+    article = {
+        "slug": "msrc-cve-2026-9999-abc12345",
+        "title": "CVE-2026-9999 | Windows Kernel Elevation of Privilege",
+        "content_type": "product_advisory",
+        "cve_ids": ["CVE-2026-9999"],
+        "published_at": "2026-05-15T10:00:00Z",
+        "source_name": "Microsoft MSRC",
+        "credibility_weight": 1.5,
+    }
+
+    os_mock = AsyncMock()
+    os_mock.get.return_value = {"_source": {"article_ids": [], "article_count": 1, "event_signature": {}, "latest_at": "", "centroid_embedding": None}}
+    os_mock.update.return_value = {}
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer.embed_text", return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock) as mock_find, \
+         patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        mock_find.return_value = "existing-cluster-001"  # a match was found
+        await cluster_article(article, "msrc-cve-2026-9999-abc12345", [])
+
+    # index (create_cluster) was NOT called — merged into existing
+    os_mock.index.assert_not_called()
+    # update WAS called — merge_into_cluster ran
+    os_mock.update.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_kev_catalog_with_no_cves_skips_annotation():
+    """kev_catalog with empty cve_ids skips update_by_query entirely."""
+    from app.ingestion.clusterer import cluster_article
+
+    article = {
+        "slug": "cisa-kev-empty-abc12345",
+        "title": "CISA Adds One Known Exploited Vulnerability to Catalog",
+        "content_type": "kev_catalog",
+        "cve_ids": [],
+        "published_at": "2026-05-15T10:00:00Z",
+        "source_name": "CISA News",
+    }
+
+    os_mock = AsyncMock()
+    os_mock.update_by_query = AsyncMock(return_value={})
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer.embed_text", return_value=[0.1] * 1024):
+        await cluster_article(article, "cisa-kev-empty-abc12345", [])
+
+    os_mock.update_by_query.assert_not_called()
+    os_mock.index.assert_not_called()
