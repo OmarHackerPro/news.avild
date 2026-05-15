@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from app.db.opensearch import INDEX_CLUSTERS, INDEX_NEWS, get_os_client
+from app.ingestion.cve_topic_manager import upsert_cve_topics, create_cve_topic_stubs
 from app.ingestion.embedding_client import embed_text
 from app.ingestion.scorer import rescore_cluster
 from app.ingestion.unified_scorer import find_best_cluster
@@ -94,6 +95,24 @@ def _is_roundup(label: str, cve_ids: list[str]) -> bool:
     return len(cve_ids) > _ROUNDUP_CVE_THRESHOLD
 
 
+async def _mark_kev_clusters(cve_ids: list[str]) -> None:
+    """Set cisa_kev=True on all clusters that share any of the given CVE IDs."""
+    if not cve_ids:
+        return
+    os_client = get_os_client()
+    try:
+        await os_client.update_by_query(
+            index=INDEX_CLUSTERS,
+            body={
+                "query": {"terms": {"cve_ids": cve_ids}},
+                "script": {"source": "ctx._source.cisa_kev = true", "lang": "painless"},
+            },
+            params={"conflicts": "proceed"},
+        )
+    except Exception as exc:
+        logger.warning("KEV cluster annotation failed for %s CVEs: %s", len(cve_ids), exc)
+
+
 async def cluster_article(
     article: dict,
     slug: str,
@@ -101,24 +120,30 @@ async def cluster_article(
 ) -> None:
     """Assign article to an incident cluster and optionally to CVE topics.
 
-    CVE flow: articles with ≤5 CVEs attach to cve_topics (one per CVE ID).
-    Roundups (>5 CVEs) only create empty CVE topic stubs.
-    Incident flow always runs — article is assigned to or creates an incident cluster.
+    Routing by content_type:
+    - kev_catalog: annotate matching clusters with cisa_kev=True, then exit.
+    - product_advisory: CVE topics + merge if match found, but never seed new cluster.
+    - ics_advisory: CVE topics + full cluster flow; create_cluster sets is_advisory=True.
+    - news / threat_advisory (default): unchanged full flow.
     """
-    from app.ingestion.cve_topic_manager import upsert_cve_topics, create_cve_topic_stubs
-
+    content_type = article.get("content_type", "news")
     cve_ids: list[str] = article.get("cve_ids") or []
     embedding = await embed_text(_build_embed_input(article))
     ref_time = _parse_published_at(article.get("published_at"))
 
-    # CVE flow
+    # KEV catalog: annotate existing clusters, then exit — no incident clustering
+    if content_type == "kev_catalog":
+        await _mark_kev_clusters(cve_ids)
+        return
+
+    # CVE topic flow (all non-kev types participate)
     if cve_ids:
         if len(cve_ids) > _MAX_ARTICLE_CVES_FOR_CVE_TOPIC:
             await create_cve_topic_stubs(cve_ids)
         else:
             await upsert_cve_topics(cve_ids, slug, entities, embedding)
 
-    # Incident flow (always runs)
+    # Incident cluster flow
     cluster_id = await find_best_cluster(entities, embedding, reference_time=ref_time)
 
     if cluster_id:
@@ -135,7 +160,8 @@ async def cluster_article(
             new_entities=entities,
             new_embedding=embedding,
         )
-    else:
+    elif content_type != "product_advisory":
+        # product_advisory with no matching cluster: article is stored but unclustered
         await create_cluster(article, entities, embedding=embedding)
 
 
@@ -331,6 +357,7 @@ async def create_cluster(
         "label": article.get("title", ""),
         "state": "new",
         "is_roundup": _is_roundup(article.get("title", ""), cve_ids),
+        "is_advisory": article.get("content_type") == "ics_advisory",
         "summary": "",
         "why_it_matters": "",
         "score": 0.0,

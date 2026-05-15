@@ -201,8 +201,8 @@ async def test_cluster_article_calls_upsert_for_dedicated_cve_article():
     with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value=None), \
          patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock), \
-         patch("app.ingestion.cve_topic_manager.upsert_cve_topics", new_callable=AsyncMock) as mock_upsert, \
-         patch("app.ingestion.cve_topic_manager.create_cve_topic_stubs", new_callable=AsyncMock) as mock_stubs:
+         patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock) as mock_upsert, \
+         patch("app.ingestion.clusterer.create_cve_topic_stubs", new_callable=AsyncMock) as mock_stubs:
         from app.ingestion.clusterer import cluster_article
         await cluster_article(article, article["slug"], entities)
 
@@ -229,8 +229,8 @@ async def test_cluster_article_calls_stubs_for_roundup():
     with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value=None), \
          patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock), \
-         patch("app.ingestion.cve_topic_manager.upsert_cve_topics", new_callable=AsyncMock) as mock_upsert, \
-         patch("app.ingestion.cve_topic_manager.create_cve_topic_stubs", new_callable=AsyncMock) as mock_stubs:
+         patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock) as mock_upsert, \
+         patch("app.ingestion.clusterer.create_cve_topic_stubs", new_callable=AsyncMock) as mock_stubs:
         from app.ingestion.clusterer import cluster_article
         await cluster_article(article, article["slug"], entities)
 
@@ -254,8 +254,8 @@ async def test_cluster_article_incident_flow_runs_even_for_cve_article():
     with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value="cluster-abc") as mock_best, \
          patch("app.ingestion.clusterer.merge_into_cluster", new_callable=AsyncMock) as mock_merge, \
-         patch("app.ingestion.cve_topic_manager.upsert_cve_topics", new_callable=AsyncMock), \
-         patch("app.ingestion.cve_topic_manager.create_cve_topic_stubs", new_callable=AsyncMock):
+         patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock), \
+         patch("app.ingestion.clusterer.create_cve_topic_stubs", new_callable=AsyncMock):
         from app.ingestion.clusterer import cluster_article
         await cluster_article(article, article["slug"], entities)
 
@@ -279,8 +279,8 @@ async def test_cluster_article_no_cve_skips_cve_flow():
     with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value=None), \
          patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock), \
-         patch("app.ingestion.cve_topic_manager.upsert_cve_topics", new_callable=AsyncMock) as mock_upsert, \
-         patch("app.ingestion.cve_topic_manager.create_cve_topic_stubs", new_callable=AsyncMock) as mock_stubs:
+         patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock) as mock_upsert, \
+         patch("app.ingestion.clusterer.create_cve_topic_stubs", new_callable=AsyncMock) as mock_stubs:
         from app.ingestion.clusterer import cluster_article
         await cluster_article(article, article["slug"], entities)
 
@@ -361,3 +361,120 @@ async def test_create_cluster_sets_is_roundup_false_for_normal_article():
 
     indexed = os_mock.index.call_args.kwargs["body"]
     assert indexed["is_roundup"] is False
+
+
+# ---------------------------------------------------------------------------
+# content_type routing in cluster_article()
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_kev_catalog_article_does_not_create_cluster():
+    """kev_catalog articles annotate clusters but never create one."""
+    from app.ingestion.clusterer import cluster_article
+
+    article = {
+        "slug": "cisa-adds-3-cve-2026-abc12345",
+        "title": "CISA Adds 3 Known Exploited Vulnerabilities to Catalog",
+        "content_type": "kev_catalog",
+        "cve_ids": ["CVE-2026-1111", "CVE-2026-2222", "CVE-2026-3333"],
+        "published_at": "2026-05-15T10:00:00Z",
+        "source_name": "CISA News",
+    }
+
+    os_mock = AsyncMock()
+    os_mock.update_by_query = AsyncMock(return_value={})
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer.embed_text", return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock) as mock_find, \
+         patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock), \
+         patch("app.ingestion.clusterer.create_cve_topic_stubs", new_callable=AsyncMock):
+        mock_find.return_value = None  # no existing cluster match
+        await cluster_article(article, "cisa-adds-3-cve-2026-abc12345", [])
+
+    # create_cluster / index was NOT called
+    os_mock.index.assert_not_called()
+    # kev annotation WAS attempted
+    os_mock.update_by_query.assert_awaited_once()
+    call_body = os_mock.update_by_query.call_args.kwargs["body"]
+    assert call_body["query"]["terms"]["cve_ids"] == ["CVE-2026-1111", "CVE-2026-2222", "CVE-2026-3333"]
+
+
+@pytest.mark.asyncio
+async def test_product_advisory_does_not_create_cluster_when_no_match():
+    """product_advisory articles merge if a cluster matches, but never seed a new one."""
+    from app.ingestion.clusterer import cluster_article
+
+    article = {
+        "slug": "cisco-ios-xe-rce-abc12345",
+        "title": "Cisco IOS XE RCE Vulnerability",
+        "content_type": "product_advisory",
+        "cve_ids": ["CVE-2026-9999"],
+        "published_at": "2026-05-15T10:00:00Z",
+        "source_name": "Cisco Security Advisories",
+    }
+
+    os_mock = AsyncMock()
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer.embed_text", return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock) as mock_find, \
+         patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock), \
+         patch("app.ingestion.clusterer.create_cve_topic_stubs", new_callable=AsyncMock):
+        mock_find.return_value = None  # no match
+        await cluster_article(article, "cisco-ios-xe-rce-abc12345", [])
+
+    # cluster index (create_cluster) was NOT called
+    os_mock.index.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_ics_advisory_creates_cluster_with_is_advisory_true():
+    """ics_advisory articles create a cluster with is_advisory=True."""
+    from app.ingestion.clusterer import create_cluster
+
+    article = {
+        "slug": "icsa-26-099-01-siemens-abc12345",
+        "title": "Siemens SCALANCE Vulnerabilities (ICSA-26-099-01)",
+        "content_type": "ics_advisory",
+        "cve_ids": ["CVE-2026-5555"],
+        "published_at": "2026-05-15T10:00:00Z",
+        "source_name": "CISA Advisories",
+    }
+
+    os_mock = AsyncMock()
+    os_mock.index.return_value = {"_id": "cluster-ics-001"}
+    os_mock.update.return_value = {}
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        await create_cluster(article, [], embedding=[0.1] * 1024)
+
+    indexed = os_mock.index.call_args.kwargs["body"]
+    assert indexed["is_advisory"] is True
+
+
+@pytest.mark.asyncio
+async def test_news_article_creates_cluster_with_is_advisory_false():
+    """Regular news articles create a cluster with is_advisory=False."""
+    from app.ingestion.clusterer import create_cluster
+
+    article = {
+        "slug": "fortios-rce-abc12345",
+        "title": "FortiOS RCE CVE-2026-1234 exploited in the wild",
+        "content_type": "news",
+        "cve_ids": ["CVE-2026-1234"],
+        "published_at": "2026-05-15T09:00:00Z",
+        "source_name": "BleepingComputer",
+    }
+
+    os_mock = AsyncMock()
+    os_mock.index.return_value = {"_id": "cluster-news-001"}
+    os_mock.update.return_value = {}
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        await create_cluster(article, [], embedding=[0.1] * 1024)
+
+    indexed = os_mock.index.call_args.kwargs["body"]
+    assert indexed["is_advisory"] is False
