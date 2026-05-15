@@ -123,3 +123,57 @@ class TestUpsertArticleSponsored:
         with patch("app.ingestion.ingester.get_os_client", return_value=os_mock):
             await upsert_article(article)
         os_mock.index.assert_awaited()
+
+
+class TestContentTypeIsSet:
+    """content_type must be set on every normalized article before upsert."""
+
+    @pytest.mark.asyncio
+    async def test_cisa_news_kev_article_gets_kev_catalog_type(self):
+        """An article from CISA News with KEV title → content_type = kev_catalog."""
+        from unittest.mock import patch
+        import feedparser
+
+        entry = feedparser.FeedParserDict({
+            "title": "CISA Adds 3 Known Exploited Vulnerabilities to Catalog",
+            "link": "https://www.cisa.gov/news/2026/05/cisa-adds-3-vuln",
+            "id": "https://www.cisa.gov/news/2026/05/cisa-adds-3-vuln",
+            "published_parsed": None,
+        })
+        source = {
+            "id": 3,
+            "name": "CISA News",
+            "url": "https://www.cisa.gov/news.xml",
+            "default_type": "news",
+            "default_category": "breaking",
+            "default_severity": None,
+            "normalizer": "cisa_news",
+            "credibility_weight": 1.5,
+            "extract_cves": False,
+            "extract_cvss": False,
+            "junk_tags": [],
+            "min_body_chars": None,
+        }
+
+        captured = {}
+
+        async def fake_upsert(article):
+            captured["content_type"] = article.get("content_type")
+            return False  # skip actual OS write
+
+        # FeedParserDict supports both .bozo attribute access and .get("entries", [])
+        mock_feed = feedparser.FeedParserDict({"bozo": False, "entries": [entry]})
+
+        with patch("app.ingestion.ingester.fetch_feed_content", return_value="<rss/>"), \
+             patch("app.ingestion.ingester.feedparser.parse", return_value=mock_feed), \
+             patch("app.ingestion.ingester.upsert_article", side_effect=fake_upsert), \
+             patch("app.ingestion.ingester.store_raw_snapshot", return_value=None), \
+             patch("app.ingestion.ingester.classify_tags", return_value={
+                 "clean_tags": [], "normalized_topics": [], "tag_entities": []
+             }):
+            import httpx
+            async with httpx.AsyncClient() as client:
+                from app.ingestion.ingester import ingest_source
+                await ingest_source(source, client)
+
+        assert captured.get("content_type") == "kev_catalog"

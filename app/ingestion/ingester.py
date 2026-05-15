@@ -18,7 +18,7 @@ from app.ingestion.clusterer import cluster_article
 from app.ingestion.entity_extractor import extract_entities, merge_entities
 from app.ingestion.tag_classifier import classify_tags
 from app.ingestion.entity_store import store_article_entities
-from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle, normalize_article
+from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle, normalize_article, _infer_content_type
 from app.ingestion.sources import FeedSource
 
 logger = logging.getLogger(__name__)
@@ -356,6 +356,8 @@ async def ingest_source(
                 )
                 stats["errors"] += 1
                 continue
+
+            article["content_type"] = _infer_content_type(article, source["normalizer"])
 
             # Category filter: check article tags against source_categories
             if _cat_map:
