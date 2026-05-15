@@ -14,6 +14,8 @@ import logging
 import sys
 from pathlib import Path
 
+from opensearchpy.exceptions import NotFoundError
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import os
@@ -50,7 +52,7 @@ async def run(*, dry_run: bool) -> None:
     cluster_resp = await os_client.search(
         index=INDEX_CLUSTERS,
         body={
-            "query": {"term": {"article_count": 1}},
+            "query": {"match_all": {}},
             "_source": ["article_ids"],
             "size": 10000,
         },
@@ -58,8 +60,8 @@ async def run(*, dry_run: bool) -> None:
     solo_cluster_ids = [
         h["_id"]
         for h in cluster_resp["hits"]["hits"]
-        if h["_source"].get("article_ids", []) and
-           h["_source"]["article_ids"][0] in jpcert_slugs
+        if len(h["_source"].get("article_ids", [])) == 1
+        and h["_source"]["article_ids"][0] in jpcert_slugs
     ]
     logger.info("Found %d solo clusters to delete", len(solo_cluster_ids))
 
@@ -72,6 +74,8 @@ async def run(*, dry_run: bool) -> None:
     for cid in solo_cluster_ids:
         try:
             await os_client.delete(index=INDEX_CLUSTERS, id=cid)
+        except NotFoundError:
+            pass  # already deleted on a previous run
         except Exception as e:
             logger.warning("Could not delete cluster %s: %s", cid, e)
     logger.info("Deleted %d clusters", len(solo_cluster_ids))
@@ -81,18 +85,22 @@ async def run(*, dry_run: bool) -> None:
         await os_client.delete_by_query(
             index=INDEX_NEWS,
             body={"query": {"term": {"source_name": SOURCE_NAME}}},
+            params={"conflicts": "proceed"},
         )
     logger.info("Deleted %d articles", len(jpcert_slugs))
 
     # --- 5. Disable source in Postgres ---
     async with AsyncSessionLocal() as session:
         async with session.begin():
-            await session.execute(
+            result = await session.execute(
                 sa_update(FeedSourceModel)
                 .where(FeedSourceModel.name == SOURCE_NAME)
                 .values(is_active=False)
             )
-    logger.info("Set is_active=False for '%s' in Postgres", SOURCE_NAME)
+    if result.rowcount == 0:
+        logger.warning("No feed_source row matched name='%s' — is_active not updated", SOURCE_NAME)
+    else:
+        logger.info("Set is_active=False for '%s' in Postgres", SOURCE_NAME)
 
 
 if __name__ == "__main__":
