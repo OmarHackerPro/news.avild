@@ -277,8 +277,9 @@ SEED_SOURCES: list[FeedSource] = [
         normalizer="generic",
         credibility_weight=1.1,
     ),
-    # Content is primarily in Japanese; CVE IDs are still extractable.
-    # Revisit for translation support before enabling clustering signal.
+    # JPCERT/CC: disabled 2026-05-15 — content is primarily Japanese.
+    # Source remains here for historical record. is_active=False in DB (set by scripts/cleanup_jpcert.py).
+    # Do NOT re-enable without adding translation support.
     FeedSource(
         name="JPCERT/CC",
         url="https://www.jpcert.or.jp/rss/jpcert.rdf",
