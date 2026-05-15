@@ -84,7 +84,10 @@ async def list_clusters(
         "query": {
             "bool": {
                 "filter": filters,
-                "must_not": [{"term": {"is_roundup": True}}],
+                "must_not": [
+                    {"term": {"is_roundup": True}},
+                    {"term": {"is_advisory": True}},
+                ],
             }
         },
         "sort": [{"created_at": {"order": "desc"}}],
