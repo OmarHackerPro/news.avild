@@ -201,6 +201,44 @@ def _extract_cve_ids(text: str) -> list[str]:
     return list(dict.fromkeys(re.findall(r"CVE-\d{4}-\d+", text)))
 
 
+_KEV_TITLE_RE = re.compile(
+    r"(?i)adds\s+(?:\d+|one|two|three)\s+known\s+exploited",
+)
+
+_PRODUCT_ADVISORY_SOURCES = frozenset([
+    "Cisco Security Advisories",
+    "Microsoft MSRC",
+])
+
+
+def _infer_content_type(article: dict, normalizer_key: str) -> str:
+    """Infer content_type from article title and source metadata.
+
+    Priority order:
+    1. KEV catalog title pattern (beats everything — any source can publish KEV updates)
+    2. ICS advisory normalizer
+    3. Product advisory source name
+    4. Threat advisory normalizer/source
+    5. Default: news
+    """
+    title = article.get("title", "")
+    source_name = article.get("source_name", "")
+
+    if _KEV_TITLE_RE.search(title):
+        return "kev_catalog"
+
+    if normalizer_key == "cisa_advisory":
+        return "ics_advisory"
+
+    if source_name in _PRODUCT_ADVISORY_SOURCES:
+        return "product_advisory"
+
+    if normalizer_key == "cisa_news" or source_name == "NCSC UK":
+        return "threat_advisory"
+
+    return "news"
+
+
 def _extract_cvss_vector(html: str) -> Optional[str]:
     """Extract a CVSS v3 vector string (e.g. CVSS:3.1/AV:N/AC:L/...)."""
     m = re.search(r"(CVSS:3\.\d+/[A-Z0-9/:]+)", html)

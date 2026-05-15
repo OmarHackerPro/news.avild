@@ -48,6 +48,7 @@ NEWS_MAPPING = {
             },
             "fetch_attempt_count": {"type": "integer"},
             "is_teaser": {"type": "boolean"},
+            "content_type":  {"type": "keyword"},
             "image_url":    {"type": "keyword", "index": False},
             "tags":              {"type": "keyword"},   # legacy — present on pre-backfill docs
             "raw_tags":          {"type": "keyword"},

@@ -421,3 +421,61 @@ class TestNormalizerRegistry:
     def test_generic_flags_are_empty(self):
         for key in ("generic", "thn", "bleepingcomputer", "securityweek", "krebs"):
             assert NORMALIZER_REGISTRY[key] == {}
+
+
+import pytest
+from app.ingestion.normalizer import _infer_content_type
+
+
+class TestInferContentType:
+    @pytest.mark.parametrize("title,normalizer_key,source_name,expected", [
+        # KEV catalog — title pattern beats everything
+        (
+            "CISA Adds 2 Known Exploited Vulnerabilities to Catalog",
+            "cisa_news", "CISA News", "kev_catalog",
+        ),
+        (
+            "CISA Adds One Known Exploited Vulnerability to Catalog",
+            "cisa_news", "CISA News", "kev_catalog",
+        ),
+        (
+            "CISA Adds 12 Known Exploited Vulnerabilities to Catalog",
+            "generic", "SomeSource", "kev_catalog",
+        ),
+        # ICS advisory (cisa_advisory normalizer)
+        (
+            "Siemens SCALANCE Vulnerabilities (ICSA-26-099-01)",
+            "cisa_advisory", "CISA Advisories", "ics_advisory",
+        ),
+        # Product advisory
+        (
+            "CVE-2026-1234 | Windows Kernel Elevation of Privilege Vulnerability",
+            "generic", "Microsoft MSRC", "product_advisory",
+        ),
+        (
+            "Cisco IOS XE Software Web UI Privilege Escalation",
+            "generic", "Cisco Security Advisories", "product_advisory",
+        ),
+        # Threat advisory (CISA News non-KEV)
+        (
+            "CISA and FBI Release Advisory on LockBit Ransomware",
+            "cisa_news", "CISA News", "threat_advisory",
+        ),
+        # NCSC UK
+        (
+            "Weekly Threat Report 9th May 2025",
+            "generic", "NCSC UK", "threat_advisory",
+        ),
+        # Default news
+        (
+            "New ransomware campaign targets healthcare",
+            "bleepingcomputer", "BleepingComputer", "news",
+        ),
+        (
+            "Critical RCE in Apache Log4j",
+            "generic", "SecurityWeek", "news",
+        ),
+    ])
+    def test_infer_content_type(self, title, normalizer_key, source_name, expected):
+        article = {"title": title, "source_name": source_name}
+        assert _infer_content_type(article, normalizer_key) == expected
