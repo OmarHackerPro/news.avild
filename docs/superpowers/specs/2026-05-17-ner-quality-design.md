@@ -1,29 +1,63 @@
 # NER Quality Improvement — Design Spec
-_2026-05-17_
+
+_2026-05-17 — revised 2026-05-19_
 
 ## Problem
 
-The entity extraction pipeline (SecureBERT sidecar + regex) produces three categories of noise:
+The entity extraction pipeline (SecureBERT sidecar + regex) produced three categories
+of noise. Two have since been resolved at the root; one remains.
 
-| Failure | Example | Root cause |
+| Failure | Example | Status |
 |---|---|---|
-| Model artifact fragments | `cobalt-strik` alongside `cobalt-strike` | Model assigns O to final subword at some positions; char-span fix partially applied but edge cases remain |
-| Generic word FPs | `expand` (243 articles), `route`, `devices` | Model correctly identifies Unix/common words as tools; these are real tools but irrelevant to security clustering |
-| Abbreviation/alias splits | `burp` vs `burp-suite` | Same entity at different mention forms; not a model artifact — genuine abbreviation |
+| Model artifact fragments | `cobalt-strik` alongside `cobalt-strike` | **RESOLVED 2026-05-19** — off-by-one bug fixed in `model.py` (see below) |
+| Abbreviation/alias splits | `burp` vs `burp-suite` | **Already handled** by `_resolve_aliases()` + `entity_intel` (trusted-entity-tier spec) |
+| Generic word FPs | `expand` (243 articles), `route`, `devices` | **Open** — the only remaining NER quality work |
 
 CVE extraction is regex-only and excluded from NER quality scope.
 
+---
+
+## Resolved: model artifact fragments (off-by-one bug)
+
+The fragmentation was never a model-quality, tokenization, or confidence issue. It was
+a single off-by-one bug in `app/services/ner_sidecar/model.py`.
+
+**Mechanism:** the model emits `B-` (not `I-`) on continuation words, so `_merge_bio()`
+flushes each word as a separate entity and `_post_merge()` rejoins same-type adjacent
+ones. Byte-BPE tokenization prepends a leading space to non-initial words, so a word
+unit's char span includes that space. `_merge_bio()` set `char_offset` to the span
+start (with the space) but set `name` to the `.strip()`-ed text (space removed). The
+two were inconsistent by one character. `_post_merge()` then reconstructs spans as
+`char_offset + len(name)` — short by one — so every merged multi-word entity lost its
+final character: `Cobalt Strike` → `Cobalt Strik`, `Breeze Cache` → `Breeze Cach`.
+
+**Fix:** in `_merge_bio()`'s `flush()`, advance `char_offset` past the stripped leading
+whitespace so it always points at `name[0]`. Verified live: `Cobalt Strike`,
+`Breeze Cache`, `Microsoft SharePoint Server` all extract whole.
+
+**Lesson learned:** the original spec proposed a synonym map (Stage 1) and an
+edit-distance/prefix dedup pass (Stage 2) to *clean up fragments after the fact*. Both
+were the wrong layer — downstream fuzzy-merge cannot distinguish a genuine fragment
+(`mistral-a` → `mistral-ai`) from two distinct entities sharing a stem
+(`libssh`/`libssh2`, `firewall`/`firewalld`). Stage 1 was also dead code:
+`_resolve_aliases()` already does DB-backed alias resolution. Both stages are deleted.
+Fix the lever, not the symptom.
+
+---
+
 ## Goals
 
-- Best F1 per entity type, prioritising recall over precision (missing `lazarus-group` is worse than keeping `expand`)
-- Exception: tool and product types — these are the noisiest; acceptable to be stricter
-- Measurable: every change must have a before/after F1 number against a human-labeled ground truth
+- Best F1 per entity type, prioritising recall over precision (missing `lazarus-group`
+  is worse than keeping `expand`).
+- Exception: tool and product types — the noisiest; acceptable to be stricter.
+- Measurable: every change must have a before/after F1 number against a human-labeled
+  ground truth.
 
 ## Non-goals
 
-- Hardcoded patches for specific fragment strings (e.g. adding `cobalt-strik → cobalt-strike` to a dict)
-- Source-level confidence weighting (deferred — verify Approach B doesn't fix the problem first)
-- Fine-tuning the SecureBERT model
+- Hardcoded patches for specific strings.
+- Fine-tuning the SecureBERT model.
+- Source-level confidence weighting (deferred).
 
 ---
 
@@ -31,14 +65,16 @@ CVE extraction is regex-only and excluded from NER quality scope.
 
 ### Two tiers: trusted enumeration + NER discovery
 
-Entity extraction is two layers solving different problems, not two competing extractors:
+- **Trusted tier — enumeration.** Regex (CVE/CWE/TTP) and seed-list lookup
+  (`VENDOR_KEYWORDS`, `PRODUCT_KEYWORDS`, `threat_keywords.json`). Precision ~100%;
+  recall capped by the lists. Kept as-is, no quality filtering.
+- **Discovery tier — NER.** The SecureBERT sidecar finds entities not in any list —
+  novel campaigns, malware families, products whose names collide with English words.
+  Unverified; needs quality filtering.
 
-- **Trusted tier — enumeration.** Regex (CVE/CWE/TTP) and seed-list lookup (`VENDOR_KEYWORDS`, `PRODUCT_KEYWORDS`, `threat_keywords.json`). Finds only what is enumerated; precision ~100%; recall capped by the lists. Output is kept as-is, no quality filtering.
-- **Discovery tier — NER.** The SecureBERT sidecar reads context and finds entities not in any list — novel campaigns, malware families, products whose names collide with English words (`Word`, `Edge`, `Teams`). This is what makes clustering work on _new_ news; without it, breaking articles have zero entities and fall through to noisy MLT. Discovery output is unverified and needs quality filtering.
+The NER quality stages apply only to the discovery tier.
 
-The NER quality stages exist because the discovery tier is noisy. They do **not** apply to the trusted tier.
-
-### Extraction Pipeline (updated order)
+### Extraction pipeline (current code)
 
 ```
 TRUSTED TIER (always kept, no filtering)
@@ -46,171 +82,122 @@ TRUSTED TIER (always kept, no filtering)
                → VENDOR_KEYWORDS / PRODUCT_KEYWORDS lookup
                → threat_keywords.json (known malware/actors)
 
-DISCOVERY TIER (sidecar output)
-  → 1. synonym map          (resolve abbreviations: burp → burp-suite)
-  → 2. edit-distance dedup  (merge model artifacts: cobalt-strik → cobalt-strike)
-  → 3. mentions filter      (drop low-frequency generics: expand, route, devices)
-  → 4. trusted/discovery split + per-type policy  (see Component 5)
+DISCOVERY TIER (sidecar output, inside extract_entities())
+  → _resolve_aliases()            (DB-backed alias resolution — already in code, line 560)
+  → [Phase 2] mentions filter     (drop low-frequency generics — gated, see below)
+  → [Phase 2] trusted/discovery split + per-type policy
   → merge into trusted tier
   → store
 ```
 
-Stages 1–4 run inside `extract_entities()` in `app/ingestion/entity_extractor.py`, after the sidecar call and before the regex merge. They operate in memory on a single article's entity list.
+`_resolve_aliases()` already covers the abbreviation case (`burp` → `burp-suite`) via
+rows in the `entity_intel` table — add rows as discovered during labeling, no code
+change. The fragment-fix lives upstream in the sidecar, not in `extract_entities()`.
 
 ---
 
-## Components
+## Component 1 — Labeling pass + F1 measurement (`scripts/label_ner.py`)
 
-### 1. Labeling pass + F1 measurement (`scripts/label_ner.py`)
-
-**Purpose:** Establish a human-labeled ground truth dataset so every subsequent change has a measured F1 delta.
+**Purpose:** establish a human-labeled ground truth so every subsequent change has a
+measured F1 delta.
 
 **What gets labeled:**
-- `only-local` rows from `ner_eval_judgments` (sidecar found, Haiku didn't — adjudicate TP vs FP)
-- `only-haiku` rows (Haiku found, sidecar didn't — adjudicate TP vs FP, i.e. genuine FN vs Haiku noise)
+- `only-local` rows from `ner_eval_judgments` (sidecar found, Haiku didn't) — TP vs FP.
+- `only-haiku` rows (Haiku found, sidecar didn't) — genuine FN vs Haiku noise.
 
-**Labeling UX:** CLI script presents entity + article snippet showing where the entity appears in context. User inputs `t` (TP), `f` (FP), or `s` (skip). Writes verdict to `ner_eval_judgments.verdict`.
+**Truncation-miss bucket.** Haiku only ever saw `title + summary[:500]`; the sidecar
+sees the full body up to 4096 tokens. An `only-haiku` entity is only a real FN if it
+falls inside the sidecar's input window. The eval/labeler must record whether the
+entity's mention is within the sidecar's processed text — entities outside it are
+classified `truncation-miss`, not FN, so threshold tuning is not driven by phantom
+misses.
 
-**F1 computation:**
+**Labeling UX:** CLI presents entity + article snippet showing the entity in context
+(full body, not the truncated summary). User inputs `t` (TP), `f` (FP), or `s` (skip).
+Writes verdict to `ner_eval_judgments.verdict`.
+
+**F1 computation (per entity type):**
 - TP = `both` (agreed) + `only-local` labeled TP
 - FP = `only-local` labeled FP
-- FN = `only-haiku` labeled TP (sidecar missed a real entity)
-- Computed per entity type: malware, actor, campaign, tool, product, vuln_alias
+- FN = `only-haiku` labeled TP **and** inside the sidecar input window
+- (excluded: `only-haiku` entities outside the window → `truncation-miss`)
 
-**Target corpus:** ~50 articles selected to cover diverse sources (CISA, Securelist, Unit 42, Krebs, PortSwigger) and content types (news, threat_advisory, ics_advisory). Selection: pull the articles with the most `only-local` entity judgments from `ner_eval_judgments` — these are the highest-signal rows to adjudicate first.
-
----
-
-### 2. Synonym map (Stage 1)
-
-**Location:** `app/ingestion/entity_extractor.py`, applied to sidecar output before dedup.
-
-**Purpose:** Resolve genuine abbreviations and aliases — cases where the model extracts a valid shorthand that should map to a canonical full name.
-
-**Structure:**
-```python
-_SIDECAR_SYNONYMS: dict[str, str] = {
-    "burp": "burp-suite",
-    # add as discovered during labeling pass
-}
-```
-
-**Rules:**
-- Keyed on `normalized_key` (lowercase, hyphenated)
-- If the canonical target already exists in the entity list for this article, increment its mentions rather than creating a duplicate
-- Only covers abbreviations, NOT model artifacts (edit-distance dedup handles those)
+**Corpus selection (stratified, ~50 articles):** recall is priority #1, so do not pull
+only the most FP-dense articles. Split ~25 `only-local`-heavy (FP signal) + ~25 random
+(unbiased recall signal). Cover diverse sources (CISA, Securelist, Unit 42, Krebs,
+PortSwigger) and content types.
 
 ---
 
-### 3. Edit-distance dedup (Stage 2)
+## Component 2 — Threshold tuning (generic-word FPs)
 
-**Location:** `app/ingestion/entity_extractor.py`, after synonym map, before mentions filter.
+The only remaining model-quality problem: the model genuinely reads common words
+(`expand`, `route`, `devices`) as tools/products. There is no clean root-cause fix
+short of fine-tuning (a non-goal). The honest framing: this is a precision/recall
+tuning task, and the correct lever is the per-type confidence thresholds in
+`model.py`:
 
-**Purpose:** Merge model artifact fragments into their complete form without maintaining per-entity patches.
-
-**Algorithm:**
-For each pair of entities (A, B) of the same type within a single article's sidecar output:
-- If `edit_distance(A.normalized_key, B.normalized_key) <= 1` → merge shorter into longer, sum mentions
-- If one is a strict prefix of the other and `len(prefix) >= 6` → merge shorter into longer, sum mentions
-- Longer form wins (more complete extraction)
-
-**Constraints:**
-- Only same-type pairs (don't merge a tool fragment into a malware name)
-- Minimum prefix length 6 to avoid merging genuinely distinct short entities
-- Edit distance 1 catches single dropped/transposed character artifacts
-
-**Why this is the root-cause fix:** Any fragment the model produces — for any entity, in any article — gets absorbed automatically. No per-entity maintenance.
-
----
-
-### 4. Mentions filter (Stage 3)
-
-**Location:** `app/ingestion/entity_extractor.py`, after dedup, before regex merge.
-
-**Purpose:** Drop entities that appear only once in the article body. Generic words (`expand`, `route`, `devices`) tend to appear once; real security tools and actors tend to appear multiple times.
-
-**Thresholds (tunable per type):**
-```python
-_MIN_MENTIONS: dict[str, int] = {
-    "tool":       2,
-    "product":    2,
-    "malware":    1,  # single mention of lazarus-group is worth keeping
-    "actor":      1,
-    "campaign":   1,
-    "vuln_alias": 1,
-}
-```
-
-**Source of `mentions`:** Already computed by the sidecar in `model.py` (`_dedup()` accumulates mention count). Available on each entity dict from the sidecar.
-
-**Regex entities are exempt** — regex patterns already encode specificity (CVE format, known vendor names); no mentions threshold needed there.
-
----
-
-### 5. Trusted/discovery split + per-type policy (Stage 4)
-
-**Location:** `app/ingestion/entity_extractor.py`, after the mentions filter, before the regex/seed-list merge.
-
-**Purpose:** A NER entity that the trusted tier already found needs no scrutiny — it is verified. A NER entity the trusted tier never heard of is a genuine discovery, and how much we trust it depends on the entity type. This stage routes each surviving NER entity accordingly.
-
-**Split:** For each NER entity, check if its `normalized_key` matches a trusted-tier entity for this article (CVE/CWE/TTP regex hit, `VENDOR_KEYWORDS`, `PRODUCT_KEYWORDS`, or `threat_keywords.json`).
-
-- **Match → drop the NER copy.** The trusted-tier entity is kept; deduping into it avoids a double entry. (Optionally sum mentions onto the trusted entity.)
-- **No match → it is a discovery.** Apply the per-type policy below.
-
-**Per-type discovery policy:**
-
-| Type | Policy for NER entities not in the trusted tier | Rationale |
-| --- | --- | --- |
-| `vendor` | Drop unless mentions ≥ 3 | The security-vendor set is small and near-closed (~500). An unknown "vendor" from NER is almost always a FP. Seed list `VENDOR_KEYWORDS` is the authority here. |
-| `product` | **Keep** (mentions filter from Stage 3 is the only gate) | Products cannot be enumerated — names collide with English words (`Word`, `Edge`, `Teams`, `Access`), and no clean "all products" list exists. NER discovery is the _only_ way to catch these. This is the recall hole NER exists to fill. |
-| `malware`, `actor`, `campaign` | **Keep** (Stage 3 + confidence threshold are the gates) | Novel campaigns and malware families appear constantly and will never be in a seed list. Discovery is essential. |
-| `tool` | Keep, but strictest — mentions ≥ 2 already applied; rely on labeling F1 to tune | Noisiest type; generic-word FPs (`expand`, `route`) concentrate here. |
-
-**Why the split direction matters:** A naive whitelist gate ("NER entity must be in a seed list, else drop") would discard exactly the discoveries we want — e.g. NER finding `Microsoft Word` when `PRODUCT_KEYWORDS` only has `microsoft`. The trusted tier is a _base to build on_, not a filter to validate against. Vendors are the one type where the seed list is effectively complete, so vendor is the one type where an aggressive drop is safe.
-
-**Seed list growth:** Expanding the trusted tier (CPE subset → `VENDOR_KEYWORDS`/`PRODUCT_KEYWORDS`, MITRE ATT&CK → `threat_keywords.json`) shifts entities from the discovery tier into the trusted tier — strictly improving precision without losing recall. Out of scope for this spec but noted as the long-term lever.
-
----
-
-## Threshold tuning (after labeling)
-
-Not a separate code component — it's a process step:
-
-1. Run labeling pass → compute baseline F1 per type
-2. Apply synonym map + edit-distance dedup + mentions filter
-3. Re-run NER backfill with `--force` on the labeled corpus
-4. Recompute F1 → measure delta
-5. If any type shows F1 regression, adjust `_MIN_MENTIONS` or `_CONFIDENCE_THRESHOLDS` in `model.py`
-
-Thresholds currently in `model.py`:
 ```python
 _CONFIDENCE_THRESHOLDS = {
-    "malware": 0.75, "actor": 0.75, "campaign": 0.75,
-    "product": 0.50, "tool": 0.50, "vuln_alias": 0.50,
+    "PRODUCT": 0.5, "TOOL": 0.5, "CVE": 0.5,
+    "MALWARE": 0.75, "THREAT-ACTOR": 0.75, "CAMPAIGN": 0.75,
 }
 ```
+
+Process:
+1. Run the labeling pass → baseline F1 per type.
+2. Adjust `_CONFIDENCE_THRESHOLDS` (tool/product are the noisy types — candidates for
+   a higher bar).
+3. Re-run NER backfill with `--force` on the labeled corpus, recompute F1.
+4. Keep changes only where F1 improves; recall regressions on malware/actor/campaign
+   are disqualifying.
+
+---
+
+## Phase 2 (gated) — mentions filter + trusted/discovery split
+
+These are deferred until Component 1+2 land and produce baseline F1 numbers. They are
+the only stages that *delete* discovery entities, so they carry recall risk and must
+be measured in isolation.
+
+### Mentions filter
+
+Drop discovery entities that appear only once in the body. Generic words tend to
+appear once; real tools/actors appear repeatedly. Gate on **mentions combined with
+confidence** — a single-mention high-confidence CISA product must survive — not raw
+count alone. `mentions` is already computed by `_dedup()` in `model.py`.
+
+Justification: this is primarily entity-page / UI / SEO cleanliness. IDF weighting in
+the clustering-quality spec already damps common entities in cluster scoring, so the
+clustering benefit is modest. Ship it as its own change with its own F1 delta.
+
+### Trusted/discovery split + per-type policy
+
+For each surviving NER entity, check whether its `normalized_key` matches a
+trusted-tier entity for the article. Match → drop the NER copy (trusted entity wins).
+No match → apply per-type policy: `vendor` drop unless mentions ≥ 3; `product`,
+`malware`, `actor`, `campaign` keep; `tool` strictest. See the original revision
+history for the full rationale table.
 
 ---
 
 ## Implementation sequence
 
-1. `scripts/label_ner.py` — labeling CLI + F1 computation
-2. Baseline F1 measurement (label ~50 articles)
-3. Stage 1: synonym map in `extract_entities()`
-4. Stage 2: edit-distance dedup in `extract_entities()`
-5. Stage 3: mentions filter in `extract_entities()`
-6. Stage 4: trusted/discovery split + per-type policy in `extract_entities()`
-7. Re-run NER backfill on labeled corpus, recompute F1
-8. Threshold tuning if any type regresses
-9. Full backfill (`backfill_ner_sidecar.py --force`) to regenerate clean entities index
+1. `scripts/label_ner.py` — labeling CLI + F1 computation (with truncation-miss bucket).
+2. Baseline F1 measurement (label ~50 stratified articles).
+3. Component 2: tune `_CONFIDENCE_THRESHOLDS`, re-measure F1.
+4. Full NER backfill (`backfill_ner_sidecar.py --force`) — regenerates the entities
+   index with the fragment fix applied and clears all historical fragments.
+5. Phase 2 (gated on the above F1 numbers): mentions filter, then trusted/discovery
+   split — each as a separate measured change.
 
 ---
 
 ## Files touched
 
-| File | Change |
-|---|---|
-| `scripts/label_ner.py` | New — labeling CLI |
-| `app/ingestion/entity_extractor.py` | Add synonym map, edit-distance dedup, mentions filter, trusted/discovery split to `extract_entities()` |
-| `app/services/ner_sidecar/model.py` | Threshold tuning (values only, no structural change) |
+| File | Change | Status |
+|---|---|---|
+| `app/services/ner_sidecar/model.py` | Off-by-one `char_offset` fix in `_merge_bio()` | **Done 2026-05-19** |
+| `scripts/label_ner.py` | New — labeling CLI + F1 with truncation-miss bucket | Pending |
+| `app/services/ner_sidecar/model.py` | `_CONFIDENCE_THRESHOLDS` tuning (values only) | Pending |
+| `app/ingestion/entity_extractor.py` | Phase 2 — mentions filter, trusted/discovery split | Gated |
