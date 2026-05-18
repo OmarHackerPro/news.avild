@@ -195,3 +195,62 @@ def test_merge_entities_text_entity_gets_sources_field():
 
 def test_merge_entities_empty_inputs():
     assert merge_entities([], []) == []
+
+
+# ---------------------------------------------------------------------------
+# refresh_entity_intel — DB-backed startup loader
+# ---------------------------------------------------------------------------
+
+from collections import namedtuple
+from unittest.mock import AsyncMock, MagicMock
+
+_EntityRow = namedtuple("_EntityRow", ["normalized_key", "display_name", "entity_type", "aliases"])
+
+
+def _mock_db_with_rows(rows):
+    """Return an AsyncMock db session that yields rows on execute."""
+    mock_result = MagicMock()
+    mock_result.fetchall.return_value = rows
+    mock_db = AsyncMock()
+    mock_db.execute = AsyncMock(return_value=mock_result)
+    return mock_db
+
+
+@pytest.mark.asyncio
+async def test_refresh_entity_intel_loads_vendor():
+    import importlib
+    import app.ingestion.entity_extractor as mod
+    importlib.reload(mod)
+
+    rows = [_EntityRow("fortinetsec", "FortinetSec", "vendor", ["FortinetSec"])]
+    db = _mock_db_with_rows(rows)
+    count = await mod.refresh_entity_intel(db)
+
+    assert count == 1
+    assert "fortinetsec" in mod._DB_ENTITY_MAP
+    assert mod._DB_ENTITY_MAP["fortinetsec"] == ("FortinetSec", "vendor")
+
+
+@pytest.mark.asyncio
+async def test_refresh_entity_intel_builds_alias_index():
+    import importlib
+    import app.ingestion.entity_extractor as mod
+    importlib.reload(mod)
+
+    rows = [_EntityRow("apt29", "APT29", "actor", ["Cozy Bear", "Midnight Blizzard"])]
+    db = _mock_db_with_rows(rows)
+    await mod.refresh_entity_intel(db)
+
+    assert mod._DB_ALIAS_INDEX.get("cozy-bear") == "apt29"
+    assert mod._DB_ALIAS_INDEX.get("midnight-blizzard") == "apt29"
+
+
+@pytest.mark.asyncio
+async def test_refresh_entity_intel_returns_zero_on_empty_db():
+    import importlib
+    import app.ingestion.entity_extractor as mod
+    importlib.reload(mod)
+
+    db = _mock_db_with_rows([])
+    count = await mod.refresh_entity_intel(db)
+    assert count == 0

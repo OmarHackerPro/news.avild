@@ -10,6 +10,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Optional
 
+from sqlalchemy import text
+
 from app.ingestion.normalizer import NormalizedArticle, strip_html, _extract_cve_ids
 
 logger = logging.getLogger(__name__)
@@ -269,12 +271,92 @@ _ALIAS_PATTERNS: list[tuple[str, re.Pattern]] = [
     for display_text, canonical_key in _THREAT_ALIASES.items()
 ]
 
+# ---------------------------------------------------------------------------
+# DB-backed entity registry (populated at startup via refresh_entity_intel)
+# ---------------------------------------------------------------------------
+
+# normalized_key → (display_name, entity_type)
+_DB_ENTITY_MAP: dict[str, tuple[str, str]] = {}
+# raw alias display text → canonical normalized_key  (for rebuilding _ALIAS_PATTERNS)
+_DB_ALIAS_DISPLAY: dict[str, str] = {}
+# normalized alias key → canonical normalized_key  (for _resolve_aliases NER lookup)
+_DB_ALIAS_INDEX: dict[str, str] = {}
+
 
 def _normalize_key(name: str) -> str:
     """Convert entity name to a slug-form normalized key."""
     key = name.lower()
     key = re.sub(r"[^a-z0-9]+", "-", key)
     return key.strip("-")
+
+
+def _rebuild_patterns_from_db() -> None:
+    """Rebuild _VENDOR_PATTERNS, _THREAT_PATTERNS, _ALIAS_PATTERNS from _DB_ENTITY_MAP."""
+    _VENDOR_PATTERNS.clear()
+    for key, (name, etype) in _DB_ENTITY_MAP.items():
+        if etype == "vendor":
+            flags = 0 if len(name) <= 3 else re.IGNORECASE
+            _VENDOR_PATTERNS.append(
+                (key, name, re.compile(r"\b" + re.escape(name) + r"\b", flags))
+            )
+
+    _THREAT_PATTERNS.clear()
+    for key, (name, etype) in _DB_ENTITY_MAP.items():
+        if etype in ("actor", "malware", "tool", "campaign", "vuln_alias"):
+            flags = 0 if len(name) <= 3 else re.IGNORECASE
+            _THREAT_PATTERNS.append(
+                (key, name, etype, re.compile(r"\b" + re.escape(name) + r"\b", flags))
+            )
+
+    _ALIAS_PATTERNS.clear()
+    for display_text, canonical_key in _DB_ALIAS_DISPLAY.items():
+        _ALIAS_PATTERNS.append(
+            (canonical_key, re.compile(r"\b" + re.escape(display_text) + r"\b", re.IGNORECASE))
+        )
+
+
+async def refresh_entity_intel(db_session) -> int:
+    """Load entity_intel from DB into module-level dicts. Returns count of rows loaded.
+
+    Call once at app startup. Falls back to hardcoded lists if table is empty.
+    """
+    result = await db_session.execute(
+        text("SELECT normalized_key, display_name, entity_type, aliases FROM entity_intel")
+    )
+    rows = result.fetchall()
+
+    if not rows:
+        return 0
+
+    new_entity_map: dict[str, tuple[str, str]] = {}
+    new_alias_display: dict[str, str] = {}
+    new_alias_index: dict[str, str] = {}
+
+    for row in rows:
+        norm_key, display_name, entity_type, aliases = row
+        new_entity_map[norm_key] = (display_name, entity_type)
+        for alias in (aliases or []):
+            alias_display = alias.strip()
+            if not alias_display:
+                continue
+            alias_norm = _normalize_key(alias_display)
+            if alias_norm != norm_key:
+                new_alias_display[alias_display] = norm_key
+                new_alias_index[alias_norm] = norm_key
+
+    _DB_ENTITY_MAP.clear()
+    _DB_ENTITY_MAP.update(new_entity_map)
+    _DB_ALIAS_DISPLAY.clear()
+    _DB_ALIAS_DISPLAY.update(new_alias_display)
+    _DB_ALIAS_INDEX.clear()
+    _DB_ALIAS_INDEX.update(new_alias_index)
+
+    _rebuild_patterns_from_db()
+    logger.info(
+        "Entity intel: loaded %d entities, %d aliases from DB",
+        len(_DB_ENTITY_MAP), len(_DB_ALIAS_INDEX),
+    )
+    return len(_DB_ENTITY_MAP)
 
 
 def _extract_regex(article: NormalizedArticle) -> list[dict]:
@@ -366,6 +448,13 @@ def _extract_regex(article: NormalizedArticle) -> list[dict]:
                     "name": name,
                     "normalized_key": canonical_key,
                 }
+            elif canonical_key in _DB_ENTITY_MAP:
+                name, etype = _DB_ENTITY_MAP[canonical_key]
+                seen[canonical_key] = {
+                    "type": etype,
+                    "name": name,
+                    "normalized_key": canonical_key,
+                }
 
     return list(seen.values())
 
@@ -389,6 +478,9 @@ async def extract_entities(
             body=body,
             db_session=db_session,
         )
+
+    # CVEs are handled by regex; drop any CVE entities the NER model emits.
+    model_entities = [e for e in model_entities if e.get("type") != "cve"]
 
     regex_entities = _extract_regex(article)
 

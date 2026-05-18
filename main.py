@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -11,13 +12,30 @@ from app.api.routes import (
 )
 from app.core.config import settings
 from app.db.opensearch import close_os_client, ensure_indexes
-from app.db.session import engine
+from app.db.session import AsyncSessionLocal, engine
+from app.ingestion.entity_extractor import refresh_entity_intel
+
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Path("static/uploads/avatars").mkdir(parents=True, exist_ok=True)
     await ensure_indexes()
+    if AsyncSessionLocal is not None:
+        async with AsyncSessionLocal() as db:
+            try:
+                count = await refresh_entity_intel(db)
+                if count > 0:
+                    logger.info("Entity intel: %d entities loaded from DB", count)
+                else:
+                    logger.info("Entity intel: DB table empty — using hardcoded fallback")
+            except Exception:
+                logger.warning(
+                    "entity_intel table not available — using hardcoded fallback",
+                    exc_info=True,
+                )
     yield
     await close_os_client()
     if engine is not None:
