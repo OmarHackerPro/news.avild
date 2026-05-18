@@ -359,6 +359,36 @@ async def refresh_entity_intel(db_session) -> int:
     return len(_DB_ENTITY_MAP)
 
 
+def _resolve_aliases(entities: list[dict]) -> list[dict]:
+    """Stage 4: rewrite NER entity keys/names to canonical using _DB_ALIAS_INDEX.
+
+    If two entities resolve to the same canonical key, the one with higher
+    mentions wins; the other is dropped.
+    """
+    if not _DB_ALIAS_INDEX:
+        return entities
+
+    canonical_winner: dict[str, dict] = {}
+
+    for e in entities:
+        canonical = (
+            _DB_ALIAS_INDEX.get(e["normalized_key"])
+            or _DB_ALIAS_INDEX.get(_normalize_key(e.get("name", "")))
+        )
+        if canonical and canonical in _DB_ENTITY_MAP:
+            display, etype = _DB_ENTITY_MAP[canonical]
+            e = {**e, "normalized_key": canonical, "name": display, "type": etype}
+
+        key = e["normalized_key"]
+        existing = canonical_winner.get(key)
+        if existing is None:
+            canonical_winner[key] = e
+        elif e.get("mentions", 1) > existing.get("mentions", 1):
+            canonical_winner[key] = e
+
+    return list(canonical_winner.values())
+
+
 def _extract_regex(article: NormalizedArticle) -> list[dict]:
     """Extract structured entities from an article dict using regex and keyword matching.
 
@@ -481,6 +511,9 @@ async def extract_entities(
 
     # CVEs are handled by regex; drop any CVE entities the NER model emits.
     model_entities = [e for e in model_entities if e.get("type") != "cve"]
+
+    # Stage 4: resolve NER output to canonical keys via DB alias index
+    model_entities = _resolve_aliases(model_entities)
 
     regex_entities = _extract_regex(article)
 

@@ -254,3 +254,65 @@ async def test_refresh_entity_intel_returns_zero_on_empty_db():
     db = _mock_db_with_rows([])
     count = await mod.refresh_entity_intel(db)
     assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# _resolve_aliases — Stage 4 alias resolution for NER output
+# ---------------------------------------------------------------------------
+
+from app.ingestion.entity_extractor import _resolve_aliases
+
+
+def test_resolve_aliases_rewrites_to_canonical():
+    """NER entity whose normalized_key is a known alias gets rewritten."""
+    import app.ingestion.entity_extractor as mod
+    mod._DB_ENTITY_MAP["apt29"] = ("APT29", "actor")
+    mod._DB_ALIAS_INDEX["midnight-blizzard"] = "apt29"
+
+    entities = [{"type": "actor", "name": "Midnight Blizzard", "normalized_key": "midnight-blizzard", "mentions": 1}]
+    resolved = _resolve_aliases(entities)
+
+    assert len(resolved) == 1
+    assert resolved[0]["normalized_key"] == "apt29"
+    assert resolved[0]["name"] == "APT29"
+
+
+def test_resolve_aliases_deduplicates_to_higher_mentions():
+    """Two NER entities resolving to same canonical key — keep higher mentions."""
+    import app.ingestion.entity_extractor as mod
+    mod._DB_ENTITY_MAP["apt29"] = ("APT29", "actor")
+    mod._DB_ALIAS_INDEX["cozy-bear"] = "apt29"
+    mod._DB_ALIAS_INDEX["midnight-blizzard"] = "apt29"
+
+    entities = [
+        {"type": "actor", "name": "Cozy Bear", "normalized_key": "cozy-bear", "mentions": 2},
+        {"type": "actor", "name": "Midnight Blizzard", "normalized_key": "midnight-blizzard", "mentions": 5},
+    ]
+    resolved = _resolve_aliases(entities)
+
+    assert len(resolved) == 1
+    assert resolved[0]["mentions"] == 5
+
+
+def test_resolve_aliases_passthrough_when_no_match():
+    """Entity with no alias entry passes through unchanged."""
+    import app.ingestion.entity_extractor as mod
+    mod._DB_ALIAS_INDEX.clear()
+
+    entities = [{"type": "malware", "name": "SomeNewThing", "normalized_key": "some-new-thing", "mentions": 1}]
+    resolved = _resolve_aliases(entities)
+
+    assert resolved[0]["normalized_key"] == "some-new-thing"
+
+
+def test_resolve_aliases_returns_unchanged_when_index_empty():
+    """When _DB_ALIAS_INDEX is empty (no DB loaded), pass through unchanged."""
+    import app.ingestion.entity_extractor as mod
+    mod._DB_ALIAS_INDEX.clear()
+    mod._DB_ENTITY_MAP.clear()
+
+    entities = [{"type": "actor", "name": "Lazarus", "normalized_key": "lazarus", "mentions": 3}]
+    resolved = _resolve_aliases(entities)
+
+    assert len(resolved) == 1
+    assert resolved[0]["normalized_key"] == "lazarus"
