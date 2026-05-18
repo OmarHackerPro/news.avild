@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-"""Backfill article_embedding for existing articles that don't have one yet.
+"""Backfill article_embedding for existing articles.
 
 Usage:
     python scripts/backfill_embeddings.py
     python scripts/backfill_embeddings.py --source "Krebs on Security"
     python scripts/backfill_embeddings.py --dry-run
     python scripts/backfill_embeddings.py --limit 500
-    python scripts/backfill_embeddings.py --batch-size 32
+    python scripts/backfill_embeddings.py --force
 """
 import asyncio
 import argparse
@@ -19,10 +19,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import load_dotenv
 load_dotenv()
 
+from rich.console import Console
+from rich.table import Table
+
 from app.db.opensearch import INDEX_NEWS, INDEX_ENTITIES, get_os_client
 from app.ingestion.embedding_input import embed_article
+from app.utils.progress import make_script_progress
 
 logger = logging.getLogger(__name__)
+console = Console()
+
+_EMBED_CONCURRENCY = 4
 
 
 async def _scroll_articles(source: str | None, limit: int | None, force: bool) -> list[dict]:
@@ -70,7 +77,6 @@ async def _scroll_articles(source: str | None, limit: int | None, force: bool) -
 
 
 async def _entity_keys_for(slugs: list[str]) -> dict[str, list[str]]:
-    """Return {slug: [normalized_key, ...]} for the given article slugs."""
     from collections import defaultdict
 
     keys: dict[str, list[str]] = defaultdict(list)
@@ -96,90 +102,91 @@ async def _entity_keys_for(slugs: list[str]) -> dict[str, list[str]]:
     return keys
 
 
-async def _update_embedding(slug: str, embedding: list[float]) -> None:
-    client = get_os_client()
-    await client.update(
-        index=INDEX_NEWS,
-        id=slug,
-        body={"doc": {"article_embedding": embedding}},
-    )
-
-
 async def main(args: argparse.Namespace) -> None:
-    articles = await _scroll_articles(source=args.source, limit=args.limit, force=args.force)
-    logger.info("Found %d unembedded article(s) to process.", len(articles))
+    with console.status("[cyan]Scanning articles…"):
+        articles = await _scroll_articles(source=args.source, limit=args.limit, force=args.force)
 
-    totals = {"total": len(articles), "embedded": 0, "skipped": 0, "errors": 0}
+    total = len(articles)
+    console.print(f"[bold]Embedding {total} articles (concurrency={_EMBED_CONCURRENCY})…[/bold]")
+
+    totals = {"ok": 0, "skipped": 0, "errors": 0}
+    semaphore = asyncio.Semaphore(_EMBED_CONCURRENCY)
     batch_size = args.batch_size
 
-    for batch_start in range(0, len(articles), batch_size):
-        batch = articles[batch_start : batch_start + batch_size]
-        slugs = [hit["_id"] for hit in batch]
-        entity_keys = await _entity_keys_for(slugs)
+    with make_script_progress(console) as progress:
+        task = progress.add_task("Embedding", total=total)
 
-        if args.dry_run:
-            for i, hit in enumerate(batch):
-                logger.info(
-                    "[DRY RUN] %d/%d %s — entities=%d",
-                    batch_start + i + 1, len(articles), hit["_id"],
-                    len(entity_keys.get(hit["_id"], [])),
-                )
-            totals["embedded"] += len(batch)
-            continue
+        def _stats() -> str:
+            return f"ok={totals['ok']} skipped={totals['skipped']} errors={totals['errors']}"
 
-        async def _embed_one(hit: dict) -> tuple[str, list[float] | None]:
-            slug = hit["_id"]
-            vec = await embed_article(hit["_source"], entity_keys.get(slug, []))
-            return slug, vec
+        for batch_start in range(0, total, batch_size):
+            batch = articles[batch_start : batch_start + batch_size]
+            slugs = [hit["_id"] for hit in batch]
+            entity_keys = await _entity_keys_for(slugs)
 
-        embedded_pairs = await asyncio.gather(*[_embed_one(h) for h in batch])
+            if args.dry_run:
+                for hit in batch:
+                    slug = hit["_id"]
+                    progress.update(task, description=f"[dim]dry-run[/dim]  {_stats()}")
+                    progress.console.print(
+                        f"[DRY RUN] {slug[:50]} — entities={len(entity_keys.get(slug, []))}"
+                    )
+                    totals["ok"] += 1
+                    progress.advance(task)
+                continue
 
-        async def _update_one(slug: str, embedding: list[float] | None) -> str:
-            if embedding is None:
-                return "skipped"
-            try:
-                await _update_embedding(slug, embedding)
-                return "ok"
-            except Exception:
-                logger.exception("Update failed for %s", slug)
-                return "error"
+            async def _process_one(hit: dict) -> str:
+                slug = hit["_id"]
+                async with semaphore:
+                    progress.update(task, description=f"[cyan]{slug[:40]}[/cyan]  {_stats()}")
+                    try:
+                        vec = await embed_article(hit["_source"], entity_keys.get(slug, []))
+                        if vec is None:
+                            return "skipped"
+                        return "ok"
+                    except Exception:
+                        logger.exception("Embed failed for %s", slug)
+                        return "error"
 
-        results = await asyncio.gather(
-            *[_update_one(slug, emb) for slug, emb in embedded_pairs]
-        )
+            outcomes = await asyncio.gather(*[_process_one(h) for h in batch])
 
-        for outcome in results:
-            if outcome == "ok":
-                totals["embedded"] += 1
-            elif outcome == "skipped":
-                totals["skipped"] += 1
-            else:
-                totals["errors"] += 1
+            for outcome in outcomes:
+                totals[outcome] = totals.get(outcome, 0) + 1
+                progress.advance(task)
+            progress.update(task, description=f"[dim]batch {batch_start // batch_size + 1}[/dim]  {_stats()}")
 
-        processed_so_far = batch_start + len(batch)
-        logger.info(
-            "Progress: %d/%d — embedded=%d skipped=%d errors=%d",
-            processed_so_far, len(articles),
-            totals["embedded"], totals["skipped"], totals["errors"],
-        )
-
-    logger.info(
-        "=== Done: total=%d embedded=%d skipped=%d errors=%d ===",
-        totals["total"], totals["embedded"], totals["skipped"], totals["errors"],
-    )
+    table = Table(title="Embedding Complete", show_header=True, header_style="bold magenta")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Count", justify="right", style="bold")
+    table.add_row("Total", str(total))
+    table.add_row("Succeeded", str(totals["ok"]))
+    table.add_row("Skipped (embed failed)", str(totals["skipped"]))
+    table.add_row("Errors", str(totals.get("errors", 0)), style="red" if totals.get("errors") else "")
+    console.print(table)
 
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.WARNING,
         format="%(asctime)s %(levelname)-8s %(name)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+    logging.getLogger("app.ingestion.embedding_client").setLevel(logging.ERROR)
+    logging.getLogger("opensearch").setLevel(logging.ERROR)
+    logging.getLogger("httpx").setLevel(logging.ERROR)
 
-    parser = argparse.ArgumentParser(description="Backfill article_embedding for existing articles")
+    parser = argparse.ArgumentParser(description="Backfill article embeddings")
     parser.add_argument("--source", type=str, help="Filter by source name")
     parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
-    parser.add_argument("--batch-size", type=int, default=64, help="Articles per embedding batch (max 256)")
-    parser.add_argument("--limit", type=int, default=None, help="Only process first N unembedded articles")
-    parser.add_argument("--force", action="store_true", help="Re-embed articles even if they already have an embedding")
-    asyncio.run(main(parser.parse_args()))
+    parser.add_argument("--batch-size", type=int, default=64, help="Articles per fetch batch")
+    parser.add_argument("--limit", type=int, default=None, help="Only process first N articles")
+    parser.add_argument("--force", action="store_true", help="Re-embed articles that already have an embedding")
+
+    async def _run():
+        try:
+            await main(parser.parse_args())
+        finally:
+            from app.db.opensearch import close_os_client
+            await close_os_client()
+
+    asyncio.run(_run())

@@ -250,7 +250,7 @@ async def main(args: argparse.Namespace) -> None:
                 "size": page_size,
                 "from": from_offset,
                 "_source": [
-                    "slug", "title", "desc", "summary", "cve_ids",
+                    "slug", "title", "desc", "summary", "content_html", "cve_ids",
                     "category", "tags", "published_at",
                     "source_name", "credibility_weight", "cvss_score", "content_type",
                 ],
@@ -289,6 +289,7 @@ async def main(args: argparse.Namespace) -> None:
                         "title": src.get("title", ""),
                         "desc": src.get("desc"),
                         "summary": src.get("summary"),
+                        "content_html": src.get("content_html"),
                         "cve_ids": src.get("cve_ids") or [],
                         "category": src.get("category"),
                         "tags": src.get("tags") or [],
