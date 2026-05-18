@@ -13,13 +13,12 @@ Usage:
     python scripts/sync_mitre_attack.py --db
 """
 import argparse
-import asyncio as _asyncio
+import asyncio
 import json
 import logging
 import re
 from collections import Counter
 from datetime import datetime as _datetime, timezone as _timezone
-import json as _json
 from pathlib import Path
 
 import requests
@@ -176,7 +175,7 @@ async def _upsert_to_db(
                             (:key, :name, :etype, CAST(:aliases AS jsonb), 'attack', :source_id, true, :now)
                     """),
                     {"key": key, "name": display_name, "etype": entity_type,
-                     "aliases": _json.dumps(alias_list), "source_id": source_id, "now": now},
+                     "aliases": json.dumps(alias_list), "source_id": source_id, "now": now},
                 )
                 inserted += 1
             else:
@@ -194,7 +193,7 @@ async def _upsert_to_db(
                             WHERE normalized_key = :key
                         """),
                         {"key": key, "name": display_name, "etype": entity_type,
-                         "aliases": _json.dumps(alias_list), "source_id": source_id, "now": now},
+                         "aliases": json.dumps(alias_list), "source_id": source_id, "now": now},
                     )
                     updated += 1
         await db.commit()
@@ -225,17 +224,21 @@ def main(argv: list[str] | None = None) -> None:
 
     # --- ICS bundle — extend, don't overwrite enterprise keys ---
     logger.info("Downloading MITRE ATT&CK ICS STIX from %s ...", ICS_URL)
-    ics_resp = requests.get(ICS_URL, timeout=120)
-    ics_resp.raise_for_status()
-    stix_ics = ics_resp.json()
-    logger.info("Downloaded %d STIX objects (ics).", len(stix_ics.get("objects", [])))
-    ics_kw, ics_al, ics_si = _parse_stix_bundle(stix_ics)
-    for k, v in ics_kw.items():
-        keywords.setdefault(k, v)
-    for k, v in ics_al.items():
-        aliases.setdefault(k, v)
-    for k, v in ics_si.items():
-        source_ids.setdefault(k, v)
+    try:
+        ics_resp = requests.get(ICS_URL, timeout=120)
+        ics_resp.raise_for_status()
+        stix_ics = ics_resp.json()
+        logger.info("Downloaded %d STIX objects (ics).", len(stix_ics.get("objects", [])))
+        ics_kw, ics_al, ics_si = _parse_stix_bundle(stix_ics)
+        for k, v in ics_kw.items():
+            keywords.setdefault(k, v)
+        for k, v in ics_al.items():
+            aliases.setdefault(k, v)
+        for k, v in ics_si.items():
+            source_ids.setdefault(k, v)
+        logger.info("Fetched ICS-ATT&CK: %d additional entries", len(ics_kw))
+    except Exception as exc:
+        logger.warning("ICS-ATT&CK fetch failed (%s) — continuing with enterprise only", exc)
 
     type_counts = Counter(v[1] for v in keywords.values())
     logger.info("Merged %d keywords: %s", len(keywords), dict(type_counts))
@@ -252,7 +255,7 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("Written to %s", args.output)
 
     if args.db:
-        ins, upd = _asyncio.run(_upsert_to_db(keywords, aliases, source_ids))
+        ins, upd = asyncio.run(_upsert_to_db(keywords, aliases, source_ids))
         logger.info("DB upsert: %d inserted, %d updated", ins, upd)
 
 
