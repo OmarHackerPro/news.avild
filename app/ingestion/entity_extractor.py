@@ -265,6 +265,10 @@ for _key, (_name, _etype) in THREAT_KEYWORDS.items():
     _flags = 0 if len(_name) <= 3 else re.IGNORECASE
     _THREAT_PATTERNS.append((_key, _name, _etype, re.compile(r"\b" + re.escape(_name) + r"\b", _flags)))
 
+_CWE_RE = re.compile(r"\bCWE-\d+\b", re.IGNORECASE)
+# ATT&CK technique IDs: T1xxx range only (T1000–T1699) to avoid serial/model number FPs
+_TTP_RE = re.compile(r"\bT1[0-6]\d{2}(?:\.\d{3})?\b")
+
 # Pre-compiled alias patterns built from loaded alias table
 _ALIAS_PATTERNS: list[tuple[str, re.Pattern]] = [
     (canonical_key, re.compile(r"\b" + re.escape(display_text) + r"\b", re.IGNORECASE))
@@ -389,6 +393,32 @@ def _resolve_aliases(entities: list[dict]) -> list[dict]:
     return list(canonical_winner.values())
 
 
+async def _enrich_from_kev(cve_ids: list[str], db_session) -> list[dict]:
+    """Look up CVE IDs in cisa_kev, emit trusted vendor+product entities for each hit."""
+    if not cve_ids or db_session is None:
+        return []
+
+    result = await db_session.execute(
+        text("SELECT vendor, product FROM cisa_kev WHERE cve_id = ANY(:ids)"),
+        {"ids": cve_ids},
+    )
+    rows = result.fetchall()
+
+    seen: set[str] = set()
+    entities: list[dict] = []
+    for vendor, product in rows:
+        vendor_key = _normalize_key(vendor)
+        if vendor_key and vendor_key not in seen:
+            entities.append({"type": "vendor", "name": vendor, "normalized_key": vendor_key})
+            seen.add(vendor_key)
+        product_key = _normalize_key(product)
+        if product_key and product_key not in seen:
+            entities.append({"type": "product", "name": product, "normalized_key": product_key})
+            seen.add(product_key)
+
+    return entities
+
+
 def _extract_regex(article: NormalizedArticle) -> list[dict]:
     """Extract structured entities from an article dict using regex and keyword matching.
 
@@ -486,6 +516,20 @@ def _extract_regex(article: NormalizedArticle) -> list[dict]:
                     "normalized_key": canonical_key,
                 }
 
+    # --- CWE IDs ---
+    for match in _CWE_RE.finditer(combined):
+        cwe = match.group(0).upper()
+        key = cwe.lower()
+        if key not in seen:
+            seen[key] = {"type": "cwe", "name": cwe, "normalized_key": key}
+
+    # --- ATT&CK TTP IDs ---
+    for match in _TTP_RE.finditer(combined):
+        ttp = match.group(0).upper()
+        key = ttp.lower()
+        if key not in seen:
+            seen[key] = {"type": "ttp", "name": ttp, "normalized_key": key}
+
     return list(seen.values())
 
 
@@ -517,9 +561,13 @@ async def extract_entities(
 
     regex_entities = _extract_regex(article)
 
+    # KEV enrichment: deterministic vendor+product for CVEs found in text
+    cve_ids = [e["name"] for e in regex_entities if e.get("type") == "cve"]
+    kev_entities = await _enrich_from_kev(cve_ids, db_session)
+
     seen_keys = {e["normalized_key"] for e in model_entities}
     merged = list(model_entities)
-    for e in regex_entities:
+    for e in kev_entities + regex_entities:
         key = e["normalized_key"]
         # suppress if exact match OR if model already has a more-specific variant
         if key not in seen_keys and not any(k.startswith(key + "-") for k in seen_keys):

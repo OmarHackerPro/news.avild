@@ -316,3 +316,84 @@ def test_resolve_aliases_returns_unchanged_when_index_empty():
 
     assert len(resolved) == 1
     assert resolved[0]["normalized_key"] == "lazarus"
+
+
+# ---------------------------------------------------------------------------
+# _enrich_from_kev — deterministic vendor+product from CVE lookup
+# ---------------------------------------------------------------------------
+
+from app.ingestion.entity_extractor import _enrich_from_kev
+
+_KevRow = namedtuple("_KevRow", ["vendor", "product"])
+
+
+@pytest.mark.asyncio
+async def test_enrich_from_kev_emits_vendor_and_product():
+    mock_result = MagicMock()
+    mock_result.fetchall.return_value = [_KevRow("Microsoft", "Windows")]
+    mock_db = AsyncMock()
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    entities = await _enrich_from_kev(["CVE-2024-1234"], mock_db)
+    types = {e["type"] for e in entities}
+    keys = {e["normalized_key"] for e in entities}
+
+    assert "vendor" in types
+    assert "product" in types
+    assert "microsoft" in keys
+    assert "windows" in keys
+
+
+@pytest.mark.asyncio
+async def test_enrich_from_kev_returns_empty_when_no_session():
+    entities = await _enrich_from_kev(["CVE-2024-1234"], None)
+    assert entities == []
+
+
+@pytest.mark.asyncio
+async def test_enrich_from_kev_deduplicates_same_vendor():
+    mock_result = MagicMock()
+    mock_result.fetchall.return_value = [
+        _KevRow("Microsoft", "Windows"),
+        _KevRow("Microsoft", "Exchange"),
+    ]
+    mock_db = AsyncMock()
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    entities = await _enrich_from_kev(["CVE-2024-0001", "CVE-2024-0002"], mock_db)
+    vendor_entities = [e for e in entities if e["type"] == "vendor"]
+    assert len(vendor_entities) == 1  # deduplicated
+
+
+# ---------------------------------------------------------------------------
+# CWE + TTP regex
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_extract_cwe_from_text():
+    article = _make_article(title="CWE-79 cross-site scripting vulnerability found")
+    entities = await extract_entities(article)
+    keys = [e["normalized_key"] for e in entities]
+    assert "cwe-79" in keys
+    type_map = {e["normalized_key"]: e["type"] for e in entities}
+    assert type_map["cwe-79"] == "cwe"
+
+
+@pytest.mark.asyncio
+async def test_extract_ttp_from_text():
+    article = _make_article(title="Attacker uses T1059 command execution technique")
+    entities = await extract_entities(article)
+    keys = [e["normalized_key"] for e in entities]
+    assert "t1059" in keys
+    type_map = {e["normalized_key"]: e["type"] for e in entities}
+    assert type_map["t1059"] == "ttp"
+
+
+@pytest.mark.asyncio
+async def test_ttp_regex_does_not_match_out_of_range():
+    """T9999 is not a valid ATT&CK TTP — must not match."""
+    article = _make_article(title="Model T9999 device was vulnerable")
+    entities = await extract_entities(article)
+    keys = [e["normalized_key"] for e in entities]
+    assert "t9999" not in keys
