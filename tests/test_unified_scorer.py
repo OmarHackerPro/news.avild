@@ -191,3 +191,11 @@ def test_window_constants_default_to_30_days():
     importlib.reload(unified_scorer)
     assert unified_scorer._EMBED_WINDOW_DAYS == 30
     assert unified_scorer._STRUCTURED_WINDOW_DAYS == 30
+
+
+def test_retrieval_key_uppercases_cve_only():
+    from app.ingestion.unified_scorer import _retrieval_key
+
+    assert _retrieval_key({"type": "cve", "normalized_key": "cve-2025-1234"}) == "CVE-2025-1234"
+    assert _retrieval_key({"type": "actor", "normalized_key": "apt28"}) == "apt28"
+    assert _retrieval_key({"type": "malware", "normalized_key": "lockbit"}) == "lockbit"

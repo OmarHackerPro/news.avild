@@ -95,6 +95,12 @@ def _compute_score(
     )
 
 
+def _retrieval_key(entity: dict) -> str:
+    """entity_keys stores CVE IDs uppercase; all other types lowercase."""
+    key = entity["normalized_key"]
+    return key.upper() if entity["type"] == "cve" else key
+
+
 async def _get_candidates(
     article_entities: list[dict],
     article_embedding: Optional[list[float]],
@@ -105,21 +111,11 @@ async def _get_candidates(
     cutoff_structured = (ref - timedelta(days=_STRUCTURED_WINDOW_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
     cutoff_embed = (ref - timedelta(days=_EMBED_WINDOW_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    # Entity normalized_keys are lowercase (e.g. "cve-2025-1234") but clusters store
-    # CVE IDs in uppercase (e.g. "CVE-2025-1234") from article.cve_ids. Uppercase here
-    # so term queries match the values actually stored in event_signature.cve_ids.
-    cve_ids = [e["normalized_key"].upper() for e in article_entities if e["type"] == "cve"]
-    vuln_aliases = [e["normalized_key"] for e in article_entities if e["type"] == "vuln_alias"]
-    campaign_names = [e["normalized_key"] for e in article_entities if e["type"] == "campaign"]
-
     async def _structured_lookup() -> list[dict]:
-        should_clauses = []
-        for cve in cve_ids:
-            should_clauses.append({"term": {"event_signature.cve_ids": cve}})
-        for alias in vuln_aliases:
-            should_clauses.append({"term": {"event_signature.vuln_aliases": alias}})
-        for campaign in campaign_names:
-            should_clauses.append({"term": {"event_signature.campaign_names": campaign}})
+        should_clauses = [
+            {"term": {"entity_keys": _retrieval_key(e)}}
+            for e in article_entities
+        ]
         if not should_clauses:
             return []
         query = {
