@@ -24,14 +24,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from rich.console import Console
-from rich.progress import (
-    Progress, SpinnerColumn, BarColumn, MofNCompleteColumn,
-    TaskProgressColumn, TimeElapsedColumn, TimeRemainingColumn, TextColumn,
-)
+
+from app.utils.progress import make_script_progress
 from rich.table import Table
 
 from app.db.opensearch import INDEX_NEWS, INDEX_ENTITIES, INDEX_CLUSTERS, INDEX_CVE_TOPICS, get_os_client
 from app.ingestion.clusterer import cluster_article
+from app.ingestion.entity_idf import refresh_idf_map
 
 _RETRY_ATTEMPTS = 5
 _RETRY_DELAY = 10  # seconds
@@ -143,8 +142,73 @@ async def _set_refresh_interval(client, interval: str) -> None:
         logger.warning("Could not set refresh_interval=%s: %s", interval, exc)
 
 
+async def _post_annotate(client) -> None:
+    """Post-clustering annotation pass — fixes ordering-dependent flags.
+
+    Runs after all articles are clustered so chronological processing order
+    can't cause misses:
+      - is_advisory=True  → any cluster whose article_ids includes an ics_advisory article
+      - cisa_kev=True     → any cluster whose cve_ids overlap a kev_catalog article's CVE list
+    """
+    console.print("[dim]Running post-cluster annotation (is_advisory, cisa_kev)…[/dim]")
+
+    # --- is_advisory: collect cluster_ids of ICS advisory articles ---
+    ics_resp = await client.search(
+        index=INDEX_NEWS,
+        body={
+            "query": {"term": {"content_type": "ics_advisory"}},
+            "_source": ["cluster_id"],
+            "size": 10000,
+        },
+    )
+    ics_cluster_ids = list({
+        h["_source"]["cluster_id"]
+        for h in ics_resp["hits"]["hits"]
+        if h["_source"].get("cluster_id")
+    })
+    if ics_cluster_ids:
+        await client.update_by_query(
+            index=INDEX_CLUSTERS,
+            body={
+                "query": {"ids": {"values": ics_cluster_ids}},
+                "script": {"source": "ctx._source.is_advisory = true", "lang": "painless"},
+            },
+            params={"conflicts": "proceed", "refresh": "true"},
+        )
+        console.print(f"[dim]  is_advisory=True set on up to {len(ics_cluster_ids)} clusters.[/dim]")
+
+    # --- cisa_kev: collect all CVE IDs from kev_catalog articles ---
+    kev_resp = await client.search(
+        index=INDEX_NEWS,
+        body={
+            "query": {"term": {"content_type": "kev_catalog"}},
+            "_source": ["cve_ids"],
+            "size": 10000,
+        },
+    )
+    kev_cves: list[str] = []
+    for h in kev_resp["hits"]["hits"]:
+        kev_cves.extend(h["_source"].get("cve_ids") or [])
+    kev_cves = list(dict.fromkeys(kev_cves))  # deduplicate, preserve order
+    if kev_cves:
+        await client.update_by_query(
+            index=INDEX_CLUSTERS,
+            body={
+                "query": {"terms": {"cve_ids": kev_cves}},
+                "script": {"source": "ctx._source.cisa_kev = true", "lang": "painless"},
+            },
+            params={"conflicts": "proceed", "refresh": "true"},
+        )
+        console.print(f"[dim]  cisa_kev=True applied for {len(kev_cves)} KEV CVE IDs.[/dim]")
+
+    console.print("[dim]Post-annotation done.[/dim]")
+
+
 async def main(args: argparse.Namespace) -> None:
     client = get_os_client()
+
+    idf_count = await refresh_idf_map()
+    console.print(f"[dim]IDF map: {idf_count} entities[/dim]")
 
     if args.reset:
         console.print("[bold yellow]--reset: wiping all clusters before re-clustering.[/bold yellow]")
@@ -173,17 +237,7 @@ async def main(args: argparse.Namespace) -> None:
     page_size = 100
     from_offset = 0
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        MofNCompleteColumn(),
-        TaskProgressColumn(),
-        TimeElapsedColumn(),
-        TimeRemainingColumn(),
-        console=console,
-        refresh_per_second=4,
-    ) as progress:
+    with make_script_progress(console) as progress:
         task = progress.add_task("Clustering", total=total)
 
         def _stats() -> str:
@@ -198,7 +252,7 @@ async def main(args: argparse.Namespace) -> None:
                 "_source": [
                     "slug", "title", "desc", "summary", "cve_ids",
                     "category", "tags", "published_at",
-                    "source_name", "credibility_weight", "cvss_score",
+                    "source_name", "credibility_weight", "cvss_score", "content_type",
                 ],
             })
             hits = resp["hits"]["hits"]
@@ -242,6 +296,7 @@ async def main(args: argparse.Namespace) -> None:
                         "source_name": src.get("source_name", ""),
                         "credibility_weight": src.get("credibility_weight", 1.0),
                         "cvss_score": src.get("cvss_score"),
+                        "content_type": src.get("content_type", "news"),
                     }
                     entities = entities_map.get(slug, [])
 
@@ -281,6 +336,13 @@ async def main(args: argparse.Namespace) -> None:
     # Restore normal refresh interval
     await _set_refresh_interval(client, _NORMAL_REFRESH_INTERVAL)
     console.print(f"[dim]Refresh interval restored to {_NORMAL_REFRESH_INTERVAL}.[/dim]")
+
+    # Post-cluster annotation pass (runs after all articles are clustered so
+    # chronological ordering can't cause misses):
+    # 1. Mark clusters that contain an ICS advisory member as is_advisory=True.
+    # 2. Mark clusters whose cve_ids overlap any KEV catalog article as cisa_kev=True.
+    if args.reset or not args.source:
+        await _post_annotate(client)
 
     # Count cve_topics created during this rebuild
     cve_topic_count = 0
