@@ -19,32 +19,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import load_dotenv
 load_dotenv()
 
-from app.db.opensearch import INDEX_NEWS, get_os_client
-from app.ingestion.embedding_client import embed_batch
+from app.db.opensearch import INDEX_NEWS, INDEX_ENTITIES, get_os_client
+from app.ingestion.embedding_input import embed_article
 
 logger = logging.getLogger(__name__)
 
-_EMBED_INPUT_MAX = 400
 
-
-def _build_embed_input(article: dict) -> str:
-    text = article.get("title", "")
-    snippet = article.get("summary") or article.get("desc") or ""
-    if snippet:
-        text += ". " + snippet[:_EMBED_INPUT_MAX]
-    return text
-
-
-async def _scroll_unembedded(source: str | None, limit: int | None) -> list[dict]:
+async def _scroll_articles(source: str | None, limit: int | None, force: bool) -> list[dict]:
     client = get_os_client()
 
-    query: dict = {
-        "bool": {
-            "must_not": {"exists": {"field": "article_embedding"}},
-        }
-    }
+    query: dict = {"bool": {}}
+    if not force:
+        query["bool"]["must_not"] = {"exists": {"field": "article_embedding"}}
     if source:
         query["bool"]["filter"] = [{"term": {"source_name": source}}]
+    if not query["bool"]:
+        query = {"match_all": {}}
 
     results = []
     page_size = 100
@@ -53,6 +43,8 @@ async def _scroll_unembedded(source: str | None, limit: int | None) -> list[dict
     while True:
         remaining = (limit - len(results)) if limit is not None else page_size
         fetch_size = min(page_size, remaining) if limit is not None else page_size
+        if fetch_size <= 0:
+            break
 
         resp = await client.search(
             index=INDEX_NEWS,
@@ -61,7 +53,7 @@ async def _scroll_unembedded(source: str | None, limit: int | None) -> list[dict
                 "sort": [{"published_at": {"order": "asc"}}],
                 "size": fetch_size,
                 "from": from_offset,
-                "_source": ["slug", "title", "summary", "desc", "source_name"],
+                "_source": ["slug", "title", "summary", "desc", "content_html", "source_name"],
             },
         )
         hits = resp["hits"]["hits"]
@@ -77,6 +69,33 @@ async def _scroll_unembedded(source: str | None, limit: int | None) -> list[dict
     return results
 
 
+async def _entity_keys_for(slugs: list[str]) -> dict[str, list[str]]:
+    """Return {slug: [normalized_key, ...]} for the given article slugs."""
+    from collections import defaultdict
+
+    keys: dict[str, list[str]] = defaultdict(list)
+    if not slugs:
+        return keys
+    client = get_os_client()
+    resp = await client.search(
+        index=INDEX_ENTITIES,
+        body={
+            "query": {"terms": {"article_ids": slugs}},
+            "size": 5000,
+            "_source": ["normalized_key", "article_ids"],
+        },
+    )
+    slug_set = set(slugs)
+    for hit in resp["hits"]["hits"]:
+        nk = hit["_source"].get("normalized_key")
+        if not nk:
+            continue
+        for sid in hit["_source"].get("article_ids") or []:
+            if sid in slug_set:
+                keys[sid].append(nk)
+    return keys
+
+
 async def _update_embedding(slug: str, embedding: list[float]) -> None:
     client = get_os_client()
     await client.update(
@@ -87,7 +106,7 @@ async def _update_embedding(slug: str, embedding: list[float]) -> None:
 
 
 async def main(args: argparse.Namespace) -> None:
-    articles = await _scroll_unembedded(source=args.source, limit=args.limit)
+    articles = await _scroll_articles(source=args.source, limit=args.limit, force=args.force)
     logger.info("Found %d unembedded article(s) to process.", len(articles))
 
     totals = {"total": len(articles), "embedded": 0, "skipped": 0, "errors": 0}
@@ -96,20 +115,26 @@ async def main(args: argparse.Namespace) -> None:
     for batch_start in range(0, len(articles), batch_size):
         batch = articles[batch_start : batch_start + batch_size]
         slugs = [hit["_id"] for hit in batch]
-        texts = [_build_embed_input(hit["_source"]) for hit in batch]
+        entity_keys = await _entity_keys_for(slugs)
 
         if args.dry_run:
-            for i, (slug, text) in enumerate(zip(slugs, texts)):
+            for i, hit in enumerate(batch):
                 logger.info(
-                    "[DRY RUN] %d/%d %s — input: %.80s…",
-                    batch_start + i + 1, len(articles), slug, text,
+                    "[DRY RUN] %d/%d %s — entities=%d",
+                    batch_start + i + 1, len(articles), hit["_id"],
+                    len(entity_keys.get(hit["_id"], [])),
                 )
             totals["embedded"] += len(batch)
             continue
 
-        embeddings = await embed_batch(texts)
+        async def _embed_one(hit: dict) -> tuple[str, list[float] | None]:
+            slug = hit["_id"]
+            vec = await embed_article(hit["_source"], entity_keys.get(slug, []))
+            return slug, vec
 
-        async def _update_one(slug: str, embedding: list[float] | None, idx: int) -> str:
+        embedded_pairs = await asyncio.gather(*[_embed_one(h) for h in batch])
+
+        async def _update_one(slug: str, embedding: list[float] | None) -> str:
             if embedding is None:
                 return "skipped"
             try:
@@ -120,7 +145,7 @@ async def main(args: argparse.Namespace) -> None:
                 return "error"
 
         results = await asyncio.gather(
-            *[_update_one(slug, emb, i) for i, (slug, emb) in enumerate(zip(slugs, embeddings))]
+            *[_update_one(slug, emb) for slug, emb in embedded_pairs]
         )
 
         for outcome in results:
@@ -156,4 +181,5 @@ if __name__ == "__main__":
     parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
     parser.add_argument("--batch-size", type=int, default=64, help="Articles per embedding batch (max 256)")
     parser.add_argument("--limit", type=int, default=None, help="Only process first N unembedded articles")
+    parser.add_argument("--force", action="store_true", help="Re-embed articles even if they already have an embedding")
     asyncio.run(main(parser.parse_args()))
