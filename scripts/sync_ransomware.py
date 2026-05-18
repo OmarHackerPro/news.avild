@@ -104,15 +104,25 @@ async def _sync_to_db(rows: list[dict]) -> tuple[int, int]:
             else:
                 existing_source = existing[0]
                 if _SOURCE_PRIORITY.get(existing_source, 99) >= _SOURCE_PRIORITY[_SOURCE]:
-                    # Existing row is same or lower priority — ransomware.live can update active/last_synced
+                    # Existing row is same or lower priority — ransomware.live fully overwrites
                     await db.execute(
                         text("""
                             UPDATE entity_intel SET
-                                active = :active,
-                                last_synced = :now
+                                display_name = :name,
+                                aliases      = CAST(:aliases AS jsonb),
+                                source       = :source,
+                                active       = :active,
+                                last_synced  = :now
                             WHERE normalized_key = :key
                         """),
-                        {"key": row["normalized_key"], "active": row["active"], "now": now},
+                        {
+                            "key": row["normalized_key"],
+                            "name": row["display_name"],
+                            "aliases": json.dumps(row["aliases"]),
+                            "source": row["source"],
+                            "active": row["active"],
+                            "now": now,
+                        },
                     )
                     upd += 1
                 # else: existing row is higher priority (attack) — only last_synced
@@ -134,9 +144,13 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     api_key = os.environ.get("RANSOMWARE_LIVE_API_KEY", "")
-    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     if not api_key:
-        logger.warning("RANSOMWARE_LIVE_API_KEY not set — trying unauthenticated (may be rate-limited)")
+        logger.error(
+            "RANSOMWARE_LIVE_API_KEY is not set. "
+            "Get a free Pro key from https://ransomware.live and add it to .env"
+        )
+        raise SystemExit(1)
+    headers = {"Authorization": f"Bearer {api_key}"}
 
     logger.info("Fetching groups from ransomware.live ...")
     try:
