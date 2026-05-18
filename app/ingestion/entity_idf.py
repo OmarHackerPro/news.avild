@@ -44,22 +44,24 @@ async def build_idf_map() -> dict[str, float]:
     )
     scroll_id = resp.get("_scroll_id")
     hits = resp["hits"]["hits"]
-    while hits:
-        for hit in hits:
-            src = hit["_source"]
-            key = src.get("normalized_key")
-            if not key:
-                continue
-            df = src.get("article_count") or 1
-            result[key] = _compute_idf(n_articles, df)
-        resp = await client.scroll(scroll_id=scroll_id, scroll="2m")
-        scroll_id = resp.get("_scroll_id")
-        hits = resp["hits"]["hits"]
-    if scroll_id:
-        try:
-            await client.clear_scroll(scroll_id=scroll_id)
-        except Exception:
-            pass
+    try:
+        while hits:
+            for hit in hits:
+                src = hit["_source"]
+                key = src.get("normalized_key")
+                if not key:
+                    continue
+                df = src.get("article_count") or 1
+                result[key] = _compute_idf(n_articles, df)
+            resp = await client.scroll(scroll_id=scroll_id, scroll="2m")
+            scroll_id = resp.get("_scroll_id")
+            hits = resp["hits"]["hits"]
+    finally:
+        if scroll_id:
+            try:
+                await client.clear_scroll(scroll_id=scroll_id)
+            except Exception:
+                pass
     return result
 
 
