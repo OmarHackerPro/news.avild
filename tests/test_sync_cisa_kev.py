@@ -104,3 +104,27 @@ def test_parse_kev_deduplicates_vendors():
     vendor_names = {r["vendor"] for r in rows}
     assert vendor_names == {"Microsoft"}  # both normalize to same vendor name
     assert len(rows) == 2  # two CVE rows still exist
+
+
+def test_normalize_vendor_empty_string_returns_empty():
+    assert _normalize_vendor("") == ""
+
+
+def test_parse_kev_skips_empty_vendor():
+    """A KEV row where vendorProject normalizes to empty is skipped."""
+    raw = {
+        "vulnerabilities": [
+            {
+                "cveID": "CVE-2024-0001",
+                "vendorProject": "",
+                "product": "Foo",
+                "vulnerabilityName": "Test",
+                "dateAdded": "2024-01-01",
+                "dueDate": None,
+                "knownRansomwareCampaignUse": "Unknown",
+                "cwes": [],
+            }
+        ]
+    }
+    rows = _parse_kev(raw)
+    assert rows == []

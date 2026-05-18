@@ -48,17 +48,23 @@ def _parse_kev(data: dict) -> list[dict]:
     rows = []
     for v in data.get("vulnerabilities", []):
         vendor = _normalize_vendor(v.get("vendorProject", ""))
-        if not vendor:
+        if not vendor or len(vendor) < 2:
             continue
-        raw_date_added = v.get("dateAdded")
-        raw_due_date = v.get("dueDate") or None
+        try:
+            raw_date_added = v.get("dateAdded")
+            raw_due_date = v.get("dueDate") or None
+            date_added = date.fromisoformat(raw_date_added) if raw_date_added else None
+            due_date = date.fromisoformat(raw_due_date) if raw_due_date else None
+        except (ValueError, TypeError):
+            logger.warning("Skipping %s — invalid date fields", v.get("cveID", "unknown"))
+            continue
         rows.append({
             "cve_id": v["cveID"],
             "vendor": vendor,
             "product": v.get("product", ""),
             "vulnerability_name": v.get("vulnerabilityName", ""),
-            "date_added": date.fromisoformat(raw_date_added) if raw_date_added else None,
-            "due_date": date.fromisoformat(raw_due_date) if raw_due_date else None,
+            "date_added": date_added,
+            "due_date": due_date,
             "known_ransomware_use": v.get("knownRansomwareCampaignUse", "Unknown") == "Known",
             "cwes": v.get("cwes") or [],
         })
