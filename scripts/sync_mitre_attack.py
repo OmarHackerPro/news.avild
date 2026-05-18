@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 """Download MITRE ATT&CK STIX and generate data/threat_keywords.json.
 
-Downloads the enterprise-attack STIX bundle from the mitre/cti GitHub repo,
-extracts groups (actors), malware, tools, and campaigns with their aliases,
-and writes data/threat_keywords.json for use by entity_extractor.py.
+Downloads the enterprise-attack and ics-attack STIX bundles from the
+mitre-attack/attack-stix-data GitHub repo, extracts groups (actors), malware,
+tools, and campaigns with their aliases, and writes data/threat_keywords.json
+for use by entity_extractor.py.
 
 Usage:
     python scripts/sync_mitre_attack.py
     python scripts/sync_mitre_attack.py --output path/to/custom.json
     python scripts/sync_mitre_attack.py --dry-run
-    python scripts/sync_mitre_attack.py --url <url>
     python scripts/sync_mitre_attack.py --db
 """
 import argparse
@@ -26,10 +26,16 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-STIX_URL = (
-    "https://raw.githubusercontent.com/mitre/cti/master/"
+ENTERPRISE_URL = (
+    "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/"
     "enterprise-attack/enterprise-attack.json"
 )
+ICS_URL = (
+    "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/"
+    "ics-attack/ics-attack.json"
+)
+# Keep for backward-compat with any callers passing --url
+STIX_URL = ENTERPRISE_URL
 
 _DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "data" / "threat_keywords.json"
 
@@ -60,13 +66,15 @@ def _normalize_key(name: str) -> str:
     return key.strip("-")
 
 
-def _parse_stix_bundle(stix: dict) -> tuple[dict, dict]:
-    """Parse a STIX 2.0 bundle dict into (keywords, aliases) dicts.
+def _parse_stix_bundle(stix: dict) -> tuple[dict, dict, dict]:
+    """Parse a STIX 2.0 bundle dict into (keywords, aliases, source_ids) dicts.
 
-    keywords: {normalized_key: [display_name, entity_type]}
-    aliases:  {alias_display_text: canonical_normalized_key}
+    keywords:   {normalized_key: [display_name, entity_type]}
+    aliases:    {alias_display_text: canonical_normalized_key}
+    source_ids: {normalized_key: external_id}  e.g. {"apt29": "G0016"}
     """
     keywords: dict[str, list] = {}
+    source_ids: dict[str, str] = {}
     # Collect raw alias pairs before deduplication
     raw_aliases: list[tuple[str, str]] = []
 
@@ -86,6 +94,14 @@ def _parse_stix_bundle(stix: dict) -> tuple[dict, dict]:
         etype = _STIX_TYPE_MAP[obj_type]
         canonical_key = _normalize_key(name)
         keywords[canonical_key] = [name, etype]
+
+        # Extract ATT&CK external ID (e.g. G0016, S0002) from external_references
+        for ref in obj.get("external_references", []):
+            if ref.get("source_name") == "mitre-attack":
+                ext_id = ref.get("external_id")
+                if ext_id:
+                    source_ids[canonical_key] = ext_id
+                break
 
         # Collect aliases — field name and primary-skip logic differ by type
         if obj_type in _ALIASES_INCLUDE_PRIMARY:
@@ -107,20 +123,28 @@ def _parse_stix_bundle(stix: dict) -> tuple[dict, dict]:
         if alias_normalized not in keywords:  # skip — text already covered by keyword entry
             aliases[alias] = canonical_key
 
-    return keywords, aliases
+    return keywords, aliases, source_ids
 
 
 _SOURCE_PRIORITY = {"attack": 0, "ransomware.live": 1, "cisa_kev": 2, "manual": 3}
 
 
-async def _upsert_to_db(keywords: dict, aliases: dict) -> tuple[int, int]:
-    """Upsert parsed ATT&CK data into entity_intel. Returns (inserted, updated)."""
+async def _upsert_to_db(
+    keywords: dict, aliases: dict, source_ids: dict | None = None
+) -> tuple[int, int]:
+    """Upsert parsed ATT&CK data into entity_intel. Returns (inserted, updated).
+
+    source_ids: {normalized_key: external_id} e.g. {"apt29": "G0016"}.
+    """
     import sys as _sys
     from pathlib import Path as _Path
     _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 
     from app.db.session import AsyncSessionLocal
     from sqlalchemy import text
+
+    if source_ids is None:
+        source_ids = {}
 
     inserted = updated = 0
     now = _datetime.now(_timezone.utc)
@@ -135,6 +159,7 @@ async def _upsert_to_db(keywords: dict, aliases: dict) -> tuple[int, int]:
         for key, entry in keywords.items():
             display_name, entity_type = entry[0], entry[1]
             alias_list = alias_map.get(key, [])
+            source_id = source_ids.get(key)
 
             row = await db.execute(
                 text("SELECT source FROM entity_intel WHERE normalized_key = :key"),
@@ -146,12 +171,12 @@ async def _upsert_to_db(keywords: dict, aliases: dict) -> tuple[int, int]:
                 await db.execute(
                     text("""
                         INSERT INTO entity_intel
-                            (normalized_key, display_name, entity_type, aliases, source, active, last_synced)
+                            (normalized_key, display_name, entity_type, aliases, source, source_id, active, last_synced)
                         VALUES
-                            (:key, :name, :etype, CAST(:aliases AS jsonb), 'attack', true, :now)
+                            (:key, :name, :etype, CAST(:aliases AS jsonb), 'attack', :source_id, true, :now)
                     """),
                     {"key": key, "name": display_name, "etype": entity_type,
-                     "aliases": _json.dumps(alias_list), "now": now},
+                     "aliases": _json.dumps(alias_list), "source_id": source_id, "now": now},
                 )
                 inserted += 1
             else:
@@ -164,11 +189,12 @@ async def _upsert_to_db(keywords: dict, aliases: dict) -> tuple[int, int]:
                                 entity_type  = :etype,
                                 aliases      = CAST(:aliases AS jsonb),
                                 source       = 'attack',
+                                source_id    = :source_id,
                                 last_synced  = :now
                             WHERE normalized_key = :key
                         """),
                         {"key": key, "name": display_name, "etype": entity_type,
-                         "aliases": _json.dumps(alias_list), "now": now},
+                         "aliases": _json.dumps(alias_list), "source_id": source_id, "now": now},
                     )
                     updated += 1
         await db.commit()
@@ -181,7 +207,6 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description="Regenerate data/threat_keywords.json from MITRE ATT&CK"
     )
-    parser.add_argument("--url", default=STIX_URL, help="STIX bundle URL")
     parser.add_argument("--dry-run", action="store_true", help="Print stats without writing")
     parser.add_argument("--output", type=Path, default=_DEFAULT_OUTPUT, help="Output file path")
     parser.add_argument(
@@ -190,17 +215,31 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
-    logger.info("Downloading MITRE ATT&CK STIX from %s ...", args.url)
-    resp = requests.get(args.url, timeout=120)
+    # --- Enterprise bundle ---
+    logger.info("Downloading MITRE ATT&CK Enterprise STIX from %s ...", ENTERPRISE_URL)
+    resp = requests.get(ENTERPRISE_URL, timeout=120)
     resp.raise_for_status()
-    stix = resp.json()
-    logger.info("Downloaded %d STIX objects.", len(stix.get("objects", [])))
+    stix_enterprise = resp.json()
+    logger.info("Downloaded %d STIX objects (enterprise).", len(stix_enterprise.get("objects", [])))
+    keywords, aliases, source_ids = _parse_stix_bundle(stix_enterprise)
 
-    keywords, aliases = _parse_stix_bundle(stix)
+    # --- ICS bundle — extend, don't overwrite enterprise keys ---
+    logger.info("Downloading MITRE ATT&CK ICS STIX from %s ...", ICS_URL)
+    ics_resp = requests.get(ICS_URL, timeout=120)
+    ics_resp.raise_for_status()
+    stix_ics = ics_resp.json()
+    logger.info("Downloaded %d STIX objects (ics).", len(stix_ics.get("objects", [])))
+    ics_kw, ics_al, ics_si = _parse_stix_bundle(stix_ics)
+    for k, v in ics_kw.items():
+        keywords.setdefault(k, v)
+    for k, v in ics_al.items():
+        aliases.setdefault(k, v)
+    for k, v in ics_si.items():
+        source_ids.setdefault(k, v)
 
     type_counts = Counter(v[1] for v in keywords.values())
-    logger.info("Parsed %d keywords: %s", len(keywords), dict(type_counts))
-    logger.info("Parsed %d aliases.", len(aliases))
+    logger.info("Merged %d keywords: %s", len(keywords), dict(type_counts))
+    logger.info("Merged %d aliases.", len(aliases))
 
     if args.dry_run:
         logger.info("--dry-run: not writing.")
@@ -213,7 +252,7 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("Written to %s", args.output)
 
     if args.db:
-        ins, upd = _asyncio.run(_upsert_to_db(keywords, aliases))
+        ins, upd = _asyncio.run(_upsert_to_db(keywords, aliases, source_ids))
         logger.info("DB upsert: %d inserted, %d updated", ins, upd)
 
 
