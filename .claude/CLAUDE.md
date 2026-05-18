@@ -120,12 +120,14 @@ docker compose exec ingestion python scripts/cluster_articles.py --reset
 
 `--reset` deletes all cluster documents from OpenSearch then re-clusters all 1017+ articles from scratch (~13 min). After it completes, hard-refresh the browser to see the new clusters.
 
-**Clustering known state (as of 2026-04-21):**
+**Clustering known state (as of 2026-05-18):**
 
-- Entity extraction covers only ~6% of articles (keyword/regex based) — most articles fall through to MLT text similarity
+- NER sidecar (`securebert-v1`) has processed 2,111 of 2,146 articles; **71.8% of articles have at least one entity**
+- Entity distribution from sidecar (ner_cache): product 3,169 · cve 2,062 · tool 1,878 · actor 1,641 · malware 1,436 · campaign 173
+- Vendor extraction is still weak — only ~42 articles tagged with a vendor entity (regex keyword list is small, ~60 vendors hardcoded)
 - Vendor entities (microsoft, google, apache, etc.) are excluded from cluster matching signals (`_SIGNAL_TYPES`)
 - Articles with >3 CVEs skip CVE-based cluster lookup (roundup cap: `_MAX_ARTICLE_CVES_FOR_MATCHING = 3`)
-- MLT false merges are the dominant remaining issue — articles with similar vocabulary (CISA advisories, threat intel pieces) merge incorrectly; this requires AI-based NER to fix properly
+- MLT false merges remain a risk for articles where entity overlap is sparse; expanding the trusted entity tier (ATT&CK, ransomware feeds, CPE vendors) is the next step
 
 ---
 

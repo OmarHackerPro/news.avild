@@ -29,18 +29,33 @@ CVE extraction is regex-only and excluded from NER quality scope.
 
 ## Architecture
 
+### Two tiers: trusted enumeration + NER discovery
+
+Entity extraction is two layers solving different problems, not two competing extractors:
+
+- **Trusted tier — enumeration.** Regex (CVE/CWE/TTP) and seed-list lookup (`VENDOR_KEYWORDS`, `PRODUCT_KEYWORDS`, `threat_keywords.json`). Finds only what is enumerated; precision ~100%; recall capped by the lists. Output is kept as-is, no quality filtering.
+- **Discovery tier — NER.** The SecureBERT sidecar reads context and finds entities not in any list — novel campaigns, malware families, products whose names collide with English words (`Word`, `Edge`, `Teams`). This is what makes clustering work on _new_ news; without it, breaking articles have zero entities and fall through to noisy MLT. Discovery output is unverified and needs quality filtering.
+
+The NER quality stages exist because the discovery tier is noisy. They do **not** apply to the trusted tier.
+
 ### Extraction Pipeline (updated order)
 
 ```
-sidecar output
+TRUSTED TIER (always kept, no filtering)
+  article text → CVE/CWE/TTP regex
+               → VENDOR_KEYWORDS / PRODUCT_KEYWORDS lookup
+               → threat_keywords.json (known malware/actors)
+
+DISCOVERY TIER (sidecar output)
   → 1. synonym map          (resolve abbreviations: burp → burp-suite)
   → 2. edit-distance dedup  (merge model artifacts: cobalt-strik → cobalt-strike)
   → 3. mentions filter      (drop low-frequency generics: expand, route, devices)
-  → merge with regex
+  → 4. trusted/discovery split + per-type policy  (see Component 5)
+  → merge into trusted tier
   → store
 ```
 
-All three stages run inside `extract_entities()` in `app/ingestion/entity_extractor.py`, after the sidecar call and before the regex merge. They operate in memory on a single article's entity list.
+Stages 1–4 run inside `extract_entities()` in `app/ingestion/entity_extractor.py`, after the sidecar call and before the regex merge. They operate in memory on a single article's entity list.
 
 ---
 
@@ -132,6 +147,32 @@ _MIN_MENTIONS: dict[str, int] = {
 
 ---
 
+### 5. Trusted/discovery split + per-type policy (Stage 4)
+
+**Location:** `app/ingestion/entity_extractor.py`, after the mentions filter, before the regex/seed-list merge.
+
+**Purpose:** A NER entity that the trusted tier already found needs no scrutiny — it is verified. A NER entity the trusted tier never heard of is a genuine discovery, and how much we trust it depends on the entity type. This stage routes each surviving NER entity accordingly.
+
+**Split:** For each NER entity, check if its `normalized_key` matches a trusted-tier entity for this article (CVE/CWE/TTP regex hit, `VENDOR_KEYWORDS`, `PRODUCT_KEYWORDS`, or `threat_keywords.json`).
+
+- **Match → drop the NER copy.** The trusted-tier entity is kept; deduping into it avoids a double entry. (Optionally sum mentions onto the trusted entity.)
+- **No match → it is a discovery.** Apply the per-type policy below.
+
+**Per-type discovery policy:**
+
+| Type | Policy for NER entities not in the trusted tier | Rationale |
+| --- | --- | --- |
+| `vendor` | Drop unless mentions ≥ 3 | The security-vendor set is small and near-closed (~500). An unknown "vendor" from NER is almost always a FP. Seed list `VENDOR_KEYWORDS` is the authority here. |
+| `product` | **Keep** (mentions filter from Stage 3 is the only gate) | Products cannot be enumerated — names collide with English words (`Word`, `Edge`, `Teams`, `Access`), and no clean "all products" list exists. NER discovery is the _only_ way to catch these. This is the recall hole NER exists to fill. |
+| `malware`, `actor`, `campaign` | **Keep** (Stage 3 + confidence threshold are the gates) | Novel campaigns and malware families appear constantly and will never be in a seed list. Discovery is essential. |
+| `tool` | Keep, but strictest — mentions ≥ 2 already applied; rely on labeling F1 to tune | Noisiest type; generic-word FPs (`expand`, `route`) concentrate here. |
+
+**Why the split direction matters:** A naive whitelist gate ("NER entity must be in a seed list, else drop") would discard exactly the discoveries we want — e.g. NER finding `Microsoft Word` when `PRODUCT_KEYWORDS` only has `microsoft`. The trusted tier is a _base to build on_, not a filter to validate against. Vendors are the one type where the seed list is effectively complete, so vendor is the one type where an aggressive drop is safe.
+
+**Seed list growth:** Expanding the trusted tier (CPE subset → `VENDOR_KEYWORDS`/`PRODUCT_KEYWORDS`, MITRE ATT&CK → `threat_keywords.json`) shifts entities from the discovery tier into the trusted tier — strictly improving precision without losing recall. Out of scope for this spec but noted as the long-term lever.
+
+---
+
 ## Threshold tuning (after labeling)
 
 Not a separate code component — it's a process step:
@@ -159,9 +200,10 @@ _CONFIDENCE_THRESHOLDS = {
 3. Stage 1: synonym map in `extract_entities()`
 4. Stage 2: edit-distance dedup in `extract_entities()`
 5. Stage 3: mentions filter in `extract_entities()`
-6. Re-run NER backfill on labeled corpus, recompute F1
-7. Threshold tuning if any type regresses
-8. Full backfill (`backfill_ner_sidecar.py --force`) to regenerate clean entities index
+6. Stage 4: trusted/discovery split + per-type policy in `extract_entities()`
+7. Re-run NER backfill on labeled corpus, recompute F1
+8. Threshold tuning if any type regresses
+9. Full backfill (`backfill_ner_sidecar.py --force`) to regenerate clean entities index
 
 ---
 
@@ -170,5 +212,5 @@ _CONFIDENCE_THRESHOLDS = {
 | File | Change |
 |---|---|
 | `scripts/label_ner.py` | New — labeling CLI |
-| `app/ingestion/entity_extractor.py` | Add synonym map, edit-distance dedup, mentions filter to `extract_entities()` |
+| `app/ingestion/entity_extractor.py` | Add synonym map, edit-distance dedup, mentions filter, trusted/discovery split to `extract_entities()` |
 | `app/services/ner_sidecar/model.py` | Threshold tuning (values only, no structural change) |
