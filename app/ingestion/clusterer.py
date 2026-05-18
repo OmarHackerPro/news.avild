@@ -11,21 +11,11 @@ from typing import Optional
 
 from app.db.opensearch import INDEX_CLUSTERS, INDEX_NEWS, get_os_client
 from app.ingestion.cve_topic_manager import upsert_cve_topics, create_cve_topic_stubs
-from app.ingestion.embedding_client import embed_text
+from app.ingestion.embedding_input import embed_article
 from app.ingestion.scorer import rescore_cluster
 from app.ingestion.unified_scorer import find_best_cluster
 
 logger = logging.getLogger(__name__)
-
-_EMBED_INPUT_MAX = 400  # chars of summary/desc to include in embedding input
-
-
-def _build_embed_input(article: dict) -> str:
-    text = article.get("title", "")
-    snippet = article.get("summary") or article.get("desc") or ""
-    if snippet:
-        text += ". " + snippet[:_EMBED_INPUT_MAX]
-    return text
 
 
 def _build_event_signature(entities: list[dict], cve_ids: list[str]) -> dict:
@@ -134,7 +124,7 @@ async def cluster_article(
         await _mark_kev_clusters(cve_ids)
         return
 
-    embedding = await embed_text(_build_embed_input(article))
+    embedding = await embed_article(article, [e["normalized_key"] for e in entities])
     ref_time = _parse_published_at(article.get("published_at"))
 
     # CVE topic flow (all non-kev types participate)

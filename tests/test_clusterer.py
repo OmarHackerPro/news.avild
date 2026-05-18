@@ -55,7 +55,7 @@ async def test_cluster_article_merges_when_cluster_found():
     }
     entities = [{"type": "cve", "normalized_key": "CVE-2026-1234"}]
 
-    with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+    with patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value="cluster-abc") as mock_best, \
          patch("app.ingestion.clusterer.merge_into_cluster", new_callable=AsyncMock) as mock_merge, \
          patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock) as mock_create:
@@ -79,7 +79,7 @@ async def test_cluster_article_creates_new_when_no_match():
         "published_at": "2026-04-27T10:00:00Z",
     }
 
-    with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=None), \
+    with patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=None), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value=None), \
          patch("app.ingestion.clusterer.merge_into_cluster", new_callable=AsyncMock) as mock_merge, \
          patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock) as mock_create:
@@ -198,7 +198,7 @@ async def test_cluster_article_calls_upsert_for_dedicated_cve_article():
     }
     entities = [{"type": "cve", "normalized_key": "CVE-2026-1234"}]
 
-    with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+    with patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value=None), \
          patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock), \
          patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock) as mock_upsert, \
@@ -226,7 +226,7 @@ async def test_cluster_article_calls_stubs_for_roundup():
     }
     entities = []
 
-    with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+    with patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value=None), \
          patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock), \
          patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock) as mock_upsert, \
@@ -251,7 +251,7 @@ async def test_cluster_article_incident_flow_runs_even_for_cve_article():
     }
     entities = [{"type": "cve", "normalized_key": "CVE-2026-1234"}]
 
-    with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+    with patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value="cluster-abc") as mock_best, \
          patch("app.ingestion.clusterer.merge_into_cluster", new_callable=AsyncMock) as mock_merge, \
          patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock), \
@@ -276,7 +276,7 @@ async def test_cluster_article_no_cve_skips_cve_flow():
     }
     entities = [{"type": "actor", "normalized_key": "lazarus-group"}]
 
-    with patch("app.ingestion.clusterer.embed_text", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+    with patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value=None), \
          patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock), \
          patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock) as mock_upsert, \
@@ -385,7 +385,7 @@ async def test_kev_catalog_article_does_not_create_cluster():
     os_mock.update_by_query = AsyncMock(return_value={})
 
     with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
-         patch("app.ingestion.clusterer.embed_text", return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock) as mock_find, \
          patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock), \
          patch("app.ingestion.clusterer.create_cve_topic_stubs", new_callable=AsyncMock):
@@ -417,7 +417,7 @@ async def test_product_advisory_does_not_create_cluster_when_no_match():
     os_mock = AsyncMock()
 
     with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
-         patch("app.ingestion.clusterer.embed_text", return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock) as mock_find, \
          patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock), \
          patch("app.ingestion.clusterer.create_cve_topic_stubs", new_callable=AsyncMock):
@@ -500,7 +500,7 @@ async def test_product_advisory_merges_when_cluster_found():
     os_mock.update.return_value = {}
 
     with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
-         patch("app.ingestion.clusterer.embed_text", return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock) as mock_find, \
          patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock), \
          patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
@@ -531,7 +531,7 @@ async def test_kev_catalog_with_no_cves_skips_annotation():
     os_mock.update_by_query = AsyncMock(return_value={})
 
     with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
-         patch("app.ingestion.clusterer.embed_text", return_value=[0.1] * 1024):
+         patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=[0.1] * 1024):
         await cluster_article(article, "cisa-kev-empty-abc12345", [])
 
     os_mock.update_by_query.assert_not_called()
