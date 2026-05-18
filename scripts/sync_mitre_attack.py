@@ -10,12 +10,16 @@ Usage:
     python scripts/sync_mitre_attack.py --output path/to/custom.json
     python scripts/sync_mitre_attack.py --dry-run
     python scripts/sync_mitre_attack.py --url <url>
+    python scripts/sync_mitre_attack.py --db
 """
 import argparse
+import asyncio as _asyncio
 import json
 import logging
 import re
 from collections import Counter
+from datetime import datetime as _datetime, timezone as _timezone
+import json as _json
 from pathlib import Path
 
 import requests
@@ -106,6 +110,72 @@ def _parse_stix_bundle(stix: dict) -> tuple[dict, dict]:
     return keywords, aliases
 
 
+_SOURCE_PRIORITY = {"attack": 0, "ransomware.live": 1, "cisa_kev": 2, "manual": 3}
+
+
+async def _upsert_to_db(keywords: dict, aliases: dict) -> tuple[int, int]:
+    """Upsert parsed ATT&CK data into entity_intel. Returns (inserted, updated)."""
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+
+    from app.db.session import AsyncSessionLocal
+    from sqlalchemy import text
+
+    inserted = updated = 0
+    now = _datetime.now(_timezone.utc)
+
+    # Build key → [alias display texts] mapping from the aliases dict
+    alias_map: dict[str, list[str]] = {key: [] for key in keywords}
+    for display_text, canonical_key in aliases.items():
+        if canonical_key in alias_map:
+            alias_map[canonical_key].append(display_text)
+
+    async with AsyncSessionLocal() as db:
+        for key, entry in keywords.items():
+            display_name, entity_type = entry[0], entry[1]
+            alias_list = alias_map.get(key, [])
+
+            row = await db.execute(
+                text("SELECT source FROM entity_intel WHERE normalized_key = :key"),
+                {"key": key},
+            )
+            existing = row.fetchone()
+
+            if existing is None:
+                await db.execute(
+                    text("""
+                        INSERT INTO entity_intel
+                            (normalized_key, display_name, entity_type, aliases, source, active, last_synced)
+                        VALUES
+                            (:key, :name, :etype, CAST(:aliases AS jsonb), 'attack', true, :now)
+                    """),
+                    {"key": key, "name": display_name, "etype": entity_type,
+                     "aliases": _json.dumps(alias_list), "now": now},
+                )
+                inserted += 1
+            else:
+                existing_source = existing[0]
+                if _SOURCE_PRIORITY.get(existing_source, 99) >= _SOURCE_PRIORITY["attack"]:
+                    await db.execute(
+                        text("""
+                            UPDATE entity_intel
+                            SET display_name = :name,
+                                entity_type  = :etype,
+                                aliases      = CAST(:aliases AS jsonb),
+                                source       = 'attack',
+                                last_synced  = :now
+                            WHERE normalized_key = :key
+                        """),
+                        {"key": key, "name": display_name, "etype": entity_type,
+                         "aliases": _json.dumps(alias_list), "now": now},
+                    )
+                    updated += 1
+        await db.commit()
+
+    return inserted, updated
+
+
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     parser = argparse.ArgumentParser(
@@ -114,6 +184,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--url", default=STIX_URL, help="STIX bundle URL")
     parser.add_argument("--dry-run", action="store_true", help="Print stats without writing")
     parser.add_argument("--output", type=Path, default=_DEFAULT_OUTPUT, help="Output file path")
+    parser.add_argument(
+        "--db", action="store_true",
+        help="Upsert into entity_intel PostgreSQL table (in addition to JSON output)",
+    )
     args = parser.parse_args(argv)
 
     logger.info("Downloading MITRE ATT&CK STIX from %s ...", args.url)
@@ -137,6 +211,10 @@ def main(argv: list[str] | None = None) -> None:
     with open(args.output, "w") as f:
         json.dump(data, f, indent=2, sort_keys=True)
     logger.info("Written to %s", args.output)
+
+    if args.db:
+        ins, upd = _asyncio.run(_upsert_to_db(keywords, aliases))
+        logger.info("DB upsert: %d inserted, %d updated", ins, upd)
 
 
 if __name__ == "__main__":

@@ -162,3 +162,61 @@ def test_skip_names_case_insensitive():
     bundle = {"objects": [_make_obj("tool", "AT")]}
     kw, _ = _parse_stix_bundle(bundle)
     assert "at" not in kw
+
+
+# --- _upsert_to_db unit tests (mocked DB, no real connection) ---
+
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+
+
+@pytest.mark.asyncio
+async def test_upsert_inserts_new_row():
+    """A key not yet in DB gets inserted."""
+    from scripts.sync_mitre_attack import _upsert_to_db
+
+    mock_result_none = MagicMock()
+    mock_result_none.fetchone.return_value = None
+
+    mock_db = AsyncMock()
+    mock_db.execute = AsyncMock(return_value=mock_result_none)
+    mock_db.commit = AsyncMock()
+
+    mock_session_ctx = MagicMock()
+    mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_db)
+    mock_session_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("app.db.session.AsyncSessionLocal", return_value=mock_session_ctx):
+        ins, upd = await _upsert_to_db(
+            {"apt29": ["APT29", "actor"]},
+            {"Cozy Bear": "apt29"},
+        )
+
+    assert ins == 1
+    assert upd == 0
+
+
+@pytest.mark.asyncio
+async def test_upsert_updates_existing_attack_row():
+    """An existing attack-source row is updated (same priority = allowed)."""
+    from scripts.sync_mitre_attack import _upsert_to_db
+
+    existing_row = MagicMock()
+    existing_row.__getitem__ = lambda self, i: "attack"
+
+    mock_result_existing = MagicMock()
+    mock_result_existing.fetchone.return_value = existing_row
+
+    mock_db = AsyncMock()
+    mock_db.execute = AsyncMock(return_value=mock_result_existing)
+    mock_db.commit = AsyncMock()
+
+    mock_session_ctx = MagicMock()
+    mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_db)
+    mock_session_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("app.db.session.AsyncSessionLocal", return_value=mock_session_ctx):
+        ins, upd = await _upsert_to_db({"lockbit": ["LockBit", "malware"]}, {})
+
+    assert ins == 0
+    assert upd == 1
