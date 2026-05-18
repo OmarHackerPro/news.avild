@@ -21,9 +21,12 @@ MERGE_THRESHOLD = float(os.getenv("CLUSTER_MERGE_THRESHOLD", "0.55"))
 
 _W_CVE = float(os.getenv("CLUSTER_WEIGHT_CVE", "0.10"))
 _W_ALIAS = float(os.getenv("CLUSTER_WEIGHT_ALIAS", "0.15"))
-_W_ACTOR = float(os.getenv("CLUSTER_WEIGHT_ACTOR", "0.25"))
-_W_ENTITY = float(os.getenv("CLUSTER_WEIGHT_ENTITY", "0.20"))
-_W_EMBED = float(os.getenv("CLUSTER_WEIGHT_EMBED", "0.30"))
+_W_ACTOR = float(os.getenv("CLUSTER_WEIGHT_ACTOR", "0.22"))
+_W_ENTITY = float(os.getenv("CLUSTER_WEIGHT_ENTITY", "0.18"))
+_W_EMBED = float(os.getenv("CLUSTER_WEIGHT_EMBED", "0.35"))
+
+_EMBED_LO = float(os.getenv("CLUSTER_EMBED_LO", "0.70"))
+_EMBED_HI = float(os.getenv("CLUSTER_EMBED_HI", "0.90"))
 
 _KNN_K = 10
 _STRUCTURED_WINDOW_DAYS = int(os.getenv("CLUSTER_STRUCTURED_WINDOW_DAYS", "30"))
@@ -33,6 +36,13 @@ _SOURCE_FIELDS = [
     "article_count", "state", "entity_keys",
     "event_signature", "centroid_embedding", "latest_at",
 ]
+
+
+def _embed_signal(cosine: float) -> float:
+    """Calibration curve: 0 below _EMBED_LO, 1.0 at/above _EMBED_HI, linear between."""
+    if _EMBED_HI <= _EMBED_LO:
+        return 1.0 if cosine >= _EMBED_HI else 0.0
+    return max(0.0, min(1.0, (cosine - _EMBED_LO) / (_EMBED_HI - _EMBED_LO)))
 
 
 def _compute_score(
@@ -96,7 +106,7 @@ def _compute_score(
         + _W_ALIAS * alias_overlap
         + _W_ACTOR * actor_campaign_overlap
         + _W_ENTITY * entity_jaccard
-        + _W_EMBED * cosine
+        + _W_EMBED * _embed_signal(cosine)
     )
 
 

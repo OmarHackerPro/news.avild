@@ -65,15 +65,40 @@ def test_score_perfect_match_is_one():
     assert abs(score - 1.0) < 0.01
 
 
-def test_score_embedding_only_cannot_exceed_threshold():
-    """Pure embedding match (no structured signals) must score below 0.30 threshold."""
+def _emb_with_cosine(target: float) -> tuple[list[float], list[float]]:
+    """Two unit vectors whose cosine similarity equals `target`."""
+    import math
+    a = [1.0] + [0.0] * 1023
+    c = [target, math.sqrt(max(0.0, 1.0 - target * target))] + [0.0] * 1022
+    return a, c
+
+
+def test_score_high_embedding_alone_merges():
     from app.ingestion.unified_scorer import _compute_score, ASSIGN_THRESHOLD
 
-    emb = [1.0] + [0.0] * 1023
-    article_entities = []
-    cluster = _make_cluster("c1", centroid=emb)
-    score = _compute_score(article_entities, cluster["_source"], emb)
+    a, c = _emb_with_cosine(0.95)
+    cluster = _make_cluster("c1", centroid=c)
+    score = _compute_score([], cluster["_source"], a)
+    assert score >= ASSIGN_THRESHOLD
+
+
+def test_score_moderate_embedding_alone_does_not_merge():
+    from app.ingestion.unified_scorer import _compute_score, ASSIGN_THRESHOLD
+
+    a, c = _emb_with_cosine(0.80)
+    cluster = _make_cluster("c1", centroid=c)
+    score = _compute_score([], cluster["_source"], a)
     assert score < ASSIGN_THRESHOLD
+
+
+def test_calibration_curve_zero_below_floor():
+    from app.ingestion.unified_scorer import _embed_signal
+
+    assert _embed_signal(0.70) == 0.0
+    assert _embed_signal(0.50) == 0.0
+    assert _embed_signal(0.90) == 1.0
+    assert _embed_signal(0.95) == 1.0
+    assert abs(_embed_signal(0.80) - 0.5) < 0.001
 
 
 def test_score_cve_overlap_only():
@@ -100,7 +125,7 @@ def test_score_actor_overlap_only():
     article_entities = _make_article_entities([("actor", "volt-typhoon")])
     cluster = _make_cluster("c1", primary_actors=["volt-typhoon"])
     score = _compute_score(article_entities, cluster["_source"], None)
-    assert abs(score - 0.25) < 0.01
+    assert abs(score - 0.22) < 0.01
 
 
 def test_score_campaign_overlap_uses_actor_weight():
@@ -109,7 +134,7 @@ def test_score_campaign_overlap_uses_actor_weight():
     article_entities = _make_article_entities([("campaign", "moveit-campaign")])
     cluster = _make_cluster("c1", campaign_names=["moveit-campaign"])
     score = _compute_score(article_entities, cluster["_source"], None)
-    assert abs(score - 0.25) < 0.01
+    assert abs(score - 0.22) < 0.01
 
 
 def test_score_actor_plus_embed_exceeds_threshold():
@@ -119,7 +144,7 @@ def test_score_actor_plus_embed_exceeds_threshold():
     article_entities = _make_article_entities([("actor", "lazarus-group")])
     cluster = _make_cluster("c1", primary_actors=["lazarus-group"], centroid=emb)
     score = _compute_score(article_entities, cluster["_source"], emb)
-    # 0.25 + 0.30 = 0.55 > 0.30 threshold
+    # 0.22 + 0.35 = 0.57 > 0.31 threshold
     assert score >= ASSIGN_THRESHOLD
 
 
