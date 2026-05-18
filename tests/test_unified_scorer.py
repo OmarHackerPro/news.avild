@@ -183,3 +183,11 @@ async def test_find_best_cluster_returns_none_when_candidates_below_threshold():
         result = await find_best_cluster(article_entities, None)
 
     assert result is None
+
+
+def test_window_constants_default_to_30_days():
+    import importlib
+    from app.ingestion import unified_scorer
+    importlib.reload(unified_scorer)
+    assert unified_scorer._EMBED_WINDOW_DAYS == 30
+    assert unified_scorer._STRUCTURED_WINDOW_DAYS == 30

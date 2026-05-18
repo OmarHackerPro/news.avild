@@ -25,8 +25,8 @@ _W_ENTITY = float(os.getenv("CLUSTER_WEIGHT_ENTITY", "0.20"))
 _W_EMBED = float(os.getenv("CLUSTER_WEIGHT_EMBED", "0.30"))
 
 _KNN_K = 10
-_STRUCTURED_WINDOW_DAYS = 14
-_EMBED_WINDOW_HOURS = 72
+_STRUCTURED_WINDOW_DAYS = int(os.getenv("CLUSTER_STRUCTURED_WINDOW_DAYS", "30"))
+_EMBED_WINDOW_DAYS = int(os.getenv("CLUSTER_EMBED_WINDOW_DAYS", "30"))
 
 _SOURCE_FIELDS = [
     "article_count", "state", "entity_keys",
@@ -102,8 +102,8 @@ async def _get_candidates(
 ) -> list[dict]:
     os_client = get_os_client()
     ref = reference_time or datetime.now(timezone.utc)
-    cutoff_14d = (ref - timedelta(days=_STRUCTURED_WINDOW_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    cutoff_72h = (ref - timedelta(hours=_EMBED_WINDOW_HOURS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    cutoff_structured = (ref - timedelta(days=_STRUCTURED_WINDOW_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    cutoff_embed = (ref - timedelta(days=_EMBED_WINDOW_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Entity normalized_keys are lowercase (e.g. "cve-2025-1234") but clusters store
     # CVE IDs in uppercase (e.g. "CVE-2025-1234") from article.cve_ids. Uppercase here
@@ -128,7 +128,7 @@ async def _get_candidates(
                     "should": should_clauses,
                     "minimum_should_match": 1,
                     "filter": [
-                        {"range": {"latest_at": {"gte": cutoff_14d}}},
+                        {"range": {"latest_at": {"gte": cutoff_structured}}},
                         {"bool": {"must_not": [{"term": {"state": "resolved"}}]}},
                     ],
                 }
@@ -165,7 +165,7 @@ async def _get_candidates(
             return [
                 h for h in hits
                 if h["_source"].get("state") != "resolved"
-                and (h["_source"].get("latest_at") or "") >= cutoff_72h
+                and (h["_source"].get("latest_at") or "") >= cutoff_embed
             ][:_KNN_K]
         except Exception as exc:
             logger.warning("k-NN candidate lookup failed: %s", exc)
