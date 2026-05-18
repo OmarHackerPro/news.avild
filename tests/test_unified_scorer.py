@@ -199,3 +199,32 @@ def test_retrieval_key_uppercases_cve_only():
     assert _retrieval_key({"type": "cve", "normalized_key": "cve-2025-1234"}) == "CVE-2025-1234"
     assert _retrieval_key({"type": "actor", "normalized_key": "apt28"}) == "apt28"
     assert _retrieval_key({"type": "malware", "normalized_key": "lockbit"}) == "lockbit"
+
+
+def test_vendor_now_counts_in_entity_score():
+    from app.ingestion.unified_scorer import _compute_score
+
+    article_entities = _make_article_entities([("vendor", "ivanti")])
+    cluster = _make_cluster("c1", entity_keys=["ivanti"])
+    score = _compute_score(article_entities, cluster["_source"], None)
+    assert score > 0.0  # vendor overlap is no longer ignored
+
+
+def test_idf_weighted_overlap_favors_rare_entity():
+    from app.ingestion import unified_scorer, entity_idf
+
+    entity_idf._IDF_MAP.clear()
+    entity_idf._IDF_MAP.update({"common-tool": 0.01, "rare-tool": 6.0, "noise": 0.01})
+
+    # article shares the RARE entity with the cluster, plus an unshared noise entity
+    article = _make_article_entities([("tool", "rare-tool"), ("tool", "noise")])
+    cluster = _make_cluster("c1", entity_keys=["rare-tool", "common-tool"])
+    rare_score = unified_scorer._compute_score(article, cluster["_source"], None)
+
+    # article shares only the COMMON entity instead
+    article2 = _make_article_entities([("tool", "common-tool"), ("tool", "noise")])
+    cluster2 = _make_cluster("c2", entity_keys=["common-tool", "rare-tool"])
+    common_score = unified_scorer._compute_score(article2, cluster2["_source"], None)
+
+    assert rare_score > common_score
+    entity_idf._IDF_MAP.clear()

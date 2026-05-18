@@ -12,6 +12,7 @@ from typing import Optional
 import numpy as np
 
 from app.db.opensearch import INDEX_CLUSTERS, get_os_client
+from app.ingestion.entity_idf import ensure_idf_map, idf
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ def _compute_score(
     art_others = {
         e["normalized_key"]
         for e in article_entities
-        if e["type"] not in ("cve", "vuln_alias", "actor", "campaign", "vendor")
+        if e["type"] not in ("cve", "vuln_alias", "actor", "campaign")
     }
 
     cl_cves = set(sig.get("cve_ids") or [])
@@ -73,9 +74,13 @@ def _compute_score(
     actor_campaign_overlap = 1.0 if art_actors_campaigns & cl_actors_campaigns else 0.0
 
     union_others = art_others | cl_others
-    entity_jaccard = (
-        len(art_others & cl_others) / len(union_others) if union_others else 0.0
-    )
+    shared_others = art_others & cl_others
+    if union_others:
+        num = sum(idf(k) for k in shared_others)
+        den = sum(idf(k) for k in union_others)
+        entity_jaccard = num / den if den else 0.0
+    else:
+        entity_jaccard = 0.0
 
     cosine = 0.0
     centroid = cluster_source.get("centroid_embedding")
@@ -185,6 +190,7 @@ async def find_best_cluster(
     reference_time: Optional[datetime] = None,
 ) -> Optional[str]:
     """Return the cluster_id of the best matching cluster, or None to create new."""
+    await ensure_idf_map()
     candidates = await _get_candidates(article_entities, article_embedding, reference_time)
     if not candidates:
         return None
