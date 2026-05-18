@@ -52,13 +52,16 @@ TRUSTED TIER (startup-loaded, always kept)
                → KEV join on CVE IDs   (deterministic vendor+product enrichment)
 
 NER SIDECAR OUTPUT
-  → synonym map (NER quality spec)
-  → edit-distance dedup (NER quality spec)
-  → mentions filter (NER quality spec)
-  → [NEW] alias resolution against entity_intel alias index
+  → Stage 1: synonym map          (NER quality spec)
+  → Stage 2: edit-distance dedup  (NER quality spec)
+  → Stage 3: mentions filter      (NER quality spec)
+  → Stage 4: alias resolution     [NEW — this spec] resolve NER keys to canonical via entity_intel
+  → Stage 5: trusted/discovery split + per-type policy  [NEW — this spec]
   → merge with trusted tier output
   → store
 ```
+
+**Stage numbering note:** The NER quality spec (`2026-05-17-ner-quality-design.md`) defines stages 1–3 and refers to a "trusted/discovery split" as an unnamed next step. This spec adds Stage 4 (alias resolution) and formalises Stage 5 (trusted/discovery split). The NER quality spec's `_SIDECAR_SYNONYMS` stub is an interim placeholder that Stage 4 supersedes — it can be removed once `entity_intel` is populated.
 
 The alias resolution step is new to this spec. The synonym map, edit-distance dedup, and mentions filter are from the NER quality spec (`docs/superpowers/specs/2026-05-17-ner-quality-design.md`) and are unchanged here.
 
@@ -158,7 +161,7 @@ Three new standalone scripts under `scripts/`, following the existing `seed_*.py
 
 1. Fetch KEV JSON from GitHub
 2. For each vulnerability: upsert into `cisa_kev`
-3. Also upsert each unique `vendorProject` into `entity_intel` (type=vendor, source=cisa_kev, aliases=[vendorProject])
+3. For each unique `vendorProject`: **normalize** the string before upserting into `entity_intel` — strip whitespace, remove legal suffixes (`Corp.`, `LLC`, `Inc.`, parenthetical notes like `(formerly ...)`), then apply `_normalize_key()` to produce the canonical slug. Raw KEV examples requiring this: `"Google LLC"`, `"Microsoft Corp."`, `"Ivanti (formerly Pulse Secure)"`. Two KEV rows with different raw vendor strings that normalize to the same slug are merged into one `entity_intel` row.
 4. Print summary
 
 ### `scripts/sync_ransomware.py`
@@ -238,8 +241,8 @@ Queries `cisa_kev` for all CVE IDs found in the article (batch query). For each 
 # CWE IDs
 CWE_RE = re.compile(r"\bCWE-\d+\b")
 
-# ATT&CK Technique IDs (T1059 or T1059.003)
-TTP_RE = re.compile(r"\bT\d{4}(?:\.\d{3})?\b")
+# ATT&CK Technique IDs (T1059 or T1059.003) — bounded to T1xxx range to avoid serial/model number FPs
+TTP_RE = re.compile(r"\bT1[0-6]\d{2}(?:\.\d{3})?\b")
 ```
 
 Entity types: `cwe` and `ttp`. These join CVE on the regex path — regex-extracted, always kept, no mentions filter.
@@ -267,7 +270,7 @@ The hardcoded dicts and JSON file are **not removed in this spec**. They are the
 6. `entity_extractor.py` — alias resolution step
 7. `entity_extractor.py` — KEV enrichment path
 8. `entity_extractor.py` — CWE + TTP regex
-9. Backfill: `scripts/backfill_ner_sidecar.py --force` on all articles to re-run extraction with the new resolution layer
+9. Update `scripts/backfill_ner_sidecar.py` to open a DB session and pass it to `extract_entities()` so KEV enrichment runs during backfill (currently the backfill script calls `extract_entities()` without a session). Then run `--force` on all articles.
 10. Verify: spot-check entity docs in OpenSearch — confirm `HIDDEN COBRA` → `lazarus-group`, vendor counts up from 42
 
 ---
@@ -279,7 +282,8 @@ The hardcoded dicts and JSON file are **not removed in this spec**. They are the
 | `alembic/versions/<hash>_add_entity_intel_tables.py` | New migration — entity_intel + cisa_kev |
 | `app/db/models.py` | New — SQLAlchemy ORM models for entity_intel + cisa_kev (Base imported from app/db/base.py) |
 | `scripts/sync_attack.py` | New — MITRE ATT&CK sync |
-| `scripts/sync_cisa_kev.py` | New — CISA KEV sync (also populates vendor entries) |
+| `scripts/sync_cisa_kev.py` | New — CISA KEV sync (also populates vendor entries with normalization) |
+| `scripts/backfill_ner_sidecar.py` | Add DB session pass-through to `extract_entities()` for KEV enrichment |
 | `scripts/sync_ransomware.py` | New — ransomware.live sync |
 | `app/ingestion/entity_extractor.py` | refresh_entity_intel(), alias resolution, KEV enrichment, CWE/TTP regex |
 | `app/main.py` | Call refresh_entity_intel() in startup event |
