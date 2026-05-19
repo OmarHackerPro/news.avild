@@ -677,3 +677,57 @@ async def test_create_cluster_founding_keys_match_entity_keys_at_creation():
 
     indexed = os_mock.index.call_args.kwargs["body"]
     assert indexed["founding_entity_keys"] == indexed["entity_keys"]
+
+
+# ---------------------------------------------------------------------------
+# cluster_article — roundup ring-fence
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_cluster_article_roundup_skips_find_best_and_creates_own():
+    """Roundup articles bypass find_best_cluster and always create their own cluster."""
+    article = {
+        "slug": "patch-tuesday-2026-05",
+        "title": "Microsoft May 2026 Patch Tuesday",
+        "cve_ids": ["CVE-2026-1111", "CVE-2026-2222"],
+        "content_type": "news",
+        "source_name": "SANS ISC",
+        "published_at": "2026-05-13T10:00:00Z",
+    }
+
+    with patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock), \
+         patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value="cluster-existing") as mock_best, \
+         patch("app.ingestion.clusterer.merge_into_cluster", new_callable=AsyncMock) as mock_merge, \
+         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock, return_value="new-roundup-cluster") as mock_create:
+
+        from app.ingestion.clusterer import cluster_article
+        await cluster_article(article, "patch-tuesday-2026-05", [])
+
+    mock_best.assert_not_awaited()   # never asks for a best cluster
+    mock_merge.assert_not_awaited()  # never merges into anything
+    mock_create.assert_awaited_once()  # always creates its own
+
+
+@pytest.mark.asyncio
+async def test_cluster_article_stormcast_roundup_creates_own():
+    """ISC Stormcast is caught by 'stormcast' keyword — creates own cluster."""
+    article = {
+        "slug": "stormcast-2026-05-19",
+        "title": "ISC Stormcast For Tuesday, May 19th, 2026 https://isc.sans.edu/...",
+        "cve_ids": [],
+        "content_type": "news",
+        "source_name": "SANS ISC",
+        "published_at": "2026-05-19T08:00:00Z",
+    }
+
+    with patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=[0.1] * 1024), \
+         patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value="cluster-existing") as mock_best, \
+         patch("app.ingestion.clusterer.merge_into_cluster", new_callable=AsyncMock) as mock_merge, \
+         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock, return_value="new-stormcast-cluster") as mock_create:
+
+        from app.ingestion.clusterer import cluster_article
+        await cluster_article(article, "stormcast-2026-05-19", [])
+
+    mock_best.assert_not_awaited()
+    mock_create.assert_awaited_once()

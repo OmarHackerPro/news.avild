@@ -129,6 +129,9 @@ async def cluster_article(
     - product_advisory: CVE topics + merge if match found, but never seed new cluster.
     - ics_advisory: CVE topics + full cluster flow; create_cluster sets is_advisory=True.
     - news / threat_advisory (default): unchanged full flow.
+
+    Roundup articles (patch tuesday, CVE landscape, stormcast, etc.) always create
+    their own cluster and never merge into real incident clusters.
     """
     content_type = article.get("content_type", "news")
     cve_ids: list[str] = article.get("cve_ids") or []
@@ -148,6 +151,13 @@ async def cluster_article(
         else:
             await upsert_cve_topics(cve_ids, slug, entities, embedding)
 
+    # Roundup articles (patch tuesday, weekly digest, stormcast, CVE landscape, etc.)
+    # always create their own cluster. They must never merge into real incident clusters
+    # because they carry dozens of CVEs/entities that would corrupt the retrieval net.
+    if _is_roundup(article.get("title", ""), cve_ids):
+        await create_cluster(article, entities, embedding=embedding)
+        return
+
     # Incident cluster flow
     cluster_id = await find_best_cluster(entities, embedding, reference_time=ref_time)
 
@@ -166,7 +176,6 @@ async def cluster_article(
             new_embedding=embedding,
         )
     elif content_type != "product_advisory":
-        # product_advisory with no matching cluster: article is stored but unclustered
         await create_cluster(article, entities, embedding=embedding)
 
 
