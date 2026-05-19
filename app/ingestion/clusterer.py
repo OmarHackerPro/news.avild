@@ -356,6 +356,7 @@ async def create_cluster(
     slug = article.get("slug", "")
     cve_ids: list[str] = article.get("cve_ids") or []
     entity_keys = [e["normalized_key"] for e in entities]
+    founding_entity_types = [{"key": e["normalized_key"], "type": e["type"]} for e in entities]
     published_at = article.get("published_at") or now
 
     doc = {
@@ -378,6 +379,9 @@ async def create_cluster(
         "cve_ids": cve_ids,
         "seed_cve_ids": cve_ids,
         "entity_keys": entity_keys,
+        "founding_entity_keys": entity_keys,
+        "founding_entity_types": founding_entity_types,
+        "cluster_type": _classify_cluster_type(article, entities, cve_ids),
         "event_signature": _build_event_signature(entities, cve_ids),
         "merged_into": None,
         "timeline": [{

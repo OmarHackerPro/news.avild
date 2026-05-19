@@ -592,3 +592,88 @@ def test_classify_cluster_type_cve_wins_over_actor():
     article = {"title": "APT29 exploits CVE-2026-1234", "content_type": "news"}
     entities = [{"type": "actor", "normalized_key": "apt29"}]
     assert _classify_cluster_type(article, entities, ["CVE-2026-1234"]) == "cve_incident"
+
+
+# ---------------------------------------------------------------------------
+# create_cluster — founding_entity_types, founding_entity_keys, cluster_type
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_create_cluster_sets_founding_entity_types():
+    os_mock = AsyncMock()
+    os_mock.index.return_value = {"_id": "cluster-001"}
+    os_mock.update.return_value = {}
+
+    article = {
+        "slug": "apt29-breach-001",
+        "title": "APT29 Targets Finance Sector",
+        "cve_ids": [],
+        "published_at": "2026-05-01T10:00:00Z",
+        "content_type": "news",
+    }
+    entities = [
+        {"type": "actor", "normalized_key": "apt29"},
+        {"type": "malware", "normalized_key": "cozycar"},
+    ]
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import create_cluster
+        await create_cluster(article, entities)
+
+    indexed = os_mock.index.call_args.kwargs["body"]
+    assert indexed["founding_entity_keys"] == ["apt29", "cozycar"]
+    assert indexed["founding_entity_types"] == [
+        {"key": "apt29", "type": "actor"},
+        {"key": "cozycar", "type": "malware"},
+    ]
+    assert indexed["cluster_type"] == "campaign"
+
+
+@pytest.mark.asyncio
+async def test_create_cluster_sets_cluster_type_cve_incident():
+    os_mock = AsyncMock()
+    os_mock.index.return_value = {"_id": "cluster-002"}
+    os_mock.update.return_value = {}
+
+    article = {
+        "slug": "fortios-rce-001",
+        "title": "FortiOS RCE CVE-2026-9999",
+        "cve_ids": ["CVE-2026-9999"],
+        "published_at": "2026-05-01T10:00:00Z",
+        "content_type": "news",
+    }
+    entities = [{"type": "product", "normalized_key": "fortios"}]
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import create_cluster
+        await create_cluster(article, entities)
+
+    indexed = os_mock.index.call_args.kwargs["body"]
+    assert indexed["cluster_type"] == "cve_incident"
+
+
+@pytest.mark.asyncio
+async def test_create_cluster_founding_keys_match_entity_keys_at_creation():
+    """At creation time, founding_entity_keys == entity_keys (they diverge later)."""
+    os_mock = AsyncMock()
+    os_mock.index.return_value = {"_id": "cluster-003"}
+    os_mock.update.return_value = {}
+
+    article = {
+        "slug": "test-001",
+        "title": "Test article",
+        "cve_ids": ["CVE-2026-1234"],
+        "published_at": "2026-05-01T10:00:00Z",
+        "content_type": "news",
+    }
+    entities = [{"type": "cve", "normalized_key": "CVE-2026-1234"}]
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import create_cluster
+        await create_cluster(article, entities)
+
+    indexed = os_mock.index.call_args.kwargs["body"]
+    assert indexed["founding_entity_keys"] == indexed["entity_keys"]
