@@ -536,3 +536,59 @@ async def test_kev_catalog_with_no_cves_skips_annotation():
 
     os_mock.update_by_query.assert_not_called()
     os_mock.index.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _classify_cluster_type
+# ---------------------------------------------------------------------------
+
+def test_classify_cluster_type_roundup():
+    from app.ingestion.clusterer import _classify_cluster_type
+    article = {"title": "May 2026 Patch Tuesday", "content_type": "news"}
+    assert _classify_cluster_type(article, [], ["CVE-2026-1"]) == "roundup"
+
+
+def test_classify_cluster_type_advisory_ics():
+    from app.ingestion.clusterer import _classify_cluster_type
+    article = {"title": "ICS Advisory ICSA-26-001", "content_type": "ics_advisory"}
+    assert _classify_cluster_type(article, [], []) == "advisory"
+
+
+def test_classify_cluster_type_advisory_product():
+    from app.ingestion.clusterer import _classify_cluster_type
+    article = {"title": "Vendor Security Bulletin", "content_type": "product_advisory"}
+    assert _classify_cluster_type(article, [], ["CVE-2026-9999"]) == "advisory"
+
+
+def test_classify_cluster_type_cve_incident():
+    from app.ingestion.clusterer import _classify_cluster_type
+    article = {"title": "FortiOS RCE exploited", "content_type": "news"}
+    entities = [{"type": "product", "normalized_key": "fortios"}]
+    assert _classify_cluster_type(article, entities, ["CVE-2026-9999"]) == "cve_incident"
+
+
+def test_classify_cluster_type_campaign():
+    from app.ingestion.clusterer import _classify_cluster_type
+    article = {"title": "APT29 Deploys New Backdoor", "content_type": "news"}
+    entities = [{"type": "actor", "normalized_key": "apt29"}]
+    assert _classify_cluster_type(article, entities, []) == "campaign"
+
+
+def test_classify_cluster_type_campaign_via_campaign_entity():
+    from app.ingestion.clusterer import _classify_cluster_type
+    article = {"title": "Operation DreamJob targets engineers", "content_type": "news"}
+    entities = [{"type": "campaign", "normalized_key": "operation-dreamjob"}]
+    assert _classify_cluster_type(article, entities, []) == "campaign"
+
+
+def test_classify_cluster_type_research():
+    from app.ingestion.clusterer import _classify_cluster_type
+    article = {"title": "How AI Is Changing Threat Detection", "content_type": "news"}
+    assert _classify_cluster_type(article, [], []) == "research"
+
+
+def test_classify_cluster_type_cve_wins_over_actor():
+    from app.ingestion.clusterer import _classify_cluster_type
+    article = {"title": "APT29 exploits CVE-2026-1234", "content_type": "news"}
+    entities = [{"type": "actor", "normalized_key": "apt29"}]
+    assert _classify_cluster_type(article, entities, ["CVE-2026-1234"]) == "cve_incident"

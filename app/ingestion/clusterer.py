@@ -74,15 +74,29 @@ _MAX_ARTICLE_CVES_FOR_CVE_TOPIC = 5  # articles with >5 CVEs skip CVE topic upse
 
 _ROUNDUP_KEYWORDS = frozenset([
     "patch tuesday", "monthly roundup", "cve landscape", "roundup", "weekly digest",
+    "stormcast",  # SANS ISC daily podcast
 ])
-_ROUNDUP_CVE_THRESHOLD = 10  # articles with >10 CVEs treated as roundup clusters
 
 
 def _is_roundup(label: str, cve_ids: list[str]) -> bool:
     label_lower = label.lower()
-    if any(kw in label_lower for kw in _ROUNDUP_KEYWORDS):
-        return True
-    return len(cve_ids) > _ROUNDUP_CVE_THRESHOLD
+    return any(kw in label_lower for kw in _ROUNDUP_KEYWORDS)
+
+
+def _classify_cluster_type(
+    article: dict, entities: list[dict], cve_ids: list[str]
+) -> str:
+    """Deterministic cluster type — set once at create time, never updated."""
+    if _is_roundup(article.get("title", ""), cve_ids):
+        return "roundup"
+    content_type = article.get("content_type", "news")
+    if content_type in ("ics_advisory", "product_advisory"):
+        return "advisory"
+    if cve_ids:
+        return "cve_incident"
+    if any(e["type"] in ("actor", "campaign") for e in entities):
+        return "campaign"
+    return "research"
 
 
 async def _mark_kev_clusters(cve_ids: list[str]) -> None:
