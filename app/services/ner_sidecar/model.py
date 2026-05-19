@@ -16,22 +16,22 @@ from transformers import AutoModelForTokenClassification, AutoTokenizer
 logger = logging.getLogger(__name__)
 
 # Map model labels to internal entity types. Labels not in this dict are dropped.
+# CVE is intentionally omitted — CVE IDs are extracted by regex (deterministic and
+# exact); the model mis-transcribes the year/number digits, so it is not trusted.
 LABEL_MAP: dict[str, str] = {
     "PRODUCT": "product",
     "MALWARE": "malware",
     "THREAT-ACTOR": "actor",
     "TOOL": "tool",
     "CAMPAIGN": "campaign",
-    "CVE": "cve",
 }
 
 # Per-type confidence thresholds. Rare/high-variance classes (malware, actor,
 # campaign) need a higher bar to cut false positives on research/technique articles.
-# Product/tool/cve are common and easier for the model; 0.5 is fine there.
+# Product/tool are common and easier for the model; 0.5 is fine there.
 _CONFIDENCE_THRESHOLDS: dict[str, float] = {
     "PRODUCT": 0.5,
     "TOOL": 0.5,
-    "CVE": 0.5,
     "MALWARE": 0.75,
     "THREAT-ACTOR": 0.75,
     "CAMPAIGN": 0.75,
