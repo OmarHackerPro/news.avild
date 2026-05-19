@@ -6,29 +6,22 @@ import numpy as np
 
 def _make_cluster(
     cluster_id: str,
-    cve_ids: list[str] = None,
-    vuln_aliases: list[str] = None,
-    campaign_names: list[str] = None,
-    primary_actors: list[str] = None,
+    founding_types: list[dict] = None,
     entity_keys: list[str] = None,
     centroid: list[float] = None,
     article_count: int = 1,
     state: str = "new",
 ) -> dict:
+    ft = founding_types or []
+    fkeys = [f["key"] for f in ft]
     return {
         "_id": cluster_id,
         "_source": {
             "article_count": article_count,
             "state": state,
-            "entity_keys": entity_keys or [],
-            "event_signature": {
-                "cve_ids": cve_ids or [],
-                "vuln_aliases": vuln_aliases or [],
-                "campaign_names": campaign_names or [],
-                "affected_products": [],
-                "primary_actors": primary_actors or [],
-                "confidence": "medium",
-            },
+            "entity_keys": entity_keys if entity_keys is not None else fkeys,
+            "founding_entity_keys": fkeys,
+            "founding_entity_types": ft,
             "centroid_embedding": centroid,
         },
     }
@@ -54,14 +47,16 @@ def test_score_perfect_match_is_one():
     ])
     cluster = _make_cluster(
         "c1",
-        cve_ids=["CVE-2024-1234"],
-        vuln_aliases=["log4shell"],
-        primary_actors=["apt29"],
-        entity_keys=["lockbit"],
+        founding_types=[
+            {"key": "CVE-2024-1234", "type": "cve"},
+            {"key": "log4shell", "type": "vuln_alias"},
+            {"key": "apt29", "type": "actor"},
+            {"key": "lockbit", "type": "malware"},
+        ],
         centroid=emb,
     )
     score = _compute_score(article_entities, cluster["_source"], emb)
-    # 0.10 + 0.15 + 0.25 + 0.20*(1/1) + 0.30*1.0 = 1.0
+    # 0.10 + 0.15 + 0.22 + 0.18 + 0.35 = 1.0 (weights sum to 1.0)
     assert abs(score - 1.0) < 0.01
 
 
@@ -94,18 +89,19 @@ def test_score_moderate_embedding_alone_does_not_merge():
 def test_calibration_curve_zero_below_floor():
     from app.ingestion.unified_scorer import _embed_signal
 
-    assert _embed_signal(0.70) == 0.0
-    assert _embed_signal(0.50) == 0.0
-    assert _embed_signal(0.90) == 1.0
-    assert _embed_signal(0.95) == 1.0
-    assert abs(_embed_signal(0.80) - 0.5) < 0.001
+    assert _embed_signal(0.50) == 0.0   # well below floor
+    assert _embed_signal(0.70) == 0.0   # still below new floor (0.75)
+    assert _embed_signal(0.75) == 0.0   # at floor — formula gives (0.75-0.75)/(0.90-0.75)=0
+    assert _embed_signal(0.90) == 1.0   # at ceiling
+    assert _embed_signal(0.95) == 1.0   # above ceiling
+    assert abs(_embed_signal(0.825) - 0.5) < 0.001  # midpoint between 0.75 and 0.90
 
 
 def test_score_cve_overlap_only():
     from app.ingestion.unified_scorer import _compute_score
 
     article_entities = _make_article_entities([("cve", "CVE-2024-9999")])
-    cluster = _make_cluster("c1", cve_ids=["CVE-2024-9999"])
+    cluster = _make_cluster("c1", founding_types=[{"key": "CVE-2024-9999", "type": "cve"}])
     score = _compute_score(article_entities, cluster["_source"], None)
     assert abs(score - 0.10) < 0.01
 
@@ -114,7 +110,7 @@ def test_score_alias_overlap_only():
     from app.ingestion.unified_scorer import _compute_score
 
     article_entities = _make_article_entities([("vuln_alias", "heartbleed")])
-    cluster = _make_cluster("c1", vuln_aliases=["heartbleed"])
+    cluster = _make_cluster("c1", founding_types=[{"key": "heartbleed", "type": "vuln_alias"}])
     score = _compute_score(article_entities, cluster["_source"], None)
     assert abs(score - 0.15) < 0.01
 
@@ -123,8 +119,9 @@ def test_score_actor_overlap_only():
     from app.ingestion.unified_scorer import _compute_score
 
     article_entities = _make_article_entities([("actor", "volt-typhoon")])
-    cluster = _make_cluster("c1", primary_actors=["volt-typhoon"])
+    cluster = _make_cluster("c1", founding_types=[{"key": "volt-typhoon", "type": "actor"}])
     score = _compute_score(article_entities, cluster["_source"], None)
+    # Single actor: IDF Jaccard = idf("volt-typhoon") / idf("volt-typhoon") = 1.0
     assert abs(score - 0.22) < 0.01
 
 
@@ -132,7 +129,7 @@ def test_score_campaign_overlap_uses_actor_weight():
     from app.ingestion.unified_scorer import _compute_score
 
     article_entities = _make_article_entities([("campaign", "moveit-campaign")])
-    cluster = _make_cluster("c1", campaign_names=["moveit-campaign"])
+    cluster = _make_cluster("c1", founding_types=[{"key": "moveit-campaign", "type": "campaign"}])
     score = _compute_score(article_entities, cluster["_source"], None)
     assert abs(score - 0.22) < 0.01
 
@@ -142,7 +139,11 @@ def test_score_actor_plus_embed_exceeds_threshold():
 
     emb = [1.0] + [0.0] * 1023
     article_entities = _make_article_entities([("actor", "lazarus-group")])
-    cluster = _make_cluster("c1", primary_actors=["lazarus-group"], centroid=emb)
+    cluster = _make_cluster(
+        "c1",
+        founding_types=[{"key": "lazarus-group", "type": "actor"}],
+        centroid=emb,
+    )
     score = _compute_score(article_entities, cluster["_source"], emb)
     # 0.22 + 0.35 = 0.57 > 0.31 threshold
     assert score >= ASSIGN_THRESHOLD
@@ -156,9 +157,15 @@ def test_score_cve_plus_alias_below_threshold():
         ("cve", "CVE-2024-1234"),
         ("vuln_alias", "citrixbleed"),
     ])
-    cluster = _make_cluster("c1", cve_ids=["CVE-2024-1234"], vuln_aliases=["citrixbleed"])
+    cluster = _make_cluster(
+        "c1",
+        founding_types=[
+            {"key": "CVE-2024-1234", "type": "cve"},
+            {"key": "citrixbleed", "type": "vuln_alias"},
+        ],
+    )
     score = _compute_score(article_entities, cluster["_source"], None)
-    # 0.10 + 0.15 = 0.25 < 0.30
+    # 0.10 + 0.15 = 0.25 < 0.31
     assert score < ASSIGN_THRESHOLD
 
 
@@ -181,8 +188,11 @@ async def test_find_best_cluster_returns_none_below_threshold():
 async def test_find_best_cluster_returns_highest_scoring():
     from app.ingestion.unified_scorer import find_best_cluster
 
-    low_cluster = _make_cluster("c-low", primary_actors=["apt29"])
-    high_cluster = _make_cluster("c-high", primary_actors=["apt29"], vuln_aliases=["citrixbleed"])
+    low_cluster = _make_cluster("c-low", founding_types=[{"key": "apt29", "type": "actor"}])
+    high_cluster = _make_cluster("c-high", founding_types=[
+        {"key": "apt29", "type": "actor"},
+        {"key": "citrixbleed", "type": "vuln_alias"},
+    ])
 
     article_entities = _make_article_entities([
         ("actor", "apt29"),
@@ -230,7 +240,7 @@ def test_vendor_now_counts_in_entity_score():
     from app.ingestion.unified_scorer import _compute_score
 
     article_entities = _make_article_entities([("vendor", "ivanti")])
-    cluster = _make_cluster("c1", entity_keys=["ivanti"])
+    cluster = _make_cluster("c1", founding_types=[{"key": "ivanti", "type": "vendor"}])
     score = _compute_score(article_entities, cluster["_source"], None)
     assert score > 0.0  # vendor overlap is no longer ignored
 
@@ -243,12 +253,17 @@ def test_idf_weighted_overlap_favors_rare_entity():
 
     # article shares the RARE entity with the cluster, plus an unshared noise entity
     article = _make_article_entities([("tool", "rare-tool"), ("tool", "noise")])
-    cluster = _make_cluster("c1", entity_keys=["rare-tool", "common-tool"])
+    cluster = _make_cluster("c1", founding_types=[
+        {"key": "rare-tool", "type": "tool"},
+        {"key": "common-tool", "type": "tool"},
+    ])
     rare_score = unified_scorer._compute_score(article, cluster["_source"], None)
 
-    # article shares only the COMMON entity instead
     article2 = _make_article_entities([("tool", "common-tool"), ("tool", "noise")])
-    cluster2 = _make_cluster("c2", entity_keys=["common-tool", "rare-tool"])
+    cluster2 = _make_cluster("c2", founding_types=[
+        {"key": "common-tool", "type": "tool"},
+        {"key": "rare-tool", "type": "tool"},
+    ])
     common_score = unified_scorer._compute_score(article2, cluster2["_source"], None)
 
     assert rare_score > common_score
