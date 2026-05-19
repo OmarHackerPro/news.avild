@@ -25,7 +25,7 @@ _W_ACTOR = float(os.getenv("CLUSTER_WEIGHT_ACTOR", "0.22"))
 _W_ENTITY = float(os.getenv("CLUSTER_WEIGHT_ENTITY", "0.18"))
 _W_EMBED = float(os.getenv("CLUSTER_WEIGHT_EMBED", "0.35"))
 
-_EMBED_LO = float(os.getenv("CLUSTER_EMBED_LO", "0.70"))
+_EMBED_LO = float(os.getenv("CLUSTER_EMBED_LO", "0.75"))
 _EMBED_HI = float(os.getenv("CLUSTER_EMBED_HI", "0.90"))
 
 _KNN_K = 10
@@ -34,7 +34,8 @@ _EMBED_WINDOW_DAYS = int(os.getenv("CLUSTER_EMBED_WINDOW_DAYS", "30"))
 
 _SOURCE_FIELDS = [
     "article_count", "state", "entity_keys",
-    "event_signature", "centroid_embedding", "latest_at",
+    "founding_entity_keys", "founding_entity_types",
+    "centroid_embedding", "latest_at",
 ]
 
 
@@ -50,8 +51,7 @@ def _compute_score(
     cluster_source: dict,
     article_embedding: Optional[list[float]],
 ) -> float:
-    sig = cluster_source.get("event_signature") or {}
-
+    # --- Article signal sets ---
     art_cves = {e["normalized_key"] for e in article_entities if e["type"] == "cve"}
     art_vuln_aliases = {
         e["normalized_key"] for e in article_entities if e["type"] == "vuln_alias"
@@ -67,24 +67,39 @@ def _compute_score(
         if e["type"] not in ("cve", "vuln_alias", "actor", "campaign")
     }
 
-    cl_cves = set(sig.get("cve_ids") or [])
-    cl_vuln_aliases = set(sig.get("vuln_aliases") or [])
-    cl_actors_campaigns = set(
-        (sig.get("primary_actors") or []) + (sig.get("campaign_names") or [])
-    )
-    cl_others = (
-        set(cluster_source.get("entity_keys") or [])
-        - cl_cves
-        - cl_vuln_aliases
-        - cl_actors_campaigns
-    )
+    # --- Founding cluster signal sets (frozen at create time, never accumulated) ---
+    founding_types = cluster_source.get("founding_entity_types") or []
+    founding_cves = {ft["key"] for ft in founding_types if ft["type"] == "cve"}
+    founding_vuln_aliases = {
+        ft["key"] for ft in founding_types if ft["type"] == "vuln_alias"
+    }
+    founding_actors_campaigns = {
+        ft["key"] for ft in founding_types if ft["type"] in ("actor", "campaign")
+    }
+    founding_others = {
+        ft["key"]
+        for ft in founding_types
+        if ft["type"] not in ("cve", "vuln_alias", "actor", "campaign")
+    }
+    has_entity_anchor = bool(founding_types)
 
-    cve_overlap = 1.0 if art_cves & cl_cves else 0.0
-    alias_overlap = 1.0 if art_vuln_aliases & cl_vuln_aliases else 0.0
-    actor_campaign_overlap = 1.0 if art_actors_campaigns & cl_actors_campaigns else 0.0
+    # --- CVE and alias overlap (binary: a specific CVE match is always strong signal) ---
+    cve_overlap = 1.0 if art_cves & founding_cves else 0.0
+    alias_overlap = 1.0 if art_vuln_aliases & founding_vuln_aliases else 0.0
 
-    union_others = art_others | cl_others
-    shared_others = art_others & cl_others
+    # --- Actor/campaign overlap (IDF-weighted Jaccard — penalises mega-clusters) ---
+    union_actors = art_actors_campaigns | founding_actors_campaigns
+    shared_actors = art_actors_campaigns & founding_actors_campaigns
+    if union_actors:
+        num = sum(idf(k) for k in shared_actors)
+        den = sum(idf(k) for k in union_actors)
+        actor_campaign_overlap = num / den if den else 0.0
+    else:
+        actor_campaign_overlap = 0.0
+
+    # --- Other entity overlap (IDF-weighted Jaccard — product/tool/malware/vendor) ---
+    union_others = art_others | founding_others
+    shared_others = art_others & founding_others
     if union_others:
         num = sum(idf(k) for k in shared_others)
         den = sum(idf(k) for k in union_others)
@@ -92,6 +107,7 @@ def _compute_score(
     else:
         entity_jaccard = 0.0
 
+    # --- Embedding signal ---
     cosine = 0.0
     centroid = cluster_source.get("centroid_embedding")
     if article_embedding and centroid:
@@ -101,12 +117,20 @@ def _compute_score(
         if denom > 0:
             cosine = max(0.0, float(np.dot(a, c) / denom))
 
+    # Entity-free clusters (no founding signal) require near-identical embedding
+    # to merge — prevents editorial/topic drift clusters from absorbing loosely
+    # related articles.
+    if has_entity_anchor:
+        embed_signal_val = _embed_signal(cosine)
+    else:
+        embed_signal_val = 1.0 if cosine >= _EMBED_HI else 0.0
+
     return (
         _W_CVE * cve_overlap
         + _W_ALIAS * alias_overlap
         + _W_ACTOR * actor_campaign_overlap
         + _W_ENTITY * entity_jaccard
-        + _W_EMBED * _embed_signal(cosine)
+        + _W_EMBED * embed_signal_val
     )
 
 
