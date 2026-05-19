@@ -2,7 +2,18 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from app.ingestion.clusterer import _build_event_signature, _updated_centroid, _is_roundup
+from app.ingestion import cluster_cache
+from app.ingestion.clusterer import (
+    _build_event_signature, _updated_centroid, _is_roundup, _merged_state,
+)
+
+
+@pytest.fixture
+def cache_on():
+    """Enable the run-scoped cluster cache for one test, always disabling after."""
+    cluster_cache.enable()
+    yield
+    cluster_cache.disable()
 
 
 # ---------------------------------------------------------------------------
@@ -707,6 +718,124 @@ async def test_cluster_article_roundup_skips_find_best_and_creates_own():
     mock_best.assert_not_awaited()   # never asks for a best cluster
     mock_merge.assert_not_awaited()  # never merges into anything
     mock_create.assert_awaited_once()  # always creates its own
+
+
+# ---------------------------------------------------------------------------
+# Cluster cache (clustering perf fix #2)
+# ---------------------------------------------------------------------------
+
+def test_merged_state_transitions():
+    assert _merged_state("new", 1) == "new"
+    assert _merged_state("new", 2) == "developing"
+    assert _merged_state("developing", 2) == "developing"
+    assert _merged_state("new", 3) == "confirmed"
+    assert _merged_state("confirmed", 4) == "confirmed"
+
+
+@pytest.mark.asyncio
+async def test_create_cluster_skips_wait_for_and_caches_when_enabled(cache_on):
+    """With the cache on, create_cluster drops refresh=wait_for and caches the doc."""
+    os_mock = AsyncMock()
+    os_mock.index.return_value = {"_id": "cached-cluster-001"}
+    os_mock.update.return_value = {}
+
+    article = {
+        "slug": "apt29-breach-001",
+        "title": "APT29 Targets Finance",
+        "cve_ids": [],
+        "published_at": "2026-05-01T10:00:00Z",
+        "content_type": "news",
+    }
+    entities = [{"type": "actor", "normalized_key": "apt29"}]
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import create_cluster
+        await create_cluster(article, entities, embedding=[0.1] * 1024)
+
+    assert os_mock.index.call_args.kwargs["params"]["refresh"] == "false"
+    assert cluster_cache.get("cached-cluster-001") is not None
+
+
+@pytest.mark.asyncio
+async def test_create_cluster_keeps_wait_for_when_cache_disabled():
+    """Live ingestion (cache off) keeps refresh=wait_for unchanged."""
+    os_mock = AsyncMock()
+    os_mock.index.return_value = {"_id": "live-cluster-001"}
+    os_mock.update.return_value = {}
+
+    article = {
+        "slug": "live-001", "title": "Live", "cve_ids": [],
+        "published_at": "2026-05-01T10:00:00Z", "content_type": "news",
+    }
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import create_cluster
+        await create_cluster(article, [], embedding=[0.1] * 1024)
+
+    assert os_mock.index.call_args.kwargs["params"]["refresh"] == "wait_for"
+
+
+@pytest.mark.asyncio
+async def test_merge_uses_cache_and_updates_it(cache_on):
+    """Merge reads cluster state from the cache (no os.get) and writes it back."""
+    cluster_cache.put("c1", {
+        "article_count": 1,
+        "state": "new",
+        "entity_keys": ["apt29"],
+        "centroid_embedding": [0.5] * 1024,
+        "latest_at": "2026-05-01T10:00:00Z",
+        "founding_entity_types": [{"key": "apt29", "type": "actor"}],
+        "event_signature": {"cve_ids": [], "vuln_aliases": [], "campaign_names": [],
+                            "affected_products": [], "primary_actors": ["apt29"],
+                            "confidence": "low"},
+    })
+
+    os_mock = AsyncMock()
+    os_mock.update.return_value = {}
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import merge_into_cluster
+        await merge_into_cluster(
+            "c1", "article-2", ["lockbit"], [],
+            source_name="CISA", title="Follow-up",
+            published_at="2026-05-02T10:00:00Z",
+        )
+
+    os_mock.get.assert_not_called()  # served from cache, no round-trip
+    cached = cluster_cache.get("c1")
+    assert cached["article_count"] == 2
+    assert "lockbit" in cached["entity_keys"]
+    assert cached["state"] == "developing"
+    assert cached["latest_at"] == "2026-05-02T10:00:00Z"
+
+
+@pytest.mark.asyncio
+async def test_merge_falls_back_to_os_get_when_not_cached(cache_on):
+    """A cluster absent from the cache is fetched from OpenSearch, then cached."""
+    os_mock = AsyncMock()
+    os_mock.get.return_value = {"_source": {
+        "article_count": 1, "state": "new", "entity_keys": ["fortios"],
+        "centroid_embedding": None, "latest_at": "2026-05-01T10:00:00Z",
+        "event_signature": {},
+    }}
+    os_mock.update.return_value = {}
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import merge_into_cluster
+        await merge_into_cluster(
+            "preexisting", "article-2", ["citrixbleed"], [],
+            source_name="CISA", title="Follow-up",
+            published_at="2026-05-02T10:00:00Z",
+        )
+
+    os_mock.get.assert_awaited_once()
+    cached = cluster_cache.get("preexisting")
+    assert cached is not None
+    assert cached["article_count"] == 2
 
 
 @pytest.mark.asyncio

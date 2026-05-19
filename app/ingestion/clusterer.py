@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from app.db.opensearch import INDEX_CLUSTERS, INDEX_NEWS, get_os_client
+from app.ingestion import cluster_cache
 from app.ingestion.cve_topic_manager import upsert_cve_topics, create_cve_topic_stubs
 from app.ingestion.embedding_input import embed_article
 from app.ingestion.scorer import rescore_cluster
@@ -55,6 +56,19 @@ def _updated_centroid(
     import numpy as np
     c = (np.array(old_centroid) * (n - 1) + np.array(new_vec)) / n
     return c.tolist()
+
+
+def _merged_state(old_state: str, article_count: int) -> str:
+    """Replicate the lifecycle transition the merge Painless script applies.
+
+    Kept in sync with the `state` logic in `merge_into_cluster`'s script so the
+    in-process cache reflects the same state OpenSearch will hold post-merge.
+    """
+    if article_count >= 3:
+        return "confirmed"
+    if article_count >= 2 and old_state == "new":
+        return "developing"
+    return old_state
 
 
 def _parse_published_at(val) -> Optional[datetime]:
@@ -152,10 +166,9 @@ async def cluster_article(
             await upsert_cve_topics(cve_ids, slug, entities, embedding)
 
     # Roundup articles (patch tuesday, weekly digest, stormcast, CVE landscape, etc.)
-    # always create their own cluster. They must never merge into real incident clusters
-    # because they carry dozens of CVEs/entities that would corrupt the retrieval net.
+    # carry no coherent event signal — they are never clustered. The article still
+    # lives in the news index and feeds CVE topics above; it just gets no cluster doc.
     if _is_roundup(article.get("title", ""), cve_ids):
-        await create_cluster(article, entities, embedding=embedding)
         return
 
     # Incident cluster flow
@@ -196,19 +209,20 @@ async def merge_into_cluster(
     os_client = get_os_client()
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    # Fetch current cluster to compute centroid update and merge event_signature
-    try:
-        existing = await os_client.get(index=INDEX_CLUSTERS, id=cluster_id, _source=True)
-        src = existing["_source"]
-        old_centroid = src.get("centroid_embedding")
-        old_count = src.get("article_count", 1)
-        old_sig = src.get("event_signature") or {}
-        old_latest_at = src.get("latest_at") or ""
-    except Exception:
-        old_centroid = None
-        old_count = 1
-        old_sig = {}
-        old_latest_at = ""
+    # Current cluster state to compute centroid update and merge event_signature.
+    # Prefer the in-process cache (batch runs): it holds the freshest same-run
+    # state and saves an OpenSearch round-trip. Falls back to OpenSearch.
+    src = cluster_cache.get(cluster_id)
+    if src is None:
+        try:
+            existing = await os_client.get(index=INDEX_CLUSTERS, id=cluster_id, _source=True)
+            src = existing["_source"]
+        except Exception:
+            src = {}
+    old_centroid = src.get("centroid_embedding")
+    old_count = src.get("article_count", 1)
+    old_sig = src.get("event_signature") or {}
+    old_latest_at = src.get("latest_at") or ""
 
     new_count = old_count + 1
     new_centroid = (
@@ -351,6 +365,23 @@ async def merge_into_cluster(
         retry_on_conflict=3,
     )
 
+    # Keep the in-process cache in sync so later same-run articles match the
+    # post-merge state. founding_entity_types is frozen, so it survives via src.
+    if cluster_cache.is_enabled():
+        merged = dict(src)
+        merged["article_count"] = new_count
+        if new_centroid is not None:
+            merged["centroid_embedding"] = new_centroid
+        merged["latest_at"] = new_latest_at
+        merged["event_signature"] = sig_update
+        merged_keys = list(src.get("entity_keys") or [])
+        for k in entity_keys:
+            if k not in merged_keys:
+                merged_keys.append(k)
+        merged["entity_keys"] = merged_keys
+        merged["state"] = _merged_state(src.get("state", "new"), new_count)
+        cluster_cache.put(cluster_id, merged)
+
     await _rescore(cluster_id)
 
 
@@ -407,8 +438,15 @@ async def create_cluster(
     if embedding is not None:
         doc["centroid_embedding"] = embedding
 
-    resp = await os_client.index(index=INDEX_CLUSTERS, body=doc, params={"refresh": "wait_for"})
+    # Batch runs use the in-process cluster cache for immediate visibility, so
+    # the costly refresh=wait_for (blocks ~1s per cluster) is unnecessary. Live
+    # ingestion keeps wait_for so the next article's search sees the new doc.
+    refresh_mode = "false" if cluster_cache.is_enabled() else "wait_for"
+    resp = await os_client.index(
+        index=INDEX_CLUSTERS, body=doc, params={"refresh": refresh_mode}
+    )
     cluster_id = resp["_id"]
+    cluster_cache.put(cluster_id, doc)
 
     await os_client.update(
         index=INDEX_NEWS,

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Backfill clusters for existing articles that aren't in any cluster yet.
 
-Scrolls articles oldest-first so clusters form chronologically, then runs
+Scrolls articles newest-first so the most recent events seed clusters, then runs
 each through the same cluster_article() decision tree used during ingestion.
 
 Usage:
@@ -29,6 +29,7 @@ from app.utils.progress import make_script_progress
 from rich.table import Table
 
 from app.db.opensearch import INDEX_NEWS, INDEX_ENTITIES, INDEX_CLUSTERS, INDEX_CVE_TOPICS, get_os_client
+from app.ingestion import cluster_cache
 from app.ingestion.clusterer import cluster_article
 from app.ingestion.entity_idf import refresh_idf_map
 
@@ -207,6 +208,11 @@ async def _post_annotate(client) -> None:
 async def main(args: argparse.Namespace) -> None:
     client = get_os_client()
 
+    # Run-scoped cluster cache: lets find_best_cluster see clusters created
+    # earlier in this run without waiting on an OpenSearch refresh, so
+    # create_cluster can skip the costly refresh=wait_for.
+    cluster_cache.enable()
+
     idf_count = await refresh_idf_map()
     console.print(f"[dim]IDF map: {idf_count} entities[/dim]")
 
@@ -214,8 +220,10 @@ async def main(args: argparse.Namespace) -> None:
         console.print("[bold yellow]--reset: wiping all clusters before re-clustering.[/bold yellow]")
         await _reset_clusters(client)
 
-    # Speed up rebuild: create_cluster uses refresh=wait_for; lowering the
-    # refresh interval from 10s → 1s cuts the per-article wait from ~5s to ~0.5s.
+    # Lower the refresh interval 10s → 1s for the rebuild: create_cluster no
+    # longer blocks on refresh=wait_for (the cluster cache covers same-run
+    # visibility), but a faster interval still keeps OpenSearch close to current
+    # for the per-page refresh and the post-annotation pass.
     await _set_refresh_interval(client, _REBUILD_REFRESH_INTERVAL)
     console.print(f"[dim]Refresh interval set to {_REBUILD_REFRESH_INTERVAL} for rebuild.[/dim]")
 
@@ -246,7 +254,7 @@ async def main(args: argparse.Namespace) -> None:
         while True:
             resp = await _os_search(client, INDEX_NEWS, {
                 "query": query,
-                "sort": [{"published_at": {"order": "asc"}}],
+                "sort": [{"published_at": {"order": "desc"}}],
                 "size": page_size,
                 "from": from_offset,
                 "_source": [
@@ -383,6 +391,7 @@ if __name__ == "__main__":
         try:
             await main(parser.parse_args())
         finally:
+            cluster_cache.disable()
             from app.db.opensearch import close_os_client
             await close_os_client()
 
