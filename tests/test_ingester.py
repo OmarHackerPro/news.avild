@@ -177,3 +177,26 @@ class TestContentTypeIsSet:
                 await ingest_source(source, client)
 
         assert captured.get("content_type") == "kev_catalog"
+
+
+@pytest.mark.asyncio
+async def test_ingest_all_feeds_calls_refresh_entity_intel():
+    """ingest_all_feeds() must call refresh_entity_intel() before processing sources."""
+    from unittest.mock import AsyncMock, patch, MagicMock
+
+    mock_refresh = AsyncMock(return_value=1625)
+    mock_sources = []  # no sources — just checking startup call happens
+
+    with patch("app.ingestion.ingester.refresh_entity_intel", mock_refresh), \
+         patch("app.ingestion.ingester.AsyncSessionLocal") as mock_session_cls:
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+        mock_session.execute = AsyncMock(return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=mock_sources)))))
+        mock_session_cls.return_value = mock_session
+
+        from app.ingestion.ingester import ingest_all_feeds
+        await ingest_all_feeds()
+
+    mock_refresh.assert_called_once()

@@ -15,7 +15,7 @@ from app.db.models.source_category import SourceCategory
 from app.db.opensearch import INDEX_NEWS, INDEX_SNAPSHOTS, get_os_client, NEWS_MAPPING
 from app.db.session import AsyncSessionLocal
 from app.ingestion.clusterer import cluster_article
-from app.ingestion.entity_extractor import extract_entities, merge_entities
+from app.ingestion.entity_extractor import extract_entities, merge_entities, refresh_entity_intel
 from app.ingestion.tag_classifier import classify_tags
 from app.ingestion.entity_store import store_article_entities
 from app.ingestion.normalizer import NORMALIZER_REGISTRY, NormalizedArticle, normalize_article, _infer_content_type
@@ -522,6 +522,10 @@ async def ingest_all_feeds(*, update: bool = False) -> None:
     if AsyncSessionLocal is None:
         logger.error("Database not configured (DATABASE_URL missing).")
         return
+
+    async with AsyncSessionLocal() as db:
+        count = await refresh_entity_intel(db)
+        logger.info("Entity intel loaded: %d entries", count)
 
     async with AsyncSessionLocal() as session:
         sources = await get_active_sources(session)
