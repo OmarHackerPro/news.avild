@@ -313,6 +313,8 @@ def _rebuild_patterns_from_db() -> None:
             _PRODUCT_PATTERNS.append(
                 (key, name, re.compile(r"\b" + re.escape(name) + r"\b", flags))
             )
+    if not _PRODUCT_PATTERNS:
+        logger.warning("No product patterns loaded from DB")
 
     _THREAT_PATTERNS.clear()
     for key, (name, etype) in _DB_ENTITY_MAP.items():
@@ -321,12 +323,16 @@ def _rebuild_patterns_from_db() -> None:
             _THREAT_PATTERNS.append(
                 (key, name, etype, re.compile(r"\b" + re.escape(name) + r"\b", flags))
             )
+    if not _THREAT_PATTERNS:
+        logger.warning("No threat patterns loaded from DB")
 
     _ALIAS_PATTERNS.clear()
     for display_text, canonical_key in _DB_ALIAS_DISPLAY.items():
         _ALIAS_PATTERNS.append(
             (canonical_key, re.compile(r"\b" + re.escape(display_text) + r"\b", re.IGNORECASE))
         )
+    if not _ALIAS_PATTERNS:
+        logger.warning("No alias patterns loaded from DB — alias resolution inactive")
 
 
 async def refresh_entity_intel(db_session) -> int:

@@ -12,6 +12,7 @@ from typing import Optional
 import numpy as np
 
 from app.db.opensearch import INDEX_CLUSTERS, get_os_client
+from app.ingestion import cluster_cache
 from app.ingestion.entity_idf import ensure_idf_map, idf
 
 logger = logging.getLogger(__name__)
@@ -140,6 +141,61 @@ def _retrieval_key(entity: dict) -> str:
     return key.upper() if entity["type"] == "cve" else key
 
 
+def _cache_candidates(
+    article_entities: list[dict],
+    article_embedding: Optional[list[float]],
+    cutoff_structured: str,
+    cutoff_embed: str,
+) -> list[dict]:
+    """Mirror `_structured_lookup` + `_knn_lookup` over the in-process cache.
+
+    Lets `find_best_cluster` see clusters created earlier in the same batch run
+    before OpenSearch has refreshed. Returns the same hit shape as OpenSearch.
+    Empty when the cache is disabled (live ingestion).
+    """
+    all_hits = cluster_cache.hits()
+    if not all_hits:
+        return []
+
+    selected: dict[str, dict] = {}
+
+    # structured-equivalent: shares an entity key, in window, not resolved
+    art_keys = {_retrieval_key(e) for e in article_entities}
+    if art_keys:
+        for h in all_hits:
+            src = h["_source"]
+            if src.get("state") == "resolved":
+                continue
+            if (src.get("latest_at") or "") < cutoff_structured:
+                continue
+            if art_keys & set(src.get("entity_keys") or []):
+                selected[h["_id"]] = h
+
+    # k-NN-equivalent: top-K by centroid cosine, in window, not resolved
+    if article_embedding:
+        a = np.array(article_embedding, dtype=np.float32)
+        na = float(np.linalg.norm(a))
+        scored: list[tuple[float, dict]] = []
+        for h in all_hits:
+            src = h["_source"]
+            if src.get("state") == "resolved":
+                continue
+            if (src.get("latest_at") or "") < cutoff_embed:
+                continue
+            centroid = src.get("centroid_embedding")
+            if not centroid:
+                continue
+            c = np.array(centroid, dtype=np.float32)
+            denom = na * float(np.linalg.norm(c))
+            cos = float(np.dot(a, c) / denom) if denom > 0 else 0.0
+            scored.append((cos, h))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        for _cos, h in scored[:_KNN_K]:
+            selected.setdefault(h["_id"], h)
+
+    return list(selected.values())
+
+
 async def _get_candidates(
     article_entities: list[dict],
     article_embedding: Optional[list[float]],
@@ -207,13 +263,18 @@ async def _get_candidates(
             return []
 
     structured_hits, knn_hits = await asyncio.gather(_structured_lookup(), _knn_lookup())
+    cache_hits = _cache_candidates(
+        article_entities, article_embedding, cutoff_structured, cutoff_embed
+    )
 
     candidates: dict[str, dict] = {}
-    for hit in structured_hits:
+    # Cache entries win on id collisions — they carry the freshest same-run state.
+    for hit in cache_hits:
         candidates[hit["_id"]] = hit
+    for hit in structured_hits:
+        candidates.setdefault(hit["_id"], hit)
     for hit in knn_hits:
-        if hit["_id"] not in candidates:
-            candidates[hit["_id"]] = hit
+        candidates.setdefault(hit["_id"], hit)
 
     return list(candidates.values())
 
