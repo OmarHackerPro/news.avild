@@ -268,3 +268,64 @@ def test_idf_weighted_overlap_favors_rare_entity():
 
     assert rare_score > common_score
     entity_idf._IDF_MAP.clear()
+
+
+# ---------------------------------------------------------------------------
+# New founding-identity behaviour
+# ---------------------------------------------------------------------------
+
+def test_score_uses_founding_not_accumulated():
+    """Accumulated entity_keys do not drive scoring — only founding_entity_types does."""
+    from app.ingestion.unified_scorer import _compute_score, ASSIGN_THRESHOLD
+
+    # Cluster has 400 accumulated actors in entity_keys but only 1 founding actor
+    big_entity_keys = [f"actor-{i}" for i in range(400)]
+    cluster = _make_cluster(
+        "c-mega",
+        founding_types=[{"key": "deceptive-development", "type": "actor"}],
+        entity_keys=big_entity_keys,
+    )
+    # Article mentions one of the 400 accumulated actors but NOT the founding actor
+    article_entities = _make_article_entities([("actor", "actor-7")])
+    score = _compute_score(article_entities, cluster["_source"], None)
+    assert score < ASSIGN_THRESHOLD
+
+
+def test_score_idf_actor_jaccard_mega_cluster():
+    """IDF-weighted actor Jaccard: 1 match vs 400 founding actors → near-zero score."""
+    from app.ingestion import unified_scorer, entity_idf
+
+    entity_idf._IDF_MAP.clear()  # all IDF defaults to 1.0
+
+    big_founding = [{"key": f"actor-{i}", "type": "actor"} for i in range(400)]
+    cluster = _make_cluster("c-mega", founding_types=big_founding)
+    article_entities = _make_article_entities([("actor", "actor-0")])
+
+    score = unified_scorer._compute_score(article_entities, cluster["_source"], None)
+    # actor_jaccard = idf("actor-0") / sum(idf(all 400)) = 1.0 / 400 = 0.0025
+    # contribution = 0.22 * 0.0025 = 0.00055
+    assert score < 0.01
+
+    entity_idf._IDF_MAP.clear()
+
+
+def test_score_entity_free_cluster_rejects_moderate_cosine():
+    """Entity-free cluster (no founding_entity_types): cosine 0.82 contributes nothing."""
+    from app.ingestion.unified_scorer import _compute_score, ASSIGN_THRESHOLD
+
+    a, c = _emb_with_cosine(0.82)
+    cluster = _make_cluster("c-editorial", centroid=c)  # founding_types=[] → entity-free
+    score = _compute_score([], cluster["_source"], a)
+    assert score < ASSIGN_THRESHOLD
+
+
+def test_score_entity_free_cluster_accepts_near_identical():
+    """Entity-free cluster: cosine 0.92 ≥ EMBED_HI=0.90 → binary 1.0 → contributes."""
+    from app.ingestion.unified_scorer import _compute_score, ASSIGN_THRESHOLD, _W_EMBED
+
+    a, c = _emb_with_cosine(0.92)
+    cluster = _make_cluster("c-editorial", centroid=c)  # founding_types=[] → entity-free
+    score = _compute_score([], cluster["_source"], a)
+    # embed_signal_val = 1.0, score = _W_EMBED * 1.0 = 0.35 > 0.31
+    assert score >= ASSIGN_THRESHOLD
+    assert abs(score - _W_EMBED) < 0.01
