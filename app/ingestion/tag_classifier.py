@@ -2,7 +2,7 @@
 import re
 from typing import TypedDict
 
-from app.ingestion.entity_extractor import VENDOR_KEYWORDS, THREAT_KEYWORDS, _normalize_key
+from app.ingestion.entity_extractor import _DB_ENTITY_MAP, _normalize_key
 
 VALID_TOPICS = frozenset([
     "vulnerability", "malware", "data-breach", "nation-state",
@@ -226,31 +226,31 @@ def _classify_entities(tags: list[str]) -> tuple[list[dict], list[str], set[str]
 
         norm_key = _normalize_key(tag)
 
-        if norm_key in VENDOR_KEYWORDS and norm_key not in seen_keys:
-            entities.append({
-                "type": "vendor",
-                "name": VENDOR_KEYWORDS[norm_key],
-                "normalized_key": norm_key,
-                "source": "tag",
-                "sources": ["tag"],
-            })
-            seen_keys.add(norm_key)
-            continue
-
-        if norm_key in THREAT_KEYWORDS and norm_key not in seen_keys:
-            name, etype = THREAT_KEYWORDS[norm_key]
-            entities.append({
-                "type": etype,
-                "name": name,
-                "normalized_key": norm_key,
-                "source": "tag",
-                "sources": ["tag"],
-            })
-            seen_keys.add(norm_key)
-            inferred = _ENTITY_TYPE_TO_TOPIC.get(etype)
-            if inferred:
-                topics.add(inferred)
-            continue
+        if norm_key in _DB_ENTITY_MAP and norm_key not in seen_keys:
+            name, etype = _DB_ENTITY_MAP[norm_key]
+            if etype == "vendor":
+                entities.append({
+                    "type": "vendor",
+                    "name": name,
+                    "normalized_key": norm_key,
+                    "source": "tag",
+                    "sources": ["tag"],
+                })
+                seen_keys.add(norm_key)
+                continue
+            if etype in ("actor", "malware", "tool", "campaign", "vuln_alias"):
+                entities.append({
+                    "type": etype,
+                    "name": name,
+                    "normalized_key": norm_key,
+                    "source": "tag",
+                    "sources": ["tag"],
+                })
+                seen_keys.add(norm_key)
+                inferred = _ENTITY_TYPE_TO_TOPIC.get(etype)
+                if inferred:
+                    topics.add(inferred)
+                continue
 
         remaining.append(tag)
 
