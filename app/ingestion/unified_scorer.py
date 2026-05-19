@@ -126,13 +126,21 @@ def _compute_score(
     else:
         embed_signal_val = 1.0 if cosine >= _EMBED_HI else 0.0
 
-    return (
+    entity_score = (
         _W_CVE * cve_overlap
         + _W_ALIAS * alias_overlap
         + _W_ACTOR * actor_campaign_overlap
         + _W_ENTITY * entity_jaccard
-        + _W_EMBED * embed_signal_val
     )
+
+    # Entity-anchored cluster + zero entity overlap: the article shares nothing
+    # with the cluster's frozen founding identity. High cosine here means "same
+    # topic", not "same event" — letting embedding merge it alone turns the
+    # cluster into a topic bucket. Embedding boosts a real signal; it is never one.
+    if has_entity_anchor and entity_score == 0.0:
+        return 0.0
+
+    return entity_score + _W_EMBED * embed_signal_val
 
 
 def _retrieval_key(entity: dict) -> str:

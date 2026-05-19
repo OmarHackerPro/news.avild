@@ -86,6 +86,34 @@ def test_score_moderate_embedding_alone_does_not_merge():
     assert score < ASSIGN_THRESHOLD
 
 
+def test_score_entity_anchored_cluster_rejects_embedding_only_match():
+    """An entity-anchored cluster must not absorb an article that shares no
+    entity with its founding identity, even at near-identical cosine."""
+    from app.ingestion.unified_scorer import _compute_score
+
+    a, c = _emb_with_cosine(0.97)
+    cluster = _make_cluster(
+        "c1", founding_types=[{"key": "apt29", "type": "actor"}], centroid=c
+    )
+    # Article entity does not overlap the founding actor at all.
+    article_entities = _make_article_entities([("actor", "lazarus-group")])
+    score = _compute_score(article_entities, cluster["_source"], a)
+    assert score == 0.0
+
+
+def test_score_entity_anchored_cluster_keeps_embedding_boost_with_overlap():
+    """With a real entity overlap, embedding still boosts the score normally."""
+    from app.ingestion.unified_scorer import _compute_score, ASSIGN_THRESHOLD
+
+    a, c = _emb_with_cosine(0.97)
+    cluster = _make_cluster(
+        "c1", founding_types=[{"key": "apt29", "type": "actor"}], centroid=c
+    )
+    article_entities = _make_article_entities([("actor", "apt29")])
+    score = _compute_score(article_entities, cluster["_source"], a)
+    assert score >= ASSIGN_THRESHOLD
+
+
 def test_calibration_curve_zero_below_floor():
     from app.ingestion.unified_scorer import _embed_signal
 

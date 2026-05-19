@@ -88,6 +88,7 @@ _MAX_ARTICLE_CVES_FOR_CVE_TOPIC = 5  # articles with >5 CVEs skip CVE topic upse
 
 _ROUNDUP_KEYWORDS = frozenset([
     "patch tuesday", "monthly roundup", "cve landscape", "roundup", "weekly digest",
+    "weekly update",  # Troy Hunt's "Weekly Update NNN" series
     "stormcast",  # SANS ISC daily podcast
 ])
 
