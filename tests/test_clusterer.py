@@ -310,14 +310,13 @@ async def test_cluster_article_no_cve_skips_cve_flow():
     ("Weekly Digest: Top Security Stories", [], True),
     ("Monthly Roundup: April Threats", [], True),
     ("Weekly Digest Cybersecurity News", [], True),
-    # CVE count threshold
-    ("FortiOS RCE", [f"CVE-2026-{i:04d}" for i in range(11)], True),
+    # CVE count is NOT a roundup signal — detection is keyword-only
+    ("FortiOS RCE", [f"CVE-2026-{i:04d}" for i in range(11)], False),
     # normal articles — not a roundup
     ("FortiOS RCE CVE-2026-1234 actively exploited", ["CVE-2026-1234"], False),
     ("Lazarus Group targets financial institutions", [], False),
     ("Threat landscape shifts after CVSS overhaul", [], False),
     ("Google monthly security updates for May 2026", [], False),
-    # exactly 10 CVEs — not a roundup (threshold is >10)
     ("Multiple CVEs fixed", [f"CVE-2026-{i:04d}" for i in range(10)], False),
 ])
 def test_is_roundup(label, cve_ids, expected):
@@ -327,29 +326,6 @@ def test_is_roundup(label, cve_ids, expected):
 # ---------------------------------------------------------------------------
 # create_cluster — sets is_roundup
 # ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_create_cluster_sets_is_roundup_true_for_roundup_label():
-    os_mock = AsyncMock()
-    os_mock.index.return_value = {"_id": "cluster-roundup-001"}
-    os_mock.update.return_value = {}
-
-    article = {
-        "slug": "patch-tuesday-may-2026",
-        "title": "Patch Tuesday May 2026: 80 fixes",
-        "cve_ids": [f"CVE-2026-{i:04d}" for i in range(80)],
-        "published_at": "2026-05-01T10:00:00Z",
-        "source_name": "Microsoft",
-    }
-
-    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
-         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
-        from app.ingestion.clusterer import create_cluster
-        await create_cluster(article, [], embedding=[0.1] * 1024)
-
-    indexed = os_mock.index.call_args.kwargs["body"]
-    assert indexed["is_roundup"] is True
-
 
 @pytest.mark.asyncio
 async def test_create_cluster_sets_is_roundup_false_for_normal_article():
@@ -553,12 +529,6 @@ async def test_kev_catalog_with_no_cves_skips_annotation():
 # _classify_cluster_type
 # ---------------------------------------------------------------------------
 
-def test_classify_cluster_type_roundup():
-    from app.ingestion.clusterer import _classify_cluster_type
-    article = {"title": "May 2026 Patch Tuesday", "content_type": "news"}
-    assert _classify_cluster_type(article, [], ["CVE-2026-1"]) == "roundup"
-
-
 def test_classify_cluster_type_advisory_ics():
     from app.ingestion.clusterer import _classify_cluster_type
     article = {"title": "ICS Advisory ICSA-26-001", "content_type": "ics_advisory"}
@@ -691,12 +661,12 @@ async def test_create_cluster_founding_keys_match_entity_keys_at_creation():
 
 
 # ---------------------------------------------------------------------------
-# cluster_article — roundup ring-fence
+# cluster_article — roundup ring-fence (roundups are not clustered)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_cluster_article_roundup_skips_find_best_and_creates_own():
-    """Roundup articles bypass find_best_cluster and always create their own cluster."""
+async def test_cluster_article_roundup_is_not_clustered():
+    """Roundup articles get no cluster — no find_best, no merge, no create."""
     article = {
         "slug": "patch-tuesday-2026-05",
         "title": "Microsoft May 2026 Patch Tuesday",
@@ -710,14 +680,14 @@ async def test_cluster_article_roundup_skips_find_best_and_creates_own():
          patch("app.ingestion.clusterer.upsert_cve_topics", new_callable=AsyncMock), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value="cluster-existing") as mock_best, \
          patch("app.ingestion.clusterer.merge_into_cluster", new_callable=AsyncMock) as mock_merge, \
-         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock, return_value="new-roundup-cluster") as mock_create:
+         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock) as mock_create:
 
         from app.ingestion.clusterer import cluster_article
         await cluster_article(article, "patch-tuesday-2026-05", [])
 
     mock_best.assert_not_awaited()   # never asks for a best cluster
     mock_merge.assert_not_awaited()  # never merges into anything
-    mock_create.assert_awaited_once()  # always creates its own
+    mock_create.assert_not_awaited()  # never creates a cluster
 
 
 # ---------------------------------------------------------------------------
@@ -839,8 +809,8 @@ async def test_merge_falls_back_to_os_get_when_not_cached(cache_on):
 
 
 @pytest.mark.asyncio
-async def test_cluster_article_stormcast_roundup_creates_own():
-    """ISC Stormcast is caught by 'stormcast' keyword — creates own cluster."""
+async def test_cluster_article_stormcast_roundup_is_not_clustered():
+    """ISC Stormcast is caught by 'stormcast' keyword — gets no cluster."""
     article = {
         "slug": "stormcast-2026-05-19",
         "title": "ISC Stormcast For Tuesday, May 19th, 2026 https://isc.sans.edu/...",
@@ -853,10 +823,11 @@ async def test_cluster_article_stormcast_roundup_creates_own():
     with patch("app.ingestion.clusterer.embed_article", new_callable=AsyncMock, return_value=[0.1] * 1024), \
          patch("app.ingestion.clusterer.find_best_cluster", new_callable=AsyncMock, return_value="cluster-existing") as mock_best, \
          patch("app.ingestion.clusterer.merge_into_cluster", new_callable=AsyncMock) as mock_merge, \
-         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock, return_value="new-stormcast-cluster") as mock_create:
+         patch("app.ingestion.clusterer.create_cluster", new_callable=AsyncMock) as mock_create:
 
         from app.ingestion.clusterer import cluster_article
         await cluster_article(article, "stormcast-2026-05-19", [])
 
     mock_best.assert_not_awaited()
-    mock_create.assert_awaited_once()
+    mock_merge.assert_not_awaited()
+    mock_create.assert_not_awaited()

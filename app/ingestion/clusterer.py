@@ -101,8 +101,6 @@ def _classify_cluster_type(
     article: dict, entities: list[dict], cve_ids: list[str]
 ) -> str:
     """Deterministic cluster type — set once at create time, never updated."""
-    if _is_roundup(article.get("title", ""), cve_ids):
-        return "roundup"
     content_type = article.get("content_type", "news")
     if content_type in ("ics_advisory", "product_advisory"):
         return "advisory"
@@ -144,8 +142,8 @@ async def cluster_article(
     - ics_advisory: CVE topics + full cluster flow; create_cluster sets is_advisory=True.
     - news / threat_advisory (default): unchanged full flow.
 
-    Roundup articles (patch tuesday, CVE landscape, stormcast, etc.) always create
-    their own cluster and never merge into real incident clusters.
+    Roundup articles (patch tuesday, CVE landscape, stormcast, etc.) are not
+    clustered at all — they still feed CVE topics but get no cluster doc.
     """
     content_type = article.get("content_type", "news")
     cve_ids: list[str] = article.get("cve_ids") or []
@@ -402,7 +400,7 @@ async def create_cluster(
     doc = {
         "label": article.get("title", ""),
         "state": "new",
-        "is_roundup": _is_roundup(article.get("title", ""), cve_ids),
+        "is_roundup": False,  # roundup articles never reach create_cluster
         "is_advisory": article.get("content_type") == "ics_advisory",
         "summary": "",
         "why_it_matters": "",
