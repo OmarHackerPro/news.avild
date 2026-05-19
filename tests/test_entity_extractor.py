@@ -397,3 +397,43 @@ async def test_ttp_regex_does_not_match_out_of_range():
     entities = await extract_entities(article)
     keys = [e["normalized_key"] for e in entities]
     assert "t9999" not in keys
+
+
+# ---------------------------------------------------------------------------
+# _rebuild_patterns_from_db — product type support
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_rebuild_populates_product_patterns():
+    """After refresh with product-type rows, _PRODUCT_PATTERNS must be non-empty."""
+    import importlib
+    import app.ingestion.entity_extractor as mod
+    importlib.reload(mod)
+
+    rows = [
+        _EntityRow("esxi", "ESXi", "product", []),
+        _EntityRow("confluence", "Confluence", "product", []),
+        _EntityRow("apt29", "APT29", "actor", []),
+    ]
+    db = _mock_db_with_rows(rows)
+    await mod.refresh_entity_intel(db)
+
+    product_keys = {k for k, _, _ in mod._PRODUCT_PATTERNS}
+    assert "esxi" in product_keys
+    assert "confluence" in product_keys
+
+
+@pytest.mark.asyncio
+async def test_rebuild_logs_warning_when_vendor_patterns_empty(caplog):
+    """If DB has no vendor rows, a WARNING is logged after rebuild."""
+    import importlib
+    import logging
+    import app.ingestion.entity_extractor as mod
+    importlib.reload(mod)
+
+    rows = [_EntityRow("apt29", "APT29", "actor", [])]
+    db = _mock_db_with_rows(rows)
+    with caplog.at_level(logging.WARNING, logger="app.ingestion.entity_extractor"):
+        await mod.refresh_entity_intel(db)
+
+    assert any("vendor" in r.message.lower() for r in caplog.records)
