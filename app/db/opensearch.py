@@ -67,6 +67,7 @@ NEWS_MAPPING = {
             "cve_ids":      {"type": "keyword"},
             "credibility_weight": {"type": "half_float"},
             "cluster_id":   {"type": "keyword"},
+            "embedding_ok": {"type": "boolean"},
             "raw_metadata": {"type": "object", "dynamic": True},
             "created_at":   {
                 "type": "date",
@@ -206,6 +207,15 @@ _CLUSTERS_MAPPING = {
             "merged_into": {"type": "keyword"},
             "is_roundup":     {"type": "boolean"},
             "is_advisory":    {"type": "boolean"},
+            "founding_entity_keys": {"type": "keyword"},
+            "founding_entity_types": {
+                "type": "object",
+                "properties": {
+                    "key":  {"type": "keyword"},
+                    "type": {"type": "keyword"},
+                },
+            },
+            "cluster_type": {"type": "keyword"},
         },
     },
 }
