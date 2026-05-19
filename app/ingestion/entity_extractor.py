@@ -295,12 +295,22 @@ def _normalize_key(name: str) -> str:
 
 
 def _rebuild_patterns_from_db() -> None:
-    """Rebuild _VENDOR_PATTERNS, _THREAT_PATTERNS, _ALIAS_PATTERNS from _DB_ENTITY_MAP."""
+    """Rebuild _VENDOR_PATTERNS, _PRODUCT_PATTERNS, _THREAT_PATTERNS, _ALIAS_PATTERNS from _DB_ENTITY_MAP."""
     _VENDOR_PATTERNS.clear()
     for key, (name, etype) in _DB_ENTITY_MAP.items():
         if etype == "vendor":
             flags = 0 if len(name) <= 3 else re.IGNORECASE
             _VENDOR_PATTERNS.append(
+                (key, name, re.compile(r"\b" + re.escape(name) + r"\b", flags))
+            )
+    if not _VENDOR_PATTERNS:
+        logger.warning("No vendor patterns loaded from DB")
+
+    _PRODUCT_PATTERNS.clear()
+    for key, (name, etype) in _DB_ENTITY_MAP.items():
+        if etype == "product":
+            flags = 0 if len(name) <= 3 else re.IGNORECASE
+            _PRODUCT_PATTERNS.append(
                 (key, name, re.compile(r"\b" + re.escape(name) + r"\b", flags))
             )
 
