@@ -75,7 +75,7 @@
       var sevBadge = item.severity
         ? '<span class="result-sev sev-' + escapeHtml(item.severity) + '">' + escapeHtml(item.severity) + '</span>'
         : '';
-      var tags = (item.tags || []).slice(0, 3)
+      var tags = (item.raw_tags || item.tags || []).slice(0, 3)
         .map(function(tag) { return '<span class="result-tag">' + escapeHtml(tag) + '</span>'; })
         .join('');
       var meta = [
