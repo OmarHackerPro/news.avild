@@ -44,4 +44,25 @@
       }
     });
   }
+
+  // Populate Today's Digest from live cluster data
+  var digestList = document.getElementById('digestList');
+  if (digestList) {
+    fetch('/api/clusters/?limit=5&sort=score')
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data || !data.items || !data.items.length) return;
+        var frag = document.createDocumentFragment();
+        data.items.forEach(function(cluster) {
+          var li = document.createElement('li');
+          var a = document.createElement('a');
+          a.href = '/cluster?id=' + cluster.id;
+          a.textContent = cluster.label;
+          li.appendChild(a);
+          frag.appendChild(li);
+        });
+        digestList.appendChild(frag);
+      })
+      .catch(function() {});
+  }
 })();
