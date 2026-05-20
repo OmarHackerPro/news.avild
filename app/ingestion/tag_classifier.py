@@ -228,9 +228,9 @@ def _classify_entities(tags: list[str]) -> tuple[list[dict], list[str], set[str]
 
         if norm_key in _DB_ENTITY_MAP and norm_key not in seen_keys:
             name, etype = _DB_ENTITY_MAP[norm_key]
-            if etype == "vendor":
+            if etype in ("vendor", "product"):
                 entities.append({
-                    "type": "vendor",
+                    "type": etype,
                     "name": name,
                     "normalized_key": norm_key,
                     "source": "tag",
