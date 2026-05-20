@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 from opensearchpy import NotFoundError
 
 from app.api.routes.news import _hit_to_item
-from app.db.opensearch import INDEX_ENTITIES, INDEX_NEWS, get_os_client
+from app.db.opensearch import INDEX_CVE_TOPICS, INDEX_ENTITIES, INDEX_NEWS, get_os_client
 from app.models.entity import EntityDetail, EntityItem, EntityListResponse
 from app.models.errors import ErrorResponse
 
@@ -50,20 +50,38 @@ async def list_entities(
     total = resp["hits"]["total"]["value"]
     hits = resp["hits"]["hits"]
 
-    items = [
-        EntityItem(
-            id=h["_id"],
-            type=src["type"],
-            name=src["name"],
-            normalized_key=src["normalized_key"],
-            cvss_score=src.get("cvss_score"),
-            first_seen=src["first_seen"],
-            last_seen=src["last_seen"],
-            article_count=src.get("article_count", 0),
+    # For CVE-type results, join cve_topics to get CVSS data
+    cve_topic_data: dict[str, dict] = {}
+    if type == "cve" or type is None:
+        cve_names = [h["_source"].get("name", "") for h in hits if h["_source"].get("type") == "cve"]
+        if cve_names:
+            ids = list({n.upper() for n in cve_names if n})
+            topic_resp = await get_os_client().search(
+                index=INDEX_CVE_TOPICS,
+                body={
+                    "query": {"ids": {"values": ids}},
+                    "size": len(ids),
+                    "_source": ["cvss_score", "cvss_severity"],
+                },
+            )
+            cve_topic_data = {h["_id"]: h["_source"] for h in topic_resp["hits"]["hits"]}
+
+    items = []
+    for h in hits:
+        src = h["_source"]
+        topic = cve_topic_data.get((src.get("name") or "").upper(), {})
+        items.append(
+            EntityItem(
+                id=h["_id"],
+                type=src["type"],
+                name=src["name"],
+                normalized_key=src["normalized_key"],
+                cvss_score=topic.get("cvss_score") if src["type"] == "cve" else src.get("cvss_score"),
+                first_seen=src["first_seen"],
+                last_seen=src["last_seen"],
+                article_count=src.get("article_count", 0),
+            )
         )
-        for h in hits
-        for src in [h["_source"]]
-    ]
 
     return EntityListResponse(items=items, total=total)
 
@@ -84,6 +102,22 @@ async def get_entity(entity_id: str):
         raise HTTPException(status_code=404, detail="Entity not found")
 
     src = resp["_source"]
+
+    # For CVE entities, fetch CVSS data from cve_topics
+    cvss_score = src.get("cvss_score")
+    if src.get("type") == "cve":
+        topic_resp = await get_os_client().search(
+            index=INDEX_CVE_TOPICS,
+            body={
+                "query": {"ids": {"values": [(src.get("name") or "").upper()]}},
+                "size": 1,
+                "_source": ["cvss_score"],
+            },
+        )
+        topic_hits = topic_resp["hits"]["hits"]
+        if topic_hits:
+            cvss_score = topic_hits[0]["_source"].get("cvss_score")
+
     article_ids = src.get("article_ids", [])
 
     # Fetch linked articles from OpenSearch
@@ -112,7 +146,7 @@ async def get_entity(entity_id: str):
         normalized_key=src["normalized_key"],
         aliases=src.get("aliases", []),
         description=src.get("description"),
-        cvss_score=src.get("cvss_score"),
+        cvss_score=cvss_score,
         first_seen=src["first_seen"],
         last_seen=src["last_seen"],
         article_count=src.get("article_count", 0),
