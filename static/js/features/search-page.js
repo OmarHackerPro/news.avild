@@ -1,6 +1,6 @@
 /**
  * Search page: run search from ?q=, show loading/empty/error/results.
- * Depends on mock-entities.js (or future API).
+ * Fetches from /api/search/ and renders article cards.
  */
 (function() {
   var form = document.getElementById('searchForm');
@@ -58,31 +58,36 @@
     }
   }
 
-  function showResults(results, query) {
+  function showResults(items, total, query) {
     lastState = null;
     stateEl.hidden = true;
-    if (!results.length) {
+    if (!items.length) {
       showState('empty', 'search.noResultsTitle', 'search.noResultsMsg');
       return;
     }
     if (resultsHeading) {
-      resultsHeading.textContent = results.length === 1
-        ? t('search.results.singular')
-        : t('search.results.plural').replace('{n}', results.length);
+      resultsHeading.textContent = total + ' result' + (total === 1 ? '' : 's') + ' for "' + query + '"';
       resultsHeading.hidden = false;
     }
-    var mock = window.CyberNews && window.CyberNews.mockEntities;
-    var getTypeLabel = mock ? mock.getEntityTypeLabel.bind(mock) : function(tp) { return tp || 'Entity'; };
-    resultsList.innerHTML = results.map(function(e) {
-      var typeLabel = getTypeLabel(e.type);
-      var desc = (e.description || '').slice(0, 160);
-      if (e.description && e.description.length > 160) desc += '\u2026';
-      var href = 'entity.html?id=' + encodeURIComponent(e.id);
+    resultsList.innerHTML = items.map(function(item) {
+      var desc = (item.desc || '').slice(0, 160);
+      if (item.desc && item.desc.length > 160) desc += '\u2026';
+      var sevBadge = item.severity
+        ? '<span class="result-sev sev-' + escapeHtml(item.severity) + '">' + escapeHtml(item.severity) + '</span>'
+        : '';
+      var tags = (item.tags || []).slice(0, 3)
+        .map(function(tag) { return '<span class="result-tag">' + escapeHtml(tag) + '</span>'; })
+        .join('');
+      var meta = [
+        item.source_name ? escapeHtml(item.source_name) : '',
+        item.published_at ? timeAgo(item.published_at) : '',
+      ].filter(Boolean).join(' \u00b7 ');
       return (
-        '<a href="' + href + '" class="search-result-card">' +
-          '<div class="result-name">' + escapeHtml(e.name) + '</div>' +
-          '<div class="result-meta"><span class="result-type">' + escapeHtml(typeLabel) + '</span></div>' +
-          '<div class="result-description">' + escapeHtml(desc) + '</div>' +
+        '<a href="' + escapeHtml(item.source_url || '#') + '" target="_blank" rel="noopener" class="search-result-card">' +
+          ((sevBadge || tags) ? '<div class="result-badges">' + sevBadge + tags + '</div>' : '') +
+          '<div class="result-name">' + escapeHtml(item.title || '') + '</div>' +
+          (desc ? '<div class="result-description">' + escapeHtml(desc) + '</div>' : '') +
+          (meta ? '<div class="result-meta">' + meta + '</div>' : '') +
         '</a>'
       );
     }).join('');
@@ -95,6 +100,16 @@
     return div.innerHTML;
   }
 
+  function timeAgo(isoStr) {
+    if (!isoStr) return '';
+    var diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+    if (diff < 0) diff = 0;
+    if (diff < 60) return Math.floor(diff) + 's ago';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
+  }
+
   function runSearch(query) {
     lastQuery = query;
     var q = (query || '').trim();
@@ -103,20 +118,19 @@
       return;
     }
     showState('loading', null, null);
-    var mock = window.CyberNews && window.CyberNews.mockEntities;
-    if (!mock || !mock.searchEntities) {
-      showResults([]);
-      return;
-    }
-    mock.searchEntities(q)
+    fetch('/api/search/?q=' + encodeURIComponent(q) + '&limit=20')
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
       .then(function(data) {
-        var results = data.results || [];
-        showResults(results, data.query);
+        var items = data.items || [];
+        showResults(items, data.total || items.length, q);
         trackEvent('search', {
           query: q,
           source: 'search_page',
-          results_count: results.length,
-          status: results.length ? 'results' : 'empty',
+          results_count: items.length,
+          status: items.length ? 'results' : 'empty',
         });
       })
       .catch(function(err) {
@@ -134,7 +148,7 @@
     e.preventDefault();
     var q = input.value.trim();
     if (typeof history.replaceState === 'function') {
-      var url = 'search.html' + (q ? '?q=' + encodeURIComponent(q) : '');
+      var url = '/search' + (q ? '?q=' + encodeURIComponent(q) : '');
       history.replaceState(null, '', url);
     }
     runSearch(q);
