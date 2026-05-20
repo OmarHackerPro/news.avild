@@ -15,6 +15,7 @@ from app.db.models.source_category import SourceCategory
 from app.db.opensearch import INDEX_NEWS, INDEX_SNAPSHOTS, get_os_client, NEWS_MAPPING
 from app.db.session import AsyncSessionLocal
 from app.ingestion.clusterer import cluster_article
+from app.ingestion.cve_intel import lookup_cve_intel, severity_from_cvss
 from app.ingestion.entity_extractor import extract_entities, merge_entities, refresh_entity_intel
 from app.ingestion.tag_classifier import classify_tags
 from app.ingestion.entity_store import store_article_entities
@@ -274,6 +275,32 @@ def _effective_credibility(
 
 
 # ---------------------------------------------------------------------------
+# CVE intel enrichment
+# ---------------------------------------------------------------------------
+
+async def _apply_cve_intel(article: dict) -> None:
+    """Look up article's CVEs in cve_topics; set cvss_score + severity if known.
+
+    Write-once: respects existing non-null values. Articles whose CVEs aren't in
+    cve_topics yet get nothing — the nightly rebuild or backfill picks them up later.
+    """
+    cve_ids = article.get("cve_ids") or []
+    if not cve_ids:
+        return
+    intel = await lookup_cve_intel(cve_ids)
+    if not intel:
+        return
+    scores = [v["cvss_score"] for v in intel.values() if v.get("cvss_score") is not None]
+    if not scores:
+        return
+    max_score = max(scores)
+    if article.get("cvss_score") is None:
+        article["cvss_score"] = max_score
+    if article.get("severity") is None:
+        article["severity"] = severity_from_cvss(max_score)
+
+
+# ---------------------------------------------------------------------------
 # Per-source ingestion
 # ---------------------------------------------------------------------------
 
@@ -392,9 +419,35 @@ async def ingest_source(
             article["normalized_topics"] = tag_result["normalized_topics"]
             article.pop("tags", None)
 
+            await _apply_cve_intel(article)
+
             inserted = await (overwrite_article if update else upsert_article)(article)
             if inserted:
                 stats["inserted"] += 1
+
+                # Body extraction runs first so NER sees the full article body, not just
+                # the short RSS desc. content_html is merged back into article in-memory
+                # so extract_entities picks it up without an extra OpenSearch round-trip.
+                from app.ingestion.body_pipeline import maybe_extract_body
+                try:
+                    body_updates = await maybe_extract_body(
+                        article_doc=dict(article),
+                        source_dict={"min_body_chars": source.get("min_body_chars")},
+                    )
+                    if body_updates:
+                        if body_updates.get("content_html"):
+                            article["content_html"] = body_updates["content_html"]
+                        await get_os_client().update(
+                            index=INDEX_NEWS,
+                            id=article["slug"],
+                            body={"doc": body_updates},
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        "[%s] Body extraction failed for '%s': %s",
+                        name, article.get("slug"), exc,
+                    )
+
                 entities = []
                 try:
                     if not article_slug:
@@ -435,25 +488,6 @@ async def ingest_source(
                     logger.exception(
                         "[%s] Clustering failed for '%s'",
                         name, article.get("slug"),
-                    )
-
-                # Body extraction
-                from app.ingestion.body_pipeline import maybe_extract_body
-                try:
-                    body_updates = await maybe_extract_body(
-                        article_doc=dict(article),
-                        source_dict={"min_body_chars": source.get("min_body_chars")},
-                    )
-                    if body_updates:
-                        await get_os_client().update(
-                            index=INDEX_NEWS,
-                            id=article["slug"],
-                            body={"doc": body_updates},
-                        )
-                except Exception as exc:
-                    logger.warning(
-                        "[%s] Body extraction failed for '%s': %s",
-                        name, article.get("slug"), exc,
                     )
             else:
                 stats["skipped"] += 1
