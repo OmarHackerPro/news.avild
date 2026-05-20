@@ -21,6 +21,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import load_dotenv
 load_dotenv()
 
+from app.db.opensearch import INDEX_CVE_TOPICS, get_os_client
+from app.db.os_write_once import upsert_immutable
+
 logger = logging.getLogger(__name__)
 
 KEV_URL = (
@@ -155,6 +158,30 @@ async def _sync_to_db(rows: list[dict]) -> tuple[int, int, int]:
     return kev_ins, kev_upd, vendor_ups
 
 
+async def _sync_to_cve_topics(rows: list[dict]) -> int:
+    """Mark cisa_kev=True + kev_added_at (write-once) on cve_topics docs."""
+    client = get_os_client()
+    written = 0
+    try:
+        for row in rows:
+            cve_id = row["cve_id"]
+            kev_added_at = row["date_added"].isoformat() if row["date_added"] else None
+            try:
+                await upsert_immutable(
+                    client=client,
+                    index=INDEX_CVE_TOPICS,
+                    doc_id=cve_id,
+                    immutable_fields={"kev_added_at": kev_added_at} if kev_added_at else {},
+                    mutable_fields={"cisa_kev": True},
+                )
+                written += 1
+            except Exception:
+                logger.exception("Failed to set KEV on cve_topics for %s", cve_id)
+    finally:
+        await client.close()
+    return written
+
+
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     parser = argparse.ArgumentParser(description="Sync CISA KEV to DB")
@@ -176,6 +203,9 @@ def main(argv: list[str] | None = None) -> None:
     kev_ins, kev_upd, vendor_ups = asyncio.run(_sync_to_db(rows))
     logger.info("cisa_kev: %d inserted, %d updated", kev_ins, kev_upd)
     logger.info("entity_intel vendors: %d upserted", vendor_ups)
+
+    cve_topic_updates = asyncio.run(_sync_to_cve_topics(rows))
+    logger.info("cve_topics KEV flags: %d updated", cve_topic_updates)
 
 
 if __name__ == "__main__":
