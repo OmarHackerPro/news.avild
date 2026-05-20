@@ -357,7 +357,6 @@ async def test_rebuild_logs_warning_when_vendor_patterns_empty(caplog):
     import logging
     import app.ingestion.entity_extractor as mod
     importlib.reload(mod)
-    mod._VENDOR_PATTERNS.clear()  # clear hardcoded init — test only DB-driven rebuild
 
     rows = [_EntityRow("apt29", "APT29", "actor", [])]
     db = _mock_db_with_rows(rows)

@@ -49,42 +49,33 @@ def _normalize_key(name: str) -> str:
 
 
 def _rebuild_patterns_from_db() -> None:
-    """Rebuild _VENDOR_PATTERNS, _PRODUCT_PATTERNS, _THREAT_PATTERNS, _ALIAS_PATTERNS from _DB_ENTITY_MAP."""
+    """Rebuild all pattern lists from _DB_ENTITY_MAP and _DB_ALIAS_DISPLAY."""
     _VENDOR_PATTERNS.clear()
-    for key, (name, etype) in _DB_ENTITY_MAP.items():
-        if etype == "vendor":
-            flags = 0 if len(name) <= 3 else re.IGNORECASE
-            _VENDOR_PATTERNS.append(
-                (key, name, re.compile(r"\b" + re.escape(name) + r"\b", flags))
-            )
-    if not _VENDOR_PATTERNS:
-        logger.warning("No vendor patterns loaded from DB")
-
     _PRODUCT_PATTERNS.clear()
-    for key, (name, etype) in _DB_ENTITY_MAP.items():
-        if etype == "product":
-            flags = 0 if len(name) <= 3 else re.IGNORECASE
-            _PRODUCT_PATTERNS.append(
-                (key, name, re.compile(r"\b" + re.escape(name) + r"\b", flags))
-            )
-    if not _PRODUCT_PATTERNS:
-        logger.warning("No product patterns loaded from DB")
-
     _THREAT_PATTERNS.clear()
-    for key, (name, etype) in _DB_ENTITY_MAP.items():
-        if etype in ("actor", "malware", "tool", "campaign", "vuln_alias"):
-            flags = 0 if len(name) <= 3 else re.IGNORECASE
-            _THREAT_PATTERNS.append(
-                (key, name, etype, re.compile(r"\b" + re.escape(name) + r"\b", flags))
-            )
-    if not _THREAT_PATTERNS:
-        logger.warning("No threat patterns loaded from DB")
-
     _ALIAS_PATTERNS.clear()
+
+    for key, (name, etype) in _DB_ENTITY_MAP.items():
+        flags = 0 if len(name) <= 3 else re.IGNORECASE
+        pattern = re.compile(r"\b" + re.escape(name) + r"\b", flags)
+        if etype == "vendor":
+            _VENDOR_PATTERNS.append((key, name, pattern))
+        elif etype == "product":
+            _PRODUCT_PATTERNS.append((key, name, pattern))
+        elif etype in ("actor", "malware", "tool", "campaign", "vuln_alias"):
+            _THREAT_PATTERNS.append((key, name, etype, pattern))
+
     for display_text, canonical_key in _DB_ALIAS_DISPLAY.items():
         _ALIAS_PATTERNS.append(
             (canonical_key, re.compile(r"\b" + re.escape(display_text) + r"\b", re.IGNORECASE))
         )
+
+    if not _VENDOR_PATTERNS:
+        logger.warning("No vendor patterns loaded from DB")
+    if not _PRODUCT_PATTERNS:
+        logger.warning("No product patterns loaded from DB")
+    if not _THREAT_PATTERNS:
+        logger.warning("No threat patterns loaded from DB")
     if not _ALIAS_PATTERNS:
         logger.warning("No alias patterns loaded from DB — alias resolution inactive")
 
@@ -92,10 +83,10 @@ def _rebuild_patterns_from_db() -> None:
 async def refresh_entity_intel(db_session) -> int:
     """Load entity_intel from DB into module-level dicts. Returns count of rows loaded.
 
-    Call once at app startup. Falls back to hardcoded lists if table is empty.
+    Call once at app startup. Returns 0 and leaves all pattern lists empty if the table has no active rows.
     """
     result = await db_session.execute(
-        text("SELECT normalized_key, display_name, entity_type, aliases FROM entity_intel")
+        text("SELECT normalized_key, display_name, entity_type, aliases FROM entity_intel WHERE active = true")
     )
     rows = result.fetchall()
 

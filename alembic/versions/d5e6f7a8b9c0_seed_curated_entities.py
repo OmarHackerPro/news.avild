@@ -15,8 +15,6 @@ down_revision: Union[str, Sequence[str], None] = "c4d5e6f7a8b9"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-_NOW = datetime.now(timezone.utc)
-
 _VENDORS = [
     ("amd", "AMD", ["AMD"]),
     ("aws", "AWS", ["Amazon Web Services", "AWS"]),
@@ -109,33 +107,27 @@ _PRODUCTS = [
 
 
 def upgrade() -> None:
-    import json
     conn = op.get_bind()
-    now = _NOW
-    now_str = now.isoformat()
+    now = datetime.now(timezone.utc)
 
     for normalized_key, display_name, aliases in _VENDORS:
-        aliases_json = json.dumps(aliases).replace("'", "''")
-        display_name_esc = display_name.replace("'", "''")
-        normalized_key_esc = normalized_key.replace("'", "''")
         conn.execute(
-            sa.text(f"""
+            sa.text("""
                 INSERT INTO entity_intel (normalized_key, display_name, entity_type, aliases, source, source_id, active, last_synced)
-                VALUES ('{normalized_key_esc}', '{display_name_esc}', 'vendor', '{aliases_json}'::jsonb, 'curated', NULL, true, '{now_str}')
+                VALUES (:key, :name, 'vendor', CAST(:aliases AS jsonb), 'curated', NULL, true, :now)
                 ON CONFLICT (normalized_key) DO NOTHING
-            """)
+            """),
+            {"key": normalized_key, "name": display_name, "aliases": __import__("json").dumps(aliases), "now": now},
         )
 
     for normalized_key, display_name, aliases in _PRODUCTS:
-        aliases_json = json.dumps(aliases).replace("'", "''")
-        display_name_esc = display_name.replace("'", "''")
-        normalized_key_esc = normalized_key.replace("'", "''")
         conn.execute(
-            sa.text(f"""
+            sa.text("""
                 INSERT INTO entity_intel (normalized_key, display_name, entity_type, aliases, source, source_id, active, last_synced)
-                VALUES ('{normalized_key_esc}', '{display_name_esc}', 'product', '{aliases_json}'::jsonb, 'curated', NULL, true, '{now_str}')
+                VALUES (:key, :name, 'product', CAST(:aliases AS jsonb), 'curated', NULL, true, :now)
                 ON CONFLICT (normalized_key) DO NOTHING
-            """)
+            """),
+            {"key": normalized_key, "name": display_name, "aliases": __import__("json").dumps(aliases), "now": now},
         )
 
 
