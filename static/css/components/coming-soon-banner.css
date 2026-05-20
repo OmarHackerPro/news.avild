@@ -1,0 +1,25 @@
+.coming-soon-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: rgba(251, 191, 36, 0.08);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.25);
+  color: #fbbf24;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.coming-soon-banner .coming-soon-icon {
+  font-style: normal;
+  flex-shrink: 0;
+}
+
+/* Nav links for coming-soon features */
+.nav-link-soon {
+  opacity: 0.45 !important;
+}
+
+.nav-link-soon:hover {
+  opacity: 0.65 !important;
+}
