@@ -178,27 +178,9 @@ def _extract_image_url(
     return None
 
 
-def _extract_cvss_score(html: str) -> Optional[Decimal]:
-    """Extract a CVSS v3 base score from advisory HTML.
-
-    Matches patterns like:
-      Base Score: </th><td>9.8</td>
-      CVSS v3.1 Base Score: 9.8
-    """
-    m = re.search(r"[Bb]ase\s+[Ss]core[^0-9]{0,30}(\d+\.\d+)", html)
-    if m:
-        try:
-            score = float(m.group(1))
-            if 0.0 <= score <= 10.0:
-                return Decimal(str(score))
-        except (ValueError, Exception):
-            pass
-    return None
-
-
 def _extract_cve_ids(text: str) -> list[str]:
     """Extract all unique CVE IDs (CVE-YYYY-NNNNN) from text or HTML."""
-    return list(dict.fromkeys(re.findall(r"CVE-\d{4}-\d+", text)))
+    return list(dict.fromkeys(re.findall(r"CVE-\d{4}-\d{4,}", text)))
 
 
 _KEV_TITLE_RE = re.compile(
@@ -398,8 +380,7 @@ def normalize_cisa_advisory(
     # Plain-text excerpt for list views (capped to avoid huge previews)
     desc = _clean_truncated_text(strip_html(content_html).strip()[:2000]) or None
 
-    cvss_score = _extract_cvss_score(content_html)
-    cve_ids    = _extract_cve_ids(content_html)
+    cve_ids = _extract_cve_ids(content_html)
 
     raw_metadata: dict = {}
     advisory_id = _extract_advisory_id(link)
@@ -426,7 +407,6 @@ def normalize_cisa_advisory(
         type=source["default_type"],
         category=source["default_category"],
         source_url=link[:2048],
-        cvss_score=cvss_score,
         cve_ids=cve_ids if cve_ids else None,
         raw_metadata=raw_metadata or None,
     )
@@ -510,11 +490,9 @@ def normalize_article(
         cve_source = f"{title} {content_html or ''} {tag_text}"
         article["cve_ids"] = _extract_cve_ids(cve_source)
 
-    # Conditional: extract CVSS score + advisory metadata
+    # CVSS score now comes from cve_topics at ingest time, not regex extraction.
+    # Keep CVSS vector + advisory_id — these have no NVD equivalent.
     if source.get("extract_cvss"):
-        cvss = _extract_cvss_score(content_html or "")
-        if cvss is not None:
-            article["cvss_score"] = cvss
         raw_metadata: dict = {}
         advisory_id = _extract_advisory_id(link)
         if advisory_id:

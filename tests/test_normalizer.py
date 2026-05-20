@@ -366,7 +366,7 @@ class TestNormalizeArticle:
         assert result is not None
         assert result.get("cvss_score") is None
 
-    def test_extracts_cvss_when_flag_true(self):
+    def test_extract_cvss_flag_does_not_set_cvss_score(self):
         entry = {
             "title": "Advisory",
             "link": "https://example.com/article",
@@ -375,7 +375,7 @@ class TestNormalizeArticle:
         }
         result = normalize_article(entry, self._make_source(extract_cvss=True))
         assert result is not None
-        assert float(result["cvss_score"]) == 9.8
+        assert result.get("cvss_score") is None
 
     def test_extracts_advisory_id_into_raw_metadata_when_flag_true(self):
         entry = {
