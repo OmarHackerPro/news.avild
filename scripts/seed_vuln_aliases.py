@@ -1,25 +1,23 @@
-"""Seed vuln_alias entries into data/threat_keywords.json.
+"""Seed vuln_alias entries into entity_intel.
 
 Union of:
 1. All vuln_alias entities Haiku has stored in ner_cache (filtered to plausible values).
 2. A hand-curated canonical list of famous named vulnerabilities.
 
-Output: writes a new vuln_alias section into the keywords map. Existing
-non-vuln_alias entries are preserved untouched. Existing vuln_alias entries
-(if any) are merged by normalized_key, with the canonical list taking
-precedence on display-name conflicts.
+Canonical entries take precedence over cache entries on display-name conflicts.
+Uses ON CONFLICT (normalized_key) DO NOTHING for cache entries so existing
+authoritative rows (e.g. from MITRE ATT&CK) are never overwritten.
+Canonical entries use DO UPDATE to always win.
 """
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import asyncio
 import json
 import re
-from pathlib import Path
+from datetime import datetime, timezone
 
 from sqlalchemy import text
 
 from app.db.session import AsyncSessionLocal
-
-DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "threat_keywords.json"
 
 CANONICAL_VULN_ALIASES: dict[str, str] = {
     "log4shell": "Log4Shell",
@@ -54,7 +52,6 @@ _TRIVIAL_TOKENS = {"the", "a", "an", "vulnerability", "vuln", "rce", "lpe", "exp
 
 
 def _plausible(name: str, key: str) -> bool:
-    """Filter Haiku junk: too short, generic words, raw CVE-style ids."""
     if not name or len(name) < 3:
         return False
     if name.lower().strip() in _TRIVIAL_TOKENS:
@@ -89,27 +86,53 @@ async def main() -> None:
     print(f"Found {len(from_cache)} vuln_alias entries in ner_cache")
     print(f"Adding {len(CANONICAL_VULN_ALIASES)} canonical entries")
 
-    # Load existing file
-    with open(DATA_FILE) as f:
-        data = json.load(f)
+    now = datetime.now(timezone.utc)
+    inserted = skipped = updated = 0
 
-    keywords = data.setdefault("keywords", {})
+    async with AsyncSessionLocal() as db:
+        # Cache entries — DO NOTHING if key already exists
+        for key, name in from_cache.items():
+            if key in CANONICAL_VULN_ALIASES:
+                continue  # canonical pass handles these
+            result = await db.execute(
+                text("""
+                    INSERT INTO entity_intel
+                        (normalized_key, display_name, entity_type, aliases, source, source_id, active, last_synced)
+                    VALUES
+                        (:key, :name, 'vuln_alias', '[]'::jsonb, 'curated', NULL, true, :now)
+                    ON CONFLICT (normalized_key) DO NOTHING
+                """),
+                {"key": key, "name": name, "now": now},
+            )
+            if result.rowcount:
+                inserted += 1
+            else:
+                skipped += 1
 
-    # Apply both sources, canonical takes precedence on display-name
-    merged: dict[str, str] = {**from_cache, **CANONICAL_VULN_ALIASES}
-    for key, name in merged.items():
-        existing = keywords.get(key)
-        if existing and existing[1] != "vuln_alias":
-            # Don't clobber an entry that's already another type
-            print(f"Skipping {key} (already classified as {existing[1]})")
-            continue
-        keywords[key] = [name, "vuln_alias"]
+        # Canonical entries — upsert (canonical wins on display_name)
+        for key, name in CANONICAL_VULN_ALIASES.items():
+            result = await db.execute(
+                text("""
+                    INSERT INTO entity_intel
+                        (normalized_key, display_name, entity_type, aliases, source, source_id, active, last_synced)
+                    VALUES
+                        (:key, :name, 'vuln_alias', '[]'::jsonb, 'curated', NULL, true, :now)
+                    ON CONFLICT (normalized_key) DO UPDATE
+                        SET display_name = EXCLUDED.display_name,
+                            entity_type  = 'vuln_alias',
+                            last_synced  = EXCLUDED.last_synced
+                    WHERE entity_intel.entity_type = 'vuln_alias'
+                """),
+                {"key": key, "name": name, "now": now},
+            )
+            if result.rowcount:
+                inserted += 1
+            else:
+                skipped += 1
 
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False, sort_keys=True)
+        await db.commit()
 
-    total = sum(1 for v in keywords.values() if v[1] == "vuln_alias")
-    print(f"Wrote {DATA_FILE} — total vuln_alias entries: {total}")
+    print(f"entity_intel: {inserted} inserted/updated, {skipped} skipped (already present)")
 
 
 if __name__ == "__main__":
