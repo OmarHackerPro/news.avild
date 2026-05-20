@@ -1,16 +1,14 @@
 #!/usr/bin/env python
-"""Download MITRE ATT&CK STIX and generate data/threat_keywords.json.
+"""Sync MITRE ATT&CK into the entity_intel Postgres table.
 
 Downloads the enterprise-attack and ics-attack STIX bundles from the
 mitre-attack/attack-stix-data GitHub repo, extracts groups (actors), malware,
-tools, and campaigns with their aliases, and writes data/threat_keywords.json
-for use by entity_extractor.py.
+tools, and campaigns with their aliases, and upserts them into entity_intel.
 
 Usage:
-    python scripts/sync_mitre_attack.py
-    python scripts/sync_mitre_attack.py --output path/to/custom.json
-    python scripts/sync_mitre_attack.py --dry-run
-    python scripts/sync_mitre_attack.py --db
+    python scripts/sync_mitre_attack.py             # upsert to DB
+    python scripts/sync_mitre_attack.py --dry-run   # print stats, no writes
+    python scripts/sync_mitre_attack.py --json path/to/out.json  # also dump JSON
 """
 import argparse
 import asyncio
@@ -35,8 +33,6 @@ ICS_URL = (
 )
 # Keep for backward-compat with any callers passing --url
 STIX_URL = ENTERPRISE_URL
-
-_DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "data" / "threat_keywords.json"
 
 
 # Display names that would produce constant false positives because they are common
@@ -203,15 +199,10 @@ async def _upsert_to_db(
 
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    parser = argparse.ArgumentParser(
-        description="Regenerate data/threat_keywords.json from MITRE ATT&CK"
-    )
+    parser = argparse.ArgumentParser(description="Sync MITRE ATT&CK into entity_intel")
     parser.add_argument("--dry-run", action="store_true", help="Print stats without writing")
-    parser.add_argument("--output", type=Path, default=_DEFAULT_OUTPUT, help="Output file path")
-    parser.add_argument(
-        "--db", action="store_true",
-        help="Upsert into entity_intel PostgreSQL table (in addition to JSON output)",
-    )
+    parser.add_argument("--json", type=Path, default=None, metavar="PATH",
+                        help="Also dump parsed data to a JSON file")
     args = parser.parse_args(argv)
 
     # --- Enterprise bundle ---
@@ -248,15 +239,14 @@ def main(argv: list[str] | None = None) -> None:
         logger.info("--dry-run: not writing.")
         return
 
-    data = {"keywords": keywords, "aliases": aliases}
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    with open(args.output, "w") as f:
-        json.dump(data, f, indent=2, sort_keys=True)
-    logger.info("Written to %s", args.output)
+    ins, upd = asyncio.run(_upsert_to_db(keywords, aliases, source_ids))
+    logger.info("DB upsert: %d inserted, %d updated", ins, upd)
 
-    if args.db:
-        ins, upd = asyncio.run(_upsert_to_db(keywords, aliases, source_ids))
-        logger.info("DB upsert: %d inserted, %d updated", ins, upd)
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        with open(args.json, "w") as f:
+            json.dump({"keywords": keywords, "aliases": aliases}, f, indent=2, sort_keys=True)
+        logger.info("JSON also written to %s", args.json)
 
 
 if __name__ == "__main__":
