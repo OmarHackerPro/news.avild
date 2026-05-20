@@ -200,3 +200,62 @@ async def test_ingest_all_feeds_calls_refresh_entity_intel():
         await ingest_all_feeds()
 
     mock_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_ingest_sets_cvss_and_severity_from_cve_intel(monkeypatch):
+    """When article has CVEs known to cve_topics, ingest sets cvss_score + severity."""
+    import app.ingestion.ingester as ingester
+
+    article = {
+        "slug": "test-article",
+        "cve_ids": ["CVE-2026-9999"],
+    }
+
+    captured = {}
+    async def fake_lookup(cve_ids):
+        captured["called_with"] = cve_ids
+        return {"CVE-2026-9999": {"cvss_score": 9.8, "cvss_severity": "CRITICAL"}}
+
+    monkeypatch.setattr(ingester, "lookup_cve_intel", fake_lookup)
+
+    await ingester._apply_cve_intel(article)
+
+    assert captured["called_with"] == ["CVE-2026-9999"]
+    assert article["cvss_score"] == 9.8
+    assert article["severity"] == "critical"
+
+
+@pytest.mark.asyncio
+async def test_apply_cve_intel_noop_when_no_cves(monkeypatch):
+    import app.ingestion.ingester as ingester
+
+    called = []
+    async def fake_lookup(cve_ids):
+        called.append(cve_ids)
+        return {}
+
+    monkeypatch.setattr(ingester, "lookup_cve_intel", fake_lookup)
+
+    article = {"slug": "x", "cve_ids": []}
+    await ingester._apply_cve_intel(article)
+
+    assert called == []
+    assert "cvss_score" not in article
+
+
+@pytest.mark.asyncio
+async def test_apply_cve_intel_respects_existing_value(monkeypatch):
+    """Write-once: if cvss_score already set, do not overwrite."""
+    import app.ingestion.ingester as ingester
+
+    async def fake_lookup(cve_ids):
+        return {"CVE-2026-1111": {"cvss_score": 9.8}}
+
+    monkeypatch.setattr(ingester, "lookup_cve_intel", fake_lookup)
+
+    article = {"slug": "x", "cve_ids": ["CVE-2026-1111"], "cvss_score": 5.0, "severity": "medium"}
+    await ingester._apply_cve_intel(article)
+
+    assert article["cvss_score"] == 5.0  # unchanged
+    assert article["severity"] == "medium"
