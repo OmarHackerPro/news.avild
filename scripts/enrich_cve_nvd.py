@@ -1,10 +1,8 @@
 #!/usr/bin/env python
-"""Enrich CVE entities in OpenSearch with CVSS, CWE, and full NVD data.
+"""Enrich CVE stubs in cve_topics with CVSS, CWE, and full NVD data.
 
-Writes to two indexes:
-  entities   — structured queryable fields: cvss_score, cvss_severity,
-               cvss_vector, cwe_ids, cisa_kev, vuln_status, nvd_last_modified
-  nvd_cache  — full NVD JSON blob (stored, not indexed) for detail views
+Reads unenriched docs from cve_topics (missing nvd_last_modified), fetches
+NVD API v2, and writes back via upsert_immutable.
 
 Rate limits:
   Without API key : 5 req / 30s  →  default 6s sleep between requests
@@ -12,7 +10,6 @@ Rate limits:
 
 Usage:
     python scripts/enrich_cve_nvd.py
-    python scripts/enrich_cve_nvd.py --force        # re-enrich even if done
     python scripts/enrich_cve_nvd.py --api-key KEY  # or set NVD_API_KEY env var
     python scripts/enrich_cve_nvd.py --sleep 2      # override sleep seconds
     python scripts/enrich_cve_nvd.py --dry-run      # list CVEs, apply mapping, exit
@@ -115,11 +112,11 @@ def _mitre_check(cve_id: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Parsing — two separate outputs
+# Parsing
 # ---------------------------------------------------------------------------
 
 def _parse_entity_fields(cve_data: dict) -> dict:
-    """Structured fields that go into the entities index (all indexed/queryable)."""
+    """Structured fields that go into the cve_topics index (all indexed/queryable)."""
     fields: dict = {}
     metrics = cve_data.get("metrics", {})
 
@@ -154,16 +151,6 @@ def _parse_entity_fields(cve_data: dict) -> dict:
     return fields
 
 
-def _build_nvd_cache_doc(cve_id: str, cve_data: dict) -> dict:
-    """Document for the nvd_cache index — full blob, stored not indexed."""
-    return {
-        "cve_id": cve_id,
-        "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
-        "nvd_last_modified": cve_data.get("lastModified"),
-        "nvd_raw": cve_data,
-    }
-
-
 # ---------------------------------------------------------------------------
 # OpenSearch helpers
 # ---------------------------------------------------------------------------
@@ -186,69 +173,31 @@ def _get_client(admin: bool = False) -> AsyncOpenSearch:
 
 
 async def _apply_mappings(client: AsyncOpenSearch) -> None:
-    """Push new fields into entities and update nvd_cache mapping.
-
-    Index creation requires admin credentials (OPENSEARCH_ADMIN_USER /
-    OPENSEARCH_ADMIN_PASSWORD). Mapping updates use the regular client since
-    kiber_app has indices_all on nvd_cache.
-    """
-    from app.db.opensearch import (
-        INDEX_ENTITIES, INDEX_NVD_CACHE,
-        _ENTITIES_MAPPING, _NVD_CACHE_MAPPING,
-    )
+    """Push new fields into cve_topics mapping (idempotent)."""
+    from app.db.opensearch import INDEX_CVE_TOPICS, _CVE_TOPICS_MAPPING
 
     await client.indices.put_mapping(
-        index=INDEX_ENTITIES,
-        body={"properties": _ENTITIES_MAPPING["mappings"]["properties"]},
+        index=INDEX_CVE_TOPICS,
+        body={"properties": _CVE_TOPICS_MAPPING["mappings"]["properties"]},
     )
-    logger.info("Mapping updated: %s", INDEX_ENTITIES)
-
-    # Try to create the index (needs admin). If it already exists, just update mapping.
-    admin_user = os.environ.get("OPENSEARCH_ADMIN_USER")
-    if admin_user:
-        admin_client = _get_client(admin=True)
-        try:
-            await admin_client.indices.create(index=INDEX_NVD_CACHE, body=_NVD_CACHE_MAPPING)
-            logger.info("Created index: %s", INDEX_NVD_CACHE)
-        except Exception as exc:
-            if "already exists" not in str(exc) and "resource_already_exists" not in str(exc):
-                logger.warning("Could not create %s: %s", INDEX_NVD_CACHE, exc)
-        finally:
-            await admin_client.close()
-
-    # Update mapping with regular client (kiber_app has indices_all on nvd_cache)
-    try:
-        await client.indices.put_mapping(
-            index=INDEX_NVD_CACHE,
-            body={"properties": _NVD_CACHE_MAPPING["mappings"]["properties"]},
-        )
-        logger.info("Mapping updated: %s", INDEX_NVD_CACHE)
-    except Exception as exc:
-        logger.warning(
-            "Could not update %s mapping: %s — "
-            "create the index first or set OPENSEARCH_ADMIN_USER + OPENSEARCH_ADMIN_PASSWORD.",
-            INDEX_NVD_CACHE, exc,
-        )
+    logger.info("Mapping updated: %s", INDEX_CVE_TOPICS)
 
 
-async def _scroll_cve_entities(client: AsyncOpenSearch, force: bool) -> list[dict]:
-    from app.db.opensearch import INDEX_ENTITIES
+async def _scroll_unenriched_cve_topics(client: AsyncOpenSearch) -> list[dict]:
+    """Scan cve_topics for CVEs that haven't been NVD-enriched yet."""
+    from app.db.opensearch import INDEX_CVE_TOPICS
 
-    query = (
-        {"term": {"type": "cve"}}
-        if force
-        else {
-            "bool": {
-                "must": {"term": {"type": "cve"}},
-                "must_not": {"exists": {"field": "nvd_last_modified"}},
-            }
+    query = {
+        "bool": {
+            "must": [{"match_all": {}}],
+            "must_not": [{"exists": {"field": "nvd_last_modified"}}],
         }
-    )
+    }
 
     results = []
     resp = await client.search(
-        index=INDEX_ENTITIES,
-        body={"query": query, "size": _SCROLL_SIZE, "_source": ["name"]},
+        index=INDEX_CVE_TOPICS,
+        body={"query": query, "size": _SCROLL_SIZE},
         scroll="2m",
     )
     scroll_id = resp["_scroll_id"]
@@ -268,29 +217,18 @@ async def _scroll_cve_entities(client: AsyncOpenSearch, force: bool) -> list[dic
     return results
 
 
-async def _update_entity(client: AsyncOpenSearch, doc_id: str, fields: dict) -> None:
-    from app.db.opensearch import INDEX_ENTITIES
+async def _update_cve_topic(client: AsyncOpenSearch, cve_id: str, immutable: dict, mutable: dict) -> None:
+    """Write NVD fields to cve_topics via write-once helper."""
+    from app.db.opensearch import INDEX_CVE_TOPICS
+    from app.db.os_write_once import upsert_immutable
 
-    set_clauses = " ".join(f"ctx._source['{f}'] = params.{f};" for f in fields)
-    await client.update(
-        index=INDEX_ENTITIES,
-        id=doc_id,
-        body={"script": {"source": set_clauses, "params": fields}},
-        retry_on_conflict=3,
+    await upsert_immutable(
+        client=client,
+        index=INDEX_CVE_TOPICS,
+        doc_id=cve_id,
+        immutable_fields=immutable,
+        mutable_fields=mutable,
     )
-
-
-async def _upsert_nvd_cache(client: AsyncOpenSearch, doc_id: str, doc: dict) -> bool:
-    """Write full NVD blob to nvd_cache. Returns False if index doesn't exist yet."""
-    from app.db.opensearch import INDEX_NVD_CACHE
-
-    try:
-        await client.index(index=INDEX_NVD_CACHE, id=doc_id, body=doc)
-        return True
-    except Exception as exc:
-        if "index_not_found" in str(exc) or "no such index" in str(exc).lower():
-            return False
-        raise
 
 
 # ---------------------------------------------------------------------------
@@ -298,7 +236,8 @@ async def _upsert_nvd_cache(client: AsyncOpenSearch, doc_id: str, doc: dict) -> 
 # ---------------------------------------------------------------------------
 
 async def _rescore_clusters_for_cves(enriched_cve_names: list[str]) -> None:
-    """Find clusters containing any of the enriched CVEs and rescore them."""
+    """Find clusters containing any of the enriched CVEs, update max_cvss from
+    the cve_topics index, then rescore."""
     if not enriched_cve_names:
         return
 
@@ -307,17 +246,52 @@ async def _rescore_clusters_for_cves(enriched_cve_names: list[str]) -> None:
 
     client = _get_client()
     try:
+        # Fetch enriched CVSS scores from cve_topics
+        from app.db.opensearch import INDEX_CVE_TOPICS
+        topic_resp = await client.search(
+            index=INDEX_CVE_TOPICS,
+            body={
+                "query": {"ids": {"values": enriched_cve_names}},
+                "size": len(enriched_cve_names),
+                "_source": ["cvss_score"],
+            },
+        )
+        cve_cvss: dict[str, float] = {}
+        for hit in topic_resp["hits"]["hits"]:
+            score = hit["_source"].get("cvss_score")
+            if score is not None:
+                cve_cvss[hit["_id"].upper()] = float(score)
+
+        # Find affected clusters (fetch cve_ids to compute max_cvss per cluster)
         resp = await client.search(
             index=INDEX_CLUSTERS,
             body={
                 "query": {"terms": {"cve_ids": enriched_cve_names}},
                 "size": 500,
-                "_source": False,
+                "_source": ["cve_ids", "max_cvss"],
             },
         )
-        cluster_ids = [hit["_id"] for hit in resp["hits"]["hits"]]
-        logger.info("Rescoring %d clusters affected by NVD enrichment", len(cluster_ids))
-        for cluster_id in cluster_ids:
+        hits = resp["hits"]["hits"]
+        logger.info("Rescoring %d clusters affected by NVD enrichment", len(hits))
+
+        for hit in hits:
+            cluster_id = hit["_id"]
+            src = hit["_source"]
+            cluster_cves = [c.upper() for c in (src.get("cve_ids") or [])]
+            new_max_cvss = max(
+                (cve_cvss[c] for c in cluster_cves if c in cve_cvss),
+                default=src.get("max_cvss") or 0.0,
+            )
+            if new_max_cvss > (src.get("max_cvss") or 0.0):
+                try:
+                    await client.update(
+                        index=INDEX_CLUSTERS,
+                        id=cluster_id,
+                        body={"doc": {"max_cvss": new_max_cvss}},
+                        retry_on_conflict=3,
+                    )
+                except Exception:
+                    logger.exception("Failed to update max_cvss for cluster %s", cluster_id)
             try:
                 await rescore_cluster(cluster_id)
             except Exception:
@@ -334,12 +308,12 @@ async def run(args: argparse.Namespace) -> None:
     client = _get_client()
     await _apply_mappings(client)
 
-    docs = await _scroll_cve_entities(client, force=args.force)
+    docs = await _scroll_unenriched_cve_topics(client)
     total = len(docs)
-    logger.info("CVE entities to enrich: %d", total)
+    logger.info("Unenriched CVEs in cve_topics: %d", total)
 
     if total == 0:
-        logger.info("Nothing to do. Use --force to re-enrich existing entries.")
+        logger.info("Nothing to do. All CVE topics already enriched.")
         await client.close()
         return
 
@@ -348,7 +322,7 @@ async def run(args: argparse.Namespace) -> None:
 
     logger.info(
         "API key: %s | Sleep: %.1fs | Estimated time: ~%dm",
-        "yes" if api_key else "no — register free at nvd.nist.gov/developers/request-an-api-key",
+        "yes" if api_key else "no",
         sleep_s,
         int(total * sleep_s / 60),
     )
@@ -358,74 +332,59 @@ async def run(args: argparse.Namespace) -> None:
         await client.close()
         return
 
-    done = not_found = failed = cached = 0
+    done = not_found = failed = 0
     enriched_cves: list[str] = []
     t_start = time.monotonic()
 
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+
     for i, hit in enumerate(docs, 1):
-        doc_id = hit["_id"]
-        cve_name = hit["_source"]["name"]
+        cve_id = hit["_id"]
 
         elapsed = time.monotonic() - t_start
         eta_s = (elapsed / i) * (total - i) if i > 1 else total * sleep_s
-        logger.info("[%d/%d] %s  (ETA ~%dm%02ds)", i, total, cve_name, int(eta_s // 60), int(eta_s % 60))
+        logger.info("[%d/%d] %s  (ETA ~%dm%02ds)", i, total, cve_id, int(eta_s // 60), int(eta_s % 60))
 
-        cve_data = _nvd_fetch(cve_name, api_key, sleep_s)
+        cve_data = _nvd_fetch(cve_id, api_key, sleep_s)
 
         if cve_data is None:
-            mitre_state = _mitre_check(cve_name)
-            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+            mitre_state = _mitre_check(cve_id)
             if mitre_state == "reserved":
-                # Real CVE, not yet published to NVD — leave nvd_last_modified unset so next run re-checks
-                update = {"vuln_status": "Reserved"}
-                logger.info("  → Reserved (MITRE confirmed, will re-check next run)")
+                mutable = {"vuln_status": "Reserved"}
+                logger.info("  → Reserved")
             elif mitre_state == "rejected":
-                # Formally rejected — set nvd_last_modified to prevent future re-checks
-                update = {"vuln_status": "Rejected", "nvd_last_modified": now}
-                logger.info("  → Rejected CVE, will not re-check")
+                mutable = {"vuln_status": "Rejected", "nvd_last_modified": now_iso}
+                logger.info("  → Rejected")
             elif mitre_state == "published":
-                # NVD transient miss — re-check next run (no nvd_last_modified)
-                update = {"vuln_status": "Pending NVD"}
-                logger.info("  → MITRE shows Published but NVD missed it, will retry")
+                mutable = {"vuln_status": "Pending NVD"}
+                logger.info("  → MITRE Published, NVD missed it — retry next run")
             else:
-                # FP entity extraction — set nvd_last_modified to stop re-checking
-                update = {"vuln_status": "Invalid", "nvd_last_modified": now}
-                logger.info("  → Invalid CVE ID (entity extraction FP), will not re-check")
+                mutable = {"vuln_status": "Invalid", "nvd_last_modified": now_iso}
+                logger.info("  → Invalid CVE ID")
             try:
-                await _update_entity(client, doc_id, update)
+                await _update_cve_topic(client, cve_id, immutable={}, mutable=mutable)
             except Exception:
-                logger.exception("Failed to update status for %s", doc_id)
+                logger.exception("Failed to update status for %s", cve_id)
             not_found += 1
         else:
             try:
-                entity_fields = _parse_entity_fields(cve_data)
-                await _update_entity(client, doc_id, entity_fields)
-                enriched_cves.append(cve_name)
+                immutable = _parse_entity_fields(cve_data)
+                immutable["nvd_raw"] = cve_data
+                immutable["enriched_at"] = now_iso
+                await _update_cve_topic(client, cve_id, immutable=immutable, mutable={"updated_at": now_iso})
+                enriched_cves.append(cve_id)
                 done += 1
-
-                cache_doc = _build_nvd_cache_doc(cve_name, cve_data)
-                if await _upsert_nvd_cache(client, doc_id, cache_doc):
-                    cached += 1
             except Exception:
-                logger.exception("Failed to enrich %s", doc_id)
+                logger.exception("Failed to enrich %s", cve_id)
                 failed += 1
 
         if i < total:
             time.sleep(sleep_s)
 
     await client.close()
-    logger.info(
-        "Done. enriched=%d  cached_to_nvd_cache=%d  pending_nvd=%d  failed=%d",
-        done, cached, not_found, failed,
-    )
+    logger.info("Done. enriched=%d  pending=%d  failed=%d", done, not_found, failed)
 
     await _rescore_clusters_for_cves(enriched_cves)
-    if cached < done:
-        logger.info(
-            "%d CVEs written to entities only (nvd_cache not available — "
-            "create index + grant kiber_app write access, then re-run with --force)",
-            done - cached,
-        )
 
 
 def main() -> None:
@@ -434,10 +393,9 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%H:%M:%S",
     )
-    parser = argparse.ArgumentParser(description="Enrich CVE entities from NVD API v2")
+    parser = argparse.ArgumentParser(description="Enrich CVE topics from NVD API v2")
     parser.add_argument("--api-key", help="NVD API key (or set NVD_API_KEY env var)")
     parser.add_argument("--sleep", type=float, help="Seconds between requests (default: 1 with key, 6 without)")
-    parser.add_argument("--force", action="store_true", help="Re-enrich CVEs that already have NVD data")
     parser.add_argument("--dry-run", action="store_true", help="Apply mapping and count CVEs without fetching")
     args = parser.parse_args()
     asyncio.run(run(args))
