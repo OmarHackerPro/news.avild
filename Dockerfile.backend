@@ -13,7 +13,6 @@ COPY scripts/ scripts/
 COPY static/ static/
 COPY templates/ templates/
 COPY tests/ tests/
-COPY data/ data/
 
 RUN mkdir -p static/uploads/avatars
 

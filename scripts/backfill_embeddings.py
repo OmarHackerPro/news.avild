@@ -32,12 +32,25 @@ console = Console()
 _EMBED_CONCURRENCY = 4
 
 
+async def _mark_embedded(slug: str) -> None:
+    """Write embedding_ok=true so reruns without --force can skip this article."""
+    client = get_os_client()
+    try:
+        await client.update(
+            index=INDEX_NEWS,
+            id=slug,
+            body={"doc": {"embedding_ok": True}},
+        )
+    except Exception as exc:
+        logger.warning("Could not mark embedding_ok for %s: %s", slug, exc)
+
+
 async def _scroll_articles(source: str | None, limit: int | None, force: bool) -> list[dict]:
     client = get_os_client()
 
     query: dict = {"bool": {}}
     if not force:
-        query["bool"]["must_not"] = {"exists": {"field": "article_embedding"}}
+        query["bool"]["must_not"] = {"exists": {"field": "embedding_ok"}}
     if source:
         query["bool"]["filter"] = [{"term": {"source_name": source}}]
     if not query["bool"]:
@@ -102,7 +115,21 @@ async def _entity_keys_for(slugs: list[str]) -> dict[str, list[str]]:
     return keys
 
 
+async def _ensure_embedding_ok_field() -> None:
+    """Add embedding_ok boolean to live index mapping (no-op if already present)."""
+    client = get_os_client()
+    try:
+        await client.indices.put_mapping(
+            index=INDEX_NEWS,
+            body={"properties": {"embedding_ok": {"type": "boolean"}}},
+        )
+    except Exception as exc:
+        logger.warning("put_mapping embedding_ok: %s", exc)
+
+
 async def main(args: argparse.Namespace) -> None:
+    await _ensure_embedding_ok_field()
+
     with console.status("[cyan]Scanning articles…"):
         articles = await _scroll_articles(source=args.source, limit=args.limit, force=args.force)
 
@@ -112,7 +139,6 @@ async def main(args: argparse.Namespace) -> None:
     totals = {"ok": 0, "skipped": 0, "errors": 0}
     semaphore = asyncio.Semaphore(_EMBED_CONCURRENCY)
     batch_size = args.batch_size
-
     with make_script_progress(console) as progress:
         task = progress.add_task("Embedding", total=total)
 
@@ -135,25 +161,24 @@ async def main(args: argparse.Namespace) -> None:
                     progress.advance(task)
                 continue
 
-            async def _process_one(hit: dict) -> str:
+            async def _process_one(hit: dict) -> None:
                 slug = hit["_id"]
                 async with semaphore:
                     progress.update(task, description=f"[cyan]{slug[:40]}[/cyan]  {_stats()}")
                     try:
                         vec = await embed_article(hit["_source"], entity_keys.get(slug, []))
                         if vec is None:
-                            return "skipped"
-                        return "ok"
+                            totals["skipped"] += 1
+                        else:
+                            await _mark_embedded(slug)
+                            totals["ok"] += 1
                     except Exception:
-                        logger.exception("Embed failed for %s", slug)
-                        return "error"
+                        logger.warning("Embed failed: %s", slug)
+                        totals["errors"] += 1
+                    progress.advance(task)
+                    progress.update(task, description=f"[cyan]{slug[:40]}[/cyan]  {_stats()}")
 
-            outcomes = await asyncio.gather(*[_process_one(h) for h in batch])
-
-            for outcome in outcomes:
-                totals[outcome] = totals.get(outcome, 0) + 1
-                progress.advance(task)
-            progress.update(task, description=f"[dim]batch {batch_start // batch_size + 1}[/dim]  {_stats()}")
+            await asyncio.gather(*[_process_one(h) for h in batch])
 
     table = Table(title="Embedding Complete", show_header=True, header_style="bold magenta")
     table.add_column("Metric", style="cyan")
@@ -185,8 +210,13 @@ if __name__ == "__main__":
     async def _run():
         try:
             await main(parser.parse_args())
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Interrupted — rerun without --force to resume.[/yellow]")
         finally:
             from app.db.opensearch import close_os_client
             await close_os_client()
 
-    asyncio.run(_run())
+    try:
+        asyncio.run(_run())
+    except KeyboardInterrupt:
+        pass

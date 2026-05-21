@@ -26,6 +26,7 @@ class ExtractedEntityResponse(BaseModel):
     normalized_key: str
     score: float
     char_offset: int
+    mentions: int = 1
 
 
 class ExtractResponse(BaseModel):
@@ -78,8 +79,8 @@ async def extract(req: ExtractRequest) -> ExtractResponse:
                 name=e.name,
                 normalized_key=_normalize_key(e.name),
                 score=e.score,
-                # offset is relative to title+body concat; subtract title prefix for body-only offset
                 char_offset=max(0, e.char_offset - (len(req.title) + 2)),
+                mentions=e.mentions,
             )
             for e in raw
         ],

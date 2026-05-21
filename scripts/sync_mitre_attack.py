@@ -15,9 +15,15 @@ import asyncio
 import json
 import logging
 import re
+import sys
 from collections import Counter
 from datetime import datetime as _datetime, timezone as _timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from dotenv import load_dotenv
+load_dotenv()
 
 import requests
 
@@ -131,10 +137,6 @@ async def _upsert_to_db(
 
     source_ids: {normalized_key: external_id} e.g. {"apt29": "G0016"}.
     """
-    import sys as _sys
-    from pathlib import Path as _Path
-    _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
-
     from app.db.session import AsyncSessionLocal
     from sqlalchemy import text
 

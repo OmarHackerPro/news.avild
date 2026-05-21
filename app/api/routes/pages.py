@@ -72,6 +72,17 @@ async def search_page(request: Request):
     return _render(request, "search.html", seo)
 
 
+@router.get("/coming-soon", response_class=HTMLResponse)
+async def coming_soon_page(request: Request):
+    seo = SEO(
+        title="Coming Soon — news.avild.com",
+        description="This feature is currently under development.",
+        canonical=build_canonical(request),
+        robots="noindex, nofollow",
+    )
+    return _render(request, "coming-soon.html", seo)
+
+
 @router.get("/preferences", response_class=HTMLResponse)
 async def preferences_page(request: Request):
     seo = SEO(
@@ -226,7 +237,7 @@ async def cluster_page(request: Request, id: str = Query(...)):
             robots="noindex, follow",
         )
         return templates.TemplateResponse(
-            "cluster.html", {"request": request, "seo": seo}, status_code=404,
+            request, "cluster.html", {"seo": seo}, status_code=404,
         )
 
     headline = src.get("label") or "Security event cluster"

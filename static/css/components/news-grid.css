@@ -57,6 +57,7 @@
   white-space: nowrap;
 }
 
+.card-tag.tag-cve { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.35); }
 .card-tag.cisa { border: 1px solid var(--accent-blue); color: var(--accent-blue); }
 .card-tag.critical { background: var(--accent-red); color: white; }
 .card-tag.mandiant { color: var(--accent-purple); }
@@ -102,26 +103,35 @@
   word-break: break-word;
 }
 
-.card-keywords {
+.card-entity-tags {
   display: flex;
   flex-wrap: nowrap;
-  gap: 0.35rem;
+  gap: 0.3rem;
+  margin-top: auto;
   margin-bottom: 0.5rem;
   overflow: hidden;
-  max-height: 1.6rem;
 }
 
-.card-keyword {
-  font-size: 0.72rem;
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  background: var(--bg-elevated);
+.card-entity-tag {
+  font-size: 0.68rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  background: transparent;
   color: var(--text-muted);
+  border: 1px solid var(--border);
+  white-space: nowrap;
 }
 
-.card-keyword.highlight {
-  color: var(--accent-orange);
+.card-entity-tag.tag-cve {
+  color: #4ade80;
+  border-color: rgba(34,197,94,0.35);
 }
+
+/* CVE tag colors mirror severity when known */
+.card-entity-tag.tag-cve.sev-critical { color: #ff7b74; border-color: rgba(248,81,73,0.5); background: rgba(248,81,73,0.08); }
+.card-entity-tag.tag-cve.sev-high     { color: #fbbf24; border-color: rgba(210,153,34,0.45); background: rgba(210,153,34,0.08); }
+.card-entity-tag.tag-cve.sev-medium   { color: #fde68a; border-color: rgba(251,191,36,0.4);  background: rgba(251,191,36,0.07); }
+.card-entity-tag.tag-cve.sev-low      { color: var(--text-muted); border-color: var(--border); }
 
 .card-meta {
   display: flex;

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Seed vuln_alias entries into entity_intel.
 
 Union of:
@@ -9,11 +10,16 @@ Uses ON CONFLICT (normalized_key) DO NOTHING for cache entries so existing
 authoritative rows (e.g. from MITRE ATT&CK) are never overwritten.
 Canonical entries use DO UPDATE to always win.
 """
-import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import asyncio
-import json
 import re
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from sqlalchemy import text
 

@@ -23,3 +23,74 @@
 .nav-link-soon:hover {
   opacity: 0.65 !important;
 }
+
+/* ===== Coming-soon hover popover ===== */
+.cs-wrap {
+  display: inline-flex;
+}
+
+/* Hidden content template — read by cs-popover.js, never rendered inline */
+.cs-popover {
+  display: none !important;
+}
+
+/* Disabled element inside cs-wrap */
+.cs-disabled {
+  cursor: default !important;
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+/* Singleton fixed popover injected into <body> by cs-popover.js */
+#cs-popover-global {
+  position: fixed;
+  width: 190px;
+  background: var(--bg-card, #161b22);
+  border: 1px solid rgba(63, 185, 80, 0.35);
+  border-radius: 10px;
+  padding: 0.85rem 1rem 0.8rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 2147483647;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(63, 185, 80, 0.08);
+  text-align: center;
+}
+
+#cs-popover-global.is-visible {
+  opacity: 1;
+}
+
+/* Upward-pointing arrow */
+#cs-popover-global::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom-color: rgba(63, 185, 80, 0.35);
+}
+
+.cs-popover-icon {
+  display: block;
+  font-size: 1.4rem;
+  margin-bottom: 0.4rem;
+  color: var(--accent-green, #3fb950);
+}
+
+.cs-popover-title {
+  display: block;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text, #e6edf3);
+  margin-bottom: 0.2rem;
+  letter-spacing: 0.01em;
+}
+
+.cs-popover-sub {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted, #8b949e);
+  line-height: 1.4;
+}

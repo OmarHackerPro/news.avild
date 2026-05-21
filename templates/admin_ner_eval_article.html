@@ -44,6 +44,7 @@
             <td class="verdict-buttons">
               {% if j.verdict %}
                 <span class="verdict-{{ j.verdict }}">{{ j.verdict }}</span>
+                <button onclick="submitVerdict(this, 'undo')" title="Undo" style="margin-left:0.4em;opacity:0.5;cursor:pointer;">&#8635;</button>
               {% else %}
                 <button onclick="submitVerdict(this, 'correct')">&#10003; correct</button>
                 <button onclick="submitVerdict(this, 'wrong')">&#10007; wrong</button>
@@ -74,9 +75,19 @@
         body: JSON.stringify(payload),
       });
       if (resp.ok) {
-        row.classList.add("done");
-        row.querySelector(".verdict-buttons").innerHTML =
-          '<span class="verdict-' + verdict + '">' + verdict + '</span>';
+        const cell = row.querySelector(".verdict-buttons");
+        if (verdict === "undo") {
+          row.classList.remove("done");
+          cell.innerHTML =
+            '<button onclick="submitVerdict(this,\'correct\')">&#10003; correct</button>' +
+            '<button onclick="submitVerdict(this,\'wrong\')">&#10007; wrong</button>' +
+            '<button onclick="submitVerdict(this,\'skip\')">? skip</button>';
+        } else {
+          row.classList.add("done");
+          cell.innerHTML =
+            '<span class="verdict-' + verdict + '">' + verdict + '</span>' +
+            '<button onclick="submitVerdict(this,\'undo\')" title="Undo" style="margin-left:0.4em;opacity:0.5;cursor:pointer;">&#8635;</button>';
+        }
       } else {
         alert("Failed: " + resp.status);
       }

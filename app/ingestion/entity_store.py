@@ -27,7 +27,10 @@ async def store_article_entities(
     now = datetime.now(timezone.utc).isoformat()
 
     for ent in entities:
-        doc_id = ent["normalized_key"]
+        doc_id = ent.get("normalized_key") or ""
+        if not doc_id:
+            logger.warning("Skipping entity with empty normalized_key: %s", ent)
+            continue
 
         # Try to update existing entity doc (add article_id, bump last_seen)
         update_body: dict = {

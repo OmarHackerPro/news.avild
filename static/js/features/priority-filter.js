@@ -72,6 +72,8 @@
       var hideBySt = st.length > 0 && st.indexOf(cSt) === -1;
       card.classList.toggle('filtered-out', hideBySev || hideBySt);
     });
+    // Hiding cards may collapse the page — trigger a load check without waiting for scroll
+    if (typeof window.checkAndLoadMore === 'function') window.checkAndLoadMore();
   };
 
   /* ── Sync UI option buttons to current state ── */

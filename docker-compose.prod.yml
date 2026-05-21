@@ -1,0 +1,21 @@
+# Production overrides — use with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Differences from dev:
+#   - nginx.prod.conf: disables auth/preferences/digest/feeds/rss/docs routes
+#   - backend exposes no host port (traffic only via nginx)
+#   - db exposes no host port
+
+services:
+  frontend:
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - avatar_uploads:/usr/share/nginx/html/static/uploads/avatars
+
+  backend:
+    ports: []
+    environment:
+      APP_BASE_URL: ${APP_BASE_URL:-https://news.avild.com}
+
+  db:
+    ports: []

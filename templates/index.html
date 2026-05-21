@@ -57,29 +57,53 @@
         </div>
       </div>
       <div class="nav-actions">
-        <a href="/preferences" class="nav-subscribe-btn nav-pref-link nav-pref-mystack nav-link-soon" title="Coming soon"><i class="fas fa-layer-group"></i> <span data-i18n-key="nav.myStack">My Stack</span></a>
-        <a href="/webhooks" class="nav-subscribe-btn nav-pref-link nav-pref-webhooks nav-link-soon" title="Coming soon"><i class="fas fa-plug"></i> <span data-i18n-key="nav.webhooks">Webhooks</span></a>
-        <a href="/rss-config" class="nav-subscribe-btn nav-pref-link nav-pref-rss nav-link-soon" title="Coming soon"><i class="fas fa-rss"></i> <span data-i18n-key="nav.rssConfig">RSS Feed</span></a>
+        <span class="cs-wrap cs-below">
+          <span class="nav-subscribe-btn nav-pref-link nav-pref-mystack cs-disabled"><i class="fas fa-layer-group"></i> <span data-i18n-key="nav.myStack">My Stack</span></span>
+          <span class="cs-popover" aria-hidden="true"><i class="fas fa-layer-group cs-popover-icon"></i><span class="cs-popover-title">Coming Soon</span><span class="cs-popover-sub">Personalized feeds are in development</span></span>
+        </span>
+        <span class="cs-wrap cs-below">
+          <span class="nav-subscribe-btn nav-pref-link nav-pref-webhooks cs-disabled"><i class="fas fa-plug"></i> <span data-i18n-key="nav.webhooks">Webhooks</span></span>
+          <span class="cs-popover" aria-hidden="true"><i class="fas fa-plug cs-popover-icon"></i><span class="cs-popover-title">Coming Soon</span><span class="cs-popover-sub">Webhook integrations are in development</span></span>
+        </span>
+        <span class="cs-wrap cs-below">
+          <span class="nav-subscribe-btn nav-pref-link nav-pref-rss cs-disabled"><i class="fas fa-rss"></i> <span data-i18n-key="nav.rssConfig">RSS Feed</span></span>
+          <span class="cs-popover" aria-hidden="true"><i class="fas fa-rss cs-popover-icon"></i><span class="cs-popover-title">Coming Soon</span><span class="cs-popover-sub">Custom RSS feeds are in development</span></span>
+        </span>
         <div class="nav-rss-wrap">
-          <button type="button" class="nav-rss-btn" id="rssTrigger" aria-expanded="false" aria-haspopup="true">
+          <span class="cs-wrap cs-below"><button type="button" class="nav-rss-btn cs-disabled" id="rssTrigger" aria-expanded="false" aria-haspopup="true">
             <i class="fas fa-rss nav-rss-icon"></i> RSS <i class="fas fa-chevron-down"></i>
-          </button>
+          </button><span class="cs-popover" aria-hidden="true"><i class="fas fa-rss cs-popover-icon"></i><span class="cs-popover-title">Coming Soon</span><span class="cs-popover-sub">RSS feeds are in development</span></span></span>
           <div class="nav-rss-dropdown" id="rssDropdown" role="menu">
-            <a href="/api/rss" target="_blank" rel="noopener" class="nav-rss-option" data-i18n-key="rss.allFeeds">All feeds</a>
-            <a href="/api/rss?category=breaking" target="_blank" rel="noopener" class="nav-rss-option" data-i18n-key="rss.breaking">Breaking</a>
-            <a href="/api/rss?category=deep-dives" target="_blank" rel="noopener" class="nav-rss-option" data-i18n-key="rss.threatIntel">Threat Intel</a>
-            <a href="/api/rss?category=research" target="_blank" rel="noopener" class="nav-rss-option" data-i18n-key="rss.malware">Malware</a>
+            <span class="cs-wrap cs-below" style="display:block">
+              <span class="nav-rss-option cs-disabled" data-i18n-key="rss.allFeeds">All feeds</span>
+              <span class="cs-popover" aria-hidden="true"><i class="fas fa-rss cs-popover-icon"></i><span class="cs-popover-title">Coming Soon</span><span class="cs-popover-sub">RSS feeds are in development</span></span>
+            </span>
+            <span class="cs-wrap cs-below" style="display:block">
+              <span class="nav-rss-option cs-disabled" data-i18n-key="rss.breaking">Breaking</span>
+              <span class="cs-popover" aria-hidden="true"><i class="fas fa-rss cs-popover-icon"></i><span class="cs-popover-title">Coming Soon</span><span class="cs-popover-sub">RSS feeds are in development</span></span>
+            </span>
+            <span class="cs-wrap cs-below" style="display:block">
+              <span class="nav-rss-option cs-disabled" data-i18n-key="rss.threatIntel">Threat Intel</span>
+              <span class="cs-popover" aria-hidden="true"><i class="fas fa-rss cs-popover-icon"></i><span class="cs-popover-title">Coming Soon</span><span class="cs-popover-sub">RSS feeds are in development</span></span>
+            </span>
+            <span class="cs-wrap cs-below" style="display:block">
+              <span class="nav-rss-option cs-disabled" data-i18n-key="rss.malware">Malware</span>
+              <span class="cs-popover" aria-hidden="true"><i class="fas fa-rss cs-popover-icon"></i><span class="cs-popover-title">Coming Soon</span><span class="cs-popover-sub">RSS feeds are in development</span></span>
+            </span>
           </div>
         </div>
-        <button type="button" class="nav-share-btn" id="navShareBtn" aria-label="Share insight"><i class="fas fa-share-alt"></i> <span data-i18n-key="nav.share">Share</span></button>
-        <a href="/digest" class="nav-subscribe-btn nav-link-soon" title="Coming soon" aria-label="Subscribe">
-          <i class="fas fa-bell"></i> <span data-i18n-key="nav.subscribe">Subscribe</span>
-        </a>
-        <a href="/login" class="nav-subscribe-btn nav-user-btn" id="navUserLink" aria-label="Log in or account">
+        <span class="cs-wrap cs-below"><button type="button" class="nav-share-btn cs-disabled" id="navShareBtn" aria-label="Share insight"><i class="fas fa-share-alt"></i> <span data-i18n-key="nav.share">Share</span></button><span class="cs-popover" aria-hidden="true"><i class="fas fa-share-alt cs-popover-icon"></i><span class="cs-popover-title">Coming Soon</span><span class="cs-popover-sub">Share feature is in development</span></span></span>
+        <span class="cs-wrap cs-below">
+          <span class="nav-subscribe-btn cs-disabled" aria-label="Subscribe">
+            <i class="fas fa-bell"></i> <span data-i18n-key="nav.subscribe">Subscribe</span>
+          </span>
+          <span class="cs-popover" aria-hidden="true"><i class="fas fa-bell cs-popover-icon"></i><span class="cs-popover-title">Coming Soon</span><span class="cs-popover-sub">Email digests are in development</span></span>
+        </span>
+        <span class="cs-wrap cs-below"><a href="/login" class="nav-subscribe-btn nav-user-btn cs-disabled" id="navUserLink" aria-label="Log in or account">
           <i class="fas fa-user-circle" id="navUserIcon"></i>
           <span id="navUserAvatar" hidden><img id="navUserAvatarImg" src="" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;"></span>
           <span id="navUserName" hidden style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-        </a>
+        </a><span class="cs-popover" aria-hidden="true"><i class="fas fa-user cs-popover-icon"></i><span class="cs-popover-title">Coming Soon</span><span class="cs-popover-sub">Accounts are in development</span></span></span>
         <button type="button" class="nav-theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
           <span class="theme-icon">
             <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="19.78" y1="4.22" x2="18.36" y2="5.64"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/></svg>

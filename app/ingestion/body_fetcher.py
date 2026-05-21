@@ -7,6 +7,7 @@ Public surface:
     RobotsCache
 """
 import asyncio
+import random
 import time
 from dataclasses import dataclass
 from typing import Optional
@@ -18,6 +19,7 @@ _CF_CHALLENGE_TITLE = "<title>Just a moment...</title>"
 _CF_CHL_SCRIPT_TOKEN = "cf-chl-"
 _ROBOTS_TTL_SECONDS = 24 * 60 * 60  # 24h
 _DEFAULT_TIMEOUT_SECONDS = 20
+_TIMEOUT_JITTER_SECONDS = 5
 
 _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -139,6 +141,7 @@ async def fetch_body(
     timeout: int = _DEFAULT_TIMEOUT_SECONDS,
     extra_headers: Optional[dict] = None,
 ) -> FetchResult:
+    timeout = timeout + random.uniform(-_TIMEOUT_JITTER_SECONDS, _TIMEOUT_JITTER_SECONDS)
     """Fetch a single URL with anti-bot headers + 8s timeout.
 
     On 429/503: respect Retry-After (capped at 4s), retry once.

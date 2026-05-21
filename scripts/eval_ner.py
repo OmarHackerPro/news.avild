@@ -62,24 +62,30 @@ def _classify_zone(char_offset: int | None) -> str:
 
 def _diff(haiku: list[dict], local: list[dict]) -> list[tuple[dict, str, str | None]]:
     """Return list of (entity, source, input_zone) tuples to write as judgments."""
-    haiku_keys = {(e.get("type") or e.get("entity_type"), e["normalized_key"]) for e in haiku}
-    local_keys = {(e["type"], e["normalized_key"]) for e in local}
+    # CVEs are handled by regex in production; exclude them from NER eval.
+    haiku = [e for e in haiku if (e.get("type") or e.get("entity_type")) != "cve"]
+    local = [e for e in local if e["type"] != "cve"]
+
+    # Lowercase keys for comparison only — Haiku stores some keys differently-cased.
+    haiku_cmp = {(e.get("type") or e.get("entity_type"), e["normalized_key"].lower()) for e in haiku}
+    local_cmp = {(e["type"], e["normalized_key"].lower()) for e in local}
     out: list[tuple[dict, str, str | None]] = []
 
-    agree = haiku_keys & local_keys
-    only_haiku = haiku_keys - local_keys
-    only_local = local_keys - haiku_keys
+    agree = haiku_cmp & local_cmp
+    only_haiku = haiku_cmp - local_cmp
+    only_local = local_cmp - haiku_cmp
 
     for h in haiku:
         h_type = h.get("type") or h.get("entity_type")
         h_key = h["normalized_key"]
-        if (h_type, h_key) in agree:
+        cmp_key = (h_type, h_key.lower())
+        if cmp_key in agree:
             out.append(({"type": h_type, "name": h.get("name", h_key), "normalized_key": h_key}, "both", "shared"))
-        elif (h_type, h_key) in only_haiku:
+        elif cmp_key in only_haiku:
             out.append(({"type": h_type, "name": h.get("name", h_key), "normalized_key": h_key}, "haiku", "shared"))
 
     for l in local:
-        if (l["type"], l["normalized_key"]) in only_local:
+        if (l["type"], l["normalized_key"].lower()) in only_local:
             zone = _classify_zone(l.get("char_offset"))
             out.append(({"type": l["type"], "name": l["name"], "normalized_key": l["normalized_key"]}, "local", zone))
 

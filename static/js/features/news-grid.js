@@ -116,6 +116,10 @@
       return 0;
     });
     var severity = a.severity;
+    if (!severity && cluster.max_cvss > 0) {
+      var c = Number(cluster.max_cvss);
+      severity = c >= 9.0 ? 'critical' : c >= 7.0 ? 'high' : c >= 4.0 ? 'medium' : 'low';
+    }
 
     var card = document.createElement('article');
     card.className = 'news-card';
@@ -126,13 +130,8 @@
 
     var t = (window.CyberNews && window.CyberNews.t) ? window.CyberNews.t.bind(window.CyberNews) : function(k) { return k; };
 
-    // Priority badges: severity, state, category (always shown, up to 3 slots)
+    // Priority badges: state, category (severity label removed — CVE tags carry the color instead)
     var prioritySpans = [];
-    var sevLabels = { critical: t('severity.critical'), high: t('severity.high'), medium: t('severity.medium'), low: t('severity.low') };
-    var sevIcons = { critical: 'fas fa-skull-crossbones', high: 'fas fa-exclamation-triangle', medium: 'fas fa-exclamation-circle', low: 'fas fa-info-circle' };
-    if (severity && sevLabels[severity]) {
-      prioritySpans.push('<span class="card-tag sev-' + esc(severity) + '"><i class="' + sevIcons[severity] + '"></i> ' + sevLabels[severity] + '</span>');
-    }
     var stateLabels = { 'new': t('cluster.state.new'), developing: t('cluster.state.developing'), confirmed: t('cluster.state.confirmed'), resolved: t('cluster.state.resolved') };
     if (cluster.state && stateLabels[cluster.state]) {
       prioritySpans.push('<span class="card-tag cluster-state-' + esc(cluster.state) + '">' + stateLabels[cluster.state] + '</span>');
@@ -150,14 +149,6 @@
       sourceCountHtml = '<span class="card-sources"><i class="fas fa-layer-group"></i> ' + cluster.article_count + ' ' + sourcesLabel + '</span>';
     }
 
-    // Sort-context badge
-    var scoreHtml = '';
-    if (window.currentSort === 'score' && cluster.score != null) {
-      scoreHtml = '<span class="card-score"><i class="fas fa-fire"></i> ' + Number(cluster.score).toFixed(1) + '</span>';
-    } else if (window.currentSort === 'severity' && cluster.max_cvss > 0) {
-      scoreHtml = '<span class="card-score"><i class="fas fa-shield-alt"></i> CVSS ' + Number(cluster.max_cvss).toFixed(1) + '</span>';
-    }
-
     var readLabel = (window.CyberNews && window.CyberNews.t) ? window.CyberNews.t('card.read') : 'Read';
 
     var rawTitle = a.title || '';
@@ -169,9 +160,11 @@
 
     card.setAttribute('data-orig-title', rawTitle);
     card.setAttribute('data-orig-desc', rawDesc);
+    var sevClass = severity ? ' sev-' + severity : '';
     var entityTagSpans = keywords.slice(0, 4).map(function (tag) {
-      var c = /^CVE-/i.test(tag) ? 'tag-cve' : '';
-      return '<span class="card-entity-tag' + (c ? ' ' + c : '') + '">' + esc(tag) + '</span>';
+      var isCve = /^CVE-/i.test(tag);
+      var classes = 'card-entity-tag' + (isCve ? ' tag-cve' + sevClass : '');
+      return '<span class="' + classes + '">' + esc(tag) + '</span>';
     }).join('');
 
     card.innerHTML =
@@ -183,7 +176,6 @@
         '<span><i class="far fa-clock"></i> ' + timeAgo(a.published_at) + '</span>' +
         (a.source_name ? '<span class="card-source-name">' + esc(a.source_name) + '</span>' : '') +
         sourceCountHtml +
-        scoreHtml +
       '</div>';
 
     return card;
@@ -252,6 +244,7 @@
   async function loadPage(append) {
     if (loading && append) return; // only guard scroll-appends, not full refreshes
     loading = true;
+    var needsMoreCheck = false;
 
     if (!append) {
       offset = 0;
@@ -298,6 +291,8 @@
       if (loadIndicator) {
         loadIndicator.classList.toggle('hidden', offset >= total);
       }
+
+      needsMoreCheck = true;
     } catch (err) {
       if (err.name === 'AbortError') {
         loading = false;
@@ -312,21 +307,31 @@
     }
 
     loading = false;
+    // Only auto-fetch the next page if the client-side filter hid cards and the page is short
+    if (needsMoreCheck && document.querySelector('.news-card.filtered-out')) {
+      checkAndLoadMore();
+    }
   }
 
   // ── Infinite scroll (debounced) ──
   var scrollTimer = null;
   var SCROLL_THRESHOLD = 400;
+
+  function checkAndLoadMore() {
+    if (loading || offset >= total) return;
+    if (!loadIndicator) return;
+    var rect = loadIndicator.getBoundingClientRect();
+    if (rect.top < window.innerHeight + SCROLL_THRESHOLD) {
+      loadPage(true);
+    }
+  }
+  window.checkAndLoadMore = checkAndLoadMore;
+
   function onScroll() {
     if (scrollTimer) return;
     scrollTimer = setTimeout(function () {
       scrollTimer = null;
-      if (loading || offset >= total) return;
-      if (!loadIndicator) return;
-      var rect = loadIndicator.getBoundingClientRect();
-      if (rect.top < window.innerHeight + SCROLL_THRESHOLD) {
-        loadPage(true);
-      }
+      checkAndLoadMore();
     }, 200);
   }
   window.addEventListener('scroll', onScroll, { passive: true });

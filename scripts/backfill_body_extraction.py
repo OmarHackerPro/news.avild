@@ -134,7 +134,11 @@ async def _load_sources() -> dict[str, dict]:
 
 
 async def _eligible_articles(client, limit: int | None, reclean_rss: bool = False):
-    """Yield batches of 50 articles eligible for (re-)processing."""
+    """Yield batches of articles eligible for (re-)processing.
+
+    Uses a single large fetch (no scroll) so the OpenSearch context can't
+    expire while long-timeout fetches are in flight.
+    """
     should = [
         {"bool": {"must_not": {"exists": {"field": "body_quality"}}}},
         {"term": {"body_quality": "failed"}},
@@ -142,36 +146,22 @@ async def _eligible_articles(client, limit: int | None, reclean_rss: bool = Fals
     ]
     if reclean_rss:
         should.append({"term": {"body_source": "rss-full"}})
+    size = limit if (limit is not None and limit <= 10000) else 10000
     body = {
-        "size": 50,
+        "size": size,
         "_source": ["slug", "source_url", "source_name", "content_html",
                     "body_quality", "body_source", "fetch_attempt_count",
                     "last_fetch_attempt_at"],
         "query": {"bool": {"should": should, "minimum_should_match": 1}},
         "sort": [{"published_at": {"order": "desc"}}],
     }
-    yielded = 0
-    response = await client.search(index=INDEX_NEWS, body=body, scroll="2m")
-    scroll_id = response.get("_scroll_id")
-    try:
-        while True:
-            hits = response["hits"]["hits"]
-            if not hits:
-                break
-            if limit is not None and yielded + len(hits) > limit:
-                hits = hits[: limit - yielded]
-            yield hits
-            yielded += len(hits)
-            if limit is not None and yielded >= limit:
-                break
-            response = await client.scroll(scroll_id=scroll_id, scroll="2m")
-            scroll_id = response.get("_scroll_id")
-    finally:
-        if scroll_id:
-            try:
-                await client.clear_scroll(scroll_id=scroll_id)
-            except Exception:
-                pass
+    response = await client.search(index=INDEX_NEWS, body=body)
+    hits = response["hits"]["hits"]
+    if limit is not None:
+        hits = hits[:limit]
+    # Yield in batches of 50 for progress logging granularity
+    for i in range(0, len(hits), 50):
+        yield hits[i:i + 50]
 
 
 async def _pilot_articles(client, sources_by_name: dict):

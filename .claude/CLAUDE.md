@@ -12,7 +12,7 @@ Read this before touching anything. The sections below give you architecture and
 
 Kiber is a cybersecurity news intelligence platform. It ingests, deduplicates, clusters, and ranks security news and advisories. The goal is to replace the noise of 30 duplicate articles with one clean, explainable cluster — surfaced with entity links, relevance scoring, and export options. Everything is designed to be SEO/GEO-discoverable (Google AI Overviews, ChatGPT Search, Gemini).
 
-Hosted at **news.avild.com**. GitHub: **OmarHackerPro/kiber**.
+Hosted at **news.avild.com**. GitHub: **OmarHackerPro/news.avild** (formerly `kiber`; the old name redirects).
 
 ---
 

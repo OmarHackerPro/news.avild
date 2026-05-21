@@ -138,8 +138,9 @@ async def post_verdict(
     session: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
     _check_admin(request)
-    if payload.verdict not in ("correct", "wrong", "skip"):
+    if payload.verdict not in ("correct", "wrong", "skip", "undo"):
         raise HTTPException(status_code=400, detail="invalid verdict")
+    new_verdict = None if payload.verdict == "undo" else payload.verdict
     await session.execute(
         text(
             "UPDATE ner_eval_judgments SET verdict = :v, judged_at = :ts "
@@ -147,7 +148,7 @@ async def post_verdict(
             "AND entity_normalized_key = :ekey AND source = :src"
         ),
         {
-            "v": payload.verdict,
+            "v": new_verdict,
             "ts": datetime.now(timezone.utc),
             "slug": payload.slug,
             "etype": payload.entity_type,

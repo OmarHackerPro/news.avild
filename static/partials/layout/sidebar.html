@@ -3,21 +3,22 @@
     <button class="sidebar-close" id="newsletterClose" aria-label="Close"><i class="fas fa-times"></i></button>
     <h3><i class="fas fa-envelope"></i> <span data-i18n-key="sidebar.newsletterTitle">Newsletter</span></h3>
     <p data-i18n-key="sidebar.newsletterText">Get daily or weekly security digests delivered to your inbox.</p>
-    <input type="email" placeholder="your@email.com" data-i18n-placeholder="sidebar.newsletterEmailPlaceholder" class="newsletter-input">
-    <div class="newsletter-freq">
-      <button class="freq-btn active" data-i18n-key="sidebar.daily">Daily</button>
-      <button class="freq-btn" data-i18n-key="sidebar.weekly">Weekly</button>
-    </div>
+    <span class="cs-wrap cs-below" style="display:block">
+      <input type="email" placeholder="your@email.com" data-i18n-placeholder="sidebar.newsletterEmailPlaceholder" class="newsletter-input cs-disabled" tabindex="-1" aria-disabled="true">
+      <div class="newsletter-freq">
+        <button class="freq-btn active cs-disabled" tabindex="-1" aria-disabled="true" data-i18n-key="sidebar.daily">Daily</button>
+        <button class="freq-btn cs-disabled" tabindex="-1" aria-disabled="true" data-i18n-key="sidebar.weekly">Weekly</button>
+      </div>
+      <span class="cs-popover" aria-hidden="true">
+        <i class="fas fa-envelope cs-popover-icon"></i>
+        <span class="cs-popover-title">Coming Soon</span>
+        <span class="cs-popover-sub">Newsletter subscriptions are in development</span>
+      </span>
+    </span>
     <p class="newsletter-disclaimer" data-i18n-key="sidebar.newsletterDisclaimer">By subscribing, you agree to our privacy policy. Unsubscribe anytime.</p>
   </div>
   <div class="sidebar-card digest-card">
     <h3 data-i18n-key="sidebar.digestTitle">Today's Digest</h3>
-    <ol class="digest-list">
-      <li data-i18n-key="sidebar.digestItem1">Critical VPN zero-day under active exploitation</li>
-      <li data-i18n-key="sidebar.digestItem2">New ransomware variant targets healthcare sector</li>
-      <li data-i18n-key="sidebar.digestItem3">APT29 campaign linked to recent breaches</li>
-      <li data-i18n-key="sidebar.digestItem4">CISA releases emergency directive for federal agencies</li>
-      <li data-i18n-key="sidebar.digestItem5">Major bug bounty program doubles payouts</li>
-    </ol>
+    <ol class="digest-list" id="digestList"></ol>
   </div>
 </aside>

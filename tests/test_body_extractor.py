@@ -1,5 +1,9 @@
 import pytest
-from app.ingestion.body_extractor import classify_length, extract_text
+from app.ingestion.body_extractor import (
+    classify_length,
+    extract_text,
+    _strip_related_footer,
+)
 
 
 @pytest.mark.parametrize("length,threshold,expected", [
@@ -55,3 +59,33 @@ def test_extract_text_returns_none_on_empty_input():
 
 def test_extract_text_returns_none_on_garbage():
     assert extract_text("not html at all") in (None, "")
+
+
+def test_strip_related_footer_drops_trailing_links():
+    text = (
+        "Real article body about a Daemon Tools supply chain attack.\n"
+        "More real content here.\n"
+        "Related: 1,800 Hit in Mini Shai-Hulud Attack on SAP\n"
+        "Related: SAP NPM Packages Targeted in Supply Chain Attack"
+    )
+    cleaned = _strip_related_footer(text)
+    assert "Daemon Tools" in cleaned
+    assert "More real content" in cleaned
+    assert "Shai-Hulud" not in cleaned
+    assert "Related:" not in cleaned
+
+
+def test_strip_related_footer_tolerates_blank_lines():
+    text = "Body paragraph.\n\nRelated: Some Other Article\n\nRelated: Another One\n"
+    assert _strip_related_footer(text) == "Body paragraph."
+
+
+def test_strip_related_footer_keeps_inline_related_mentions():
+    """Only trailing Related: lines are stripped, not mid-body mentions."""
+    text = "Related work in this field is ongoing.\nThe attack continued."
+    assert _strip_related_footer(text) == text
+
+
+def test_strip_related_footer_noop_without_footer():
+    text = "Just a normal article body.\nSecond paragraph."
+    assert _strip_related_footer(text) == text

@@ -81,6 +81,7 @@
 
       var scriptOrder = [
         'data/translations.js',
+        'components/cs-popover.js',
         'components/nav.js',
         'components/language.js',
         'components/theme.js',

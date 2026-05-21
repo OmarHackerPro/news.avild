@@ -37,15 +37,50 @@
           <i class="fas fa-rss nav-rss-icon"></i> RSS <i class="fas fa-chevron-down"></i>
         </button>
         <div class="nav-rss-dropdown" id="rssDropdown" role="menu">
-          <a href="#" class="nav-rss-option" data-i18n-key="rss.allFeeds">All feeds</a>
-          <a href="#" class="nav-rss-option" data-i18n-key="rss.breaking">Breaking</a>
-          <a href="#" class="nav-rss-option" data-i18n-key="rss.threatIntel">Threat Intel</a>
-          <a href="#" class="nav-rss-option" data-i18n-key="rss.malware">Malware</a>
+          <span class="cs-wrap" style="display:block">
+            <span class="nav-rss-option cs-disabled" data-i18n-key="rss.allFeeds">All feeds</span>
+            <span class="cs-popover" aria-hidden="true">
+              <i class="fas fa-rss cs-popover-icon"></i>
+              <span class="cs-popover-title">Coming Soon</span>
+              <span class="cs-popover-sub">Custom RSS feeds are in development</span>
+            </span>
+          </span>
+          <span class="cs-wrap" style="display:block">
+            <span class="nav-rss-option cs-disabled" data-i18n-key="rss.breaking">Breaking</span>
+            <span class="cs-popover" aria-hidden="true">
+              <i class="fas fa-rss cs-popover-icon"></i>
+              <span class="cs-popover-title">Coming Soon</span>
+              <span class="cs-popover-sub">Custom RSS feeds are in development</span>
+            </span>
+          </span>
+          <span class="cs-wrap" style="display:block">
+            <span class="nav-rss-option cs-disabled" data-i18n-key="rss.threatIntel">Threat Intel</span>
+            <span class="cs-popover" aria-hidden="true">
+              <i class="fas fa-rss cs-popover-icon"></i>
+              <span class="cs-popover-title">Coming Soon</span>
+              <span class="cs-popover-sub">Custom RSS feeds are in development</span>
+            </span>
+          </span>
+          <span class="cs-wrap" style="display:block">
+            <span class="nav-rss-option cs-disabled" data-i18n-key="rss.malware">Malware</span>
+            <span class="cs-popover" aria-hidden="true">
+              <i class="fas fa-rss cs-popover-icon"></i>
+              <span class="cs-popover-title">Coming Soon</span>
+              <span class="cs-popover-sub">Custom RSS feeds are in development</span>
+            </span>
+          </span>
         </div>
       </div>
-      <a href="/digest" class="nav-subscribe-btn" aria-label="Subscribe">
-        <i class="fas fa-bell"></i> <span data-i18n-key="nav.subscribe">Subscribe</span>
-      </a>
+      <span class="cs-wrap">
+        <button type="button" class="nav-subscribe-btn cs-disabled" aria-label="Subscribe">
+          <i class="fas fa-bell"></i> <span data-i18n-key="nav.subscribe">Subscribe</span>
+        </button>
+        <span class="cs-popover" aria-hidden="true">
+          <i class="fas fa-bell cs-popover-icon"></i>
+          <span class="cs-popover-title">Coming Soon</span>
+          <span class="cs-popover-sub">Email digests are in development</span>
+        </span>
+      </span>
       <button type="button" class="nav-theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
         <span class="theme-icon">
           <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5" fill="currentColor"/><line x1="12" y1="12" x2="12" y2="2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="12" y2="22" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="2" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="22" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="5" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="19" y2="19" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="19" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="12" x2="5" y2="19" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>

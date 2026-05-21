@@ -4,8 +4,30 @@ Pure compute layer. No I/O. Wraps Trafilatura.
 """
 from typing import Optional
 import math
+import re
 
 import trafilatura
+
+
+# Trailing "Related: <link>" paragraphs are part of the article <div> on some
+# sources (e.g. SecurityWeek), so Trafilatura includes them as main content.
+# They leak unrelated entities/keywords into clustering — strip them.
+_RELATED_FOOTER_LINE = re.compile(r"^\s*Related:\s", re.IGNORECASE)
+
+
+def _strip_related_footer(text: str) -> str:
+    """Drop a trailing block of 'Related: ...' link lines from extracted text."""
+    lines = text.split("\n")
+    end = len(lines)
+    for i in range(len(lines) - 1, -1, -1):
+        line = lines[i]
+        if not line.strip():
+            continue  # tolerate blank lines between related links
+        if _RELATED_FOOTER_LINE.match(line):
+            end = i
+        else:
+            break
+    return "\n".join(lines[:end]).rstrip()
 
 
 def classify_length(length: int, threshold: int) -> str:
@@ -41,6 +63,8 @@ def extract_text(html: Optional[str]) -> Optional[str]:
             include_tables=False,
             no_fallback=False,        # False = "use fallback" — keep readability-lxml active
         )
-        return result or None  # normalize empty string to None
+        if not result:
+            return None
+        return _strip_related_footer(result) or None
     except Exception:
         return None

@@ -162,6 +162,7 @@
 .cluster-drawer-body .cluster-title { font-size: 1.35rem; }
 .cluster-drawer-body .cluster-meta-row { margin-bottom: 1.25rem; }
 .cluster-drawer-body .cluster-section { margin-bottom: 1.5rem; }
+.drawer-cvss { color: var(--accent-blue); font-weight: 500; }
 
 @media (max-width: 600px) {
   .cluster-drawer { width: 100vw; }

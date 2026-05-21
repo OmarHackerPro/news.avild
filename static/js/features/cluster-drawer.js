@@ -218,6 +218,8 @@
     if (cluster.earliest_at) metaParts.push('<span><i class="far fa-clock"></i> ' + tx('First seen') + ' ' + esc(formatDate(cluster.earliest_at)) + '</span>');
     if (cluster.latest_at)   metaParts.push('<span><i class="fas fa-sync-alt"></i> ' + tx('Updated') + ' ' + esc(timeAgo(cluster.latest_at)) + '</span>');
     if (cluster.score != null) metaParts.push('<span><i class="fas fa-fire"></i> ' + tx('Score') + ' ' + Number(cluster.score).toFixed(1) + '</span>');
+    var maxCvss = (cluster.articles || []).reduce(function (m, a) { return (a.cvss_score != null && Number(a.cvss_score) > m) ? Number(a.cvss_score) : m; }, 0);
+    if (maxCvss > 0) metaParts.push('<span class="drawer-cvss"><i class="fas fa-shield-alt"></i> CVSS ' + maxCvss.toFixed(1) + '</span>');
     var articleCount = cluster.articles ? cluster.articles.length : 0;
     if (articleCount > 0) {
       var srcLabel = articleCount !== 1 ? 'sources' : 'source';
