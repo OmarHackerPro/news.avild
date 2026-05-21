@@ -336,7 +336,7 @@ async def run(args: argparse.Namespace) -> None:
     enriched_cves: list[str] = []
     t_start = time.monotonic()
 
-    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     for i, hit in enumerate(docs, 1):
         cve_id = hit["_id"]
