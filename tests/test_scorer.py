@@ -1,3 +1,6 @@
+import pytest
+from unittest.mock import AsyncMock, patch
+
 from app.ingestion.scorer import compute_cluster_score
 
 
@@ -133,3 +136,70 @@ class TestEpssFactor:
         """A negative EPSS value (bad input) yields no factor, not negative points."""
         result = compute_cluster_score(**self._base_kwargs(max_epss=-0.05))
         assert all(f["factor"] != "epss" for f in result["top_factors"])
+
+
+@pytest.mark.asyncio
+async def test_rescore_cluster_writes_max_epss_from_cve_topics():
+    from app.ingestion.scorer import rescore_cluster
+
+    os_mock = AsyncMock()
+    os_mock.get.return_value = {
+        "_source": {
+            "article_count": 1,
+            "max_cvss": 7.5,
+            "cve_ids": ["CVE-2026-1111", "CVE-2026-2222"],
+            "entity_keys": ["fortios"],
+            "state": "new",
+            "latest_at": "2026-05-21T00:00:00Z",
+            "created_at": "2026-05-21T00:00:00Z",
+            "max_credibility_weight": 1.0,
+            "timeline": [],
+            "cisa_kev": False,
+        }
+    }
+    os_mock.update.return_value = {}
+
+    async def fake_lookup(cve_ids):
+        return {
+            "CVE-2026-1111": {"epss_score": 0.20},
+            "CVE-2026-2222": {"epss_score": 0.55},
+        }
+
+    with patch("app.ingestion.scorer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.scorer.lookup_cve_intel", fake_lookup):
+        await rescore_cluster("cluster-xyz")
+
+    written = os_mock.update.call_args.kwargs["body"]["doc"]
+    assert written["max_epss"] == 0.55  # max of the two member CVEs
+
+
+@pytest.mark.asyncio
+async def test_rescore_cluster_max_epss_zero_when_no_epss_data():
+    from app.ingestion.scorer import rescore_cluster
+
+    os_mock = AsyncMock()
+    os_mock.get.return_value = {
+        "_source": {
+            "article_count": 1,
+            "max_cvss": None,
+            "cve_ids": ["CVE-2026-9999"],
+            "entity_keys": [],
+            "state": "new",
+            "latest_at": "2026-05-21T00:00:00Z",
+            "created_at": "2026-05-21T00:00:00Z",
+            "max_credibility_weight": 1.0,
+            "timeline": [],
+            "cisa_kev": False,
+        }
+    }
+    os_mock.update.return_value = {}
+
+    async def fake_lookup(cve_ids):
+        return {}  # CVE not enriched yet
+
+    with patch("app.ingestion.scorer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.scorer.lookup_cve_intel", fake_lookup):
+        await rescore_cluster("cluster-noepss")
+
+    written = os_mock.update.call_args.kwargs["body"]["doc"]
+    assert written["max_epss"] == 0.0

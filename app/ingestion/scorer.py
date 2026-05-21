@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from app.db.opensearch import INDEX_CLUSTERS, get_os_client
+from app.ingestion.cve_intel import lookup_cve_intel
 
 logger = logging.getLogger(__name__)
 
@@ -188,6 +189,22 @@ def compute_cluster_score(
     return {"score": score, "confidence": confidence, "top_factors": top_factors}
 
 
+async def _max_epss_for_cves(cve_ids: list[str]) -> float:
+    """Max EPSS score across a cluster's CVEs, read from cve_topics.
+
+    Returns 0.0 when the cluster has no CVEs or none are EPSS-enriched yet.
+    """
+    if not cve_ids:
+        return 0.0
+    intel = await lookup_cve_intel(cve_ids)
+    scores = [
+        v["epss_score"]
+        for v in intel.values()
+        if v.get("epss_score") is not None
+    ]
+    return max(scores) if scores else 0.0
+
+
 async def rescore_cluster(cluster_id: str) -> None:
     """Fetch a cluster from OpenSearch, recompute its score, and write it back."""
     client = get_os_client()
@@ -201,16 +218,20 @@ async def rescore_cluster(cluster_id: str) -> None:
     timeline = src.get("timeline") or []
     unique_source_count = len({e.get("source_name", "") for e in timeline if e.get("source_name")})
 
+    cve_ids = src.get("cve_ids") or []
+    max_epss = await _max_epss_for_cves(cve_ids)
+
     score_data = compute_cluster_score(
         article_count=src.get("article_count", 1),
         max_cvss=src.get("max_cvss"),
-        cve_count=len(src.get("cve_ids") or []),
+        cve_count=len(cve_ids),
         entity_keys=src.get("entity_keys") or [],
         state=src.get("state", "new"),
         latest_at=src.get("latest_at") or src.get("created_at", ""),
         max_credibility_weight=float(src.get("max_credibility_weight") or 1.0),
         unique_source_count=unique_source_count,
         cisa_kev=bool(src.get("cisa_kev", False)),
+        max_epss=max_epss,
     )
 
     await client.update(
@@ -220,6 +241,7 @@ async def rescore_cluster(cluster_id: str) -> None:
             "score": score_data["score"],
             "confidence": score_data["confidence"],
             "top_factors": score_data["top_factors"],
+            "max_epss": max_epss,
         }},
     )
     logger.debug(
