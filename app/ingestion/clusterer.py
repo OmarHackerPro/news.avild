@@ -412,6 +412,7 @@ async def create_cluster(
         "score": 0.0,
         "confidence": "low",
         "max_cvss": article.get("cvss_score") or 0.0,
+        "max_epss": 0.0,
         "cisa_kev": False,
         "max_credibility_weight": float(article.get("credibility_weight") or 1.0),
         "top_factors": [],
