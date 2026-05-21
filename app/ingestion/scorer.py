@@ -156,10 +156,11 @@ def compute_cluster_score(
     # 8. EPSS exploitation-likelihood component (0-15 pts)
     # ------------------------------------------------------------------
     if max_epss is not None and max_epss > 0:
-        epss_pts = round(min(max_epss, 1.0) * 15.0, 1)
+        epss = min(max_epss, 1.0)
+        epss_pts = round(epss * 15.0, 1)
         factors.append({
             "factor": "epss",
-            "label": f"EPSS {max_epss:.0%} exploit probability",
+            "label": f"EPSS {epss:.0%} exploit probability",
             "points": epss_pts,
         })
         total += epss_pts
