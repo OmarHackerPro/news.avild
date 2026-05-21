@@ -67,3 +67,57 @@ class TestCredibilityFactor:
         result = compute_cluster_score(**self._base_kwargs(max_credibility_weight=1.5))
         factor_names = [f["factor"] for f in result["top_factors"]]
         assert "source_credibility" in factor_names
+
+
+class TestEpssFactor:
+    """EPSS adds 0-15 pts scaled linearly on the raw exploitation probability."""
+
+    def _base_kwargs(self, **overrides) -> dict:
+        defaults = {
+            "article_count": 1,
+            "max_cvss": None,
+            "cve_count": 0,
+            "entity_keys": [],
+            "state": "new",
+            "latest_at": "2026-05-21T00:00:00+00:00",
+            "max_credibility_weight": 1.0,
+        }
+        defaults.update(overrides)
+        return defaults
+
+    def test_epss_scaled_linearly_at_15_pts(self):
+        result = compute_cluster_score(**self._base_kwargs(max_epss=0.62))
+        epss = next(f for f in result["top_factors"] if f["factor"] == "epss")
+        assert epss["points"] == 9.3  # round(0.62 * 15, 1)
+
+    def test_epss_label_shows_percentage(self):
+        result = compute_cluster_score(**self._base_kwargs(max_epss=0.62))
+        epss = next(f for f in result["top_factors"] if f["factor"] == "epss")
+        assert epss["label"] == "EPSS 62% exploit probability"
+
+    def test_epss_none_produces_no_factor(self):
+        result = compute_cluster_score(**self._base_kwargs(max_epss=None))
+        assert all(f["factor"] != "epss" for f in result["top_factors"])
+
+    def test_epss_zero_produces_no_factor(self):
+        result = compute_cluster_score(**self._base_kwargs(max_epss=0.0))
+        assert all(f["factor"] != "epss" for f in result["top_factors"])
+
+    def test_epss_omitted_param_produces_no_factor(self):
+        """max_epss defaults to None so existing callers are unaffected."""
+        result = compute_cluster_score(**self._base_kwargs())
+        assert all(f["factor"] != "epss" for f in result["top_factors"])
+
+    def test_score_capped_at_100_with_epss(self):
+        result = compute_cluster_score(
+            article_count=10,
+            max_cvss=10.0,
+            cve_count=5,
+            entity_keys=["e1", "e2", "e3", "e4", "e5"],
+            state="confirmed",
+            latest_at="2026-05-21T00:00:00+00:00",
+            max_credibility_weight=1.5,
+            cisa_kev=True,
+            max_epss=1.0,
+        )
+        assert result["score"] <= 100.0
