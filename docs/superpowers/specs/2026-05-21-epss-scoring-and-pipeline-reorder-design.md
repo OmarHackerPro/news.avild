@@ -96,10 +96,14 @@ cluster_article             → (existing)
   there is **no behavior change for duplicates**.
 - Enrichment now happens *after* the doc is indexed, so `cvss_score` /
   `severity` / `cve_ids` must be written back via an explicit
-  `os_client.update()`. These are folded into the **existing** post-NER
-  `keywords` update — one `update` call carrying all four fields, not three
-  separate calls. Body extraction keeps its own separate `update` (independent
-  failure domain, already wrapped in its own try/except).
+  `os_client.update()`. **This write-back runs unconditionally** — it must NOT be
+  folded into the existing post-NER `keywords` update, because that update is
+  gated on `if all_entities:` (`ingester.py:463`). An article with body-level
+  CVEs but zero NER entities would otherwise skip the CVE/severity write-back
+  entirely. The write-back update carries `cve_ids` / `cvss_score` / `severity`
+  always; `keywords` is included in the same call only when `all_entities` is
+  non-empty. Body extraction keeps its own separate `update` (independent failure
+  domain, already wrapped in its own try/except).
 - **CVE casing:** NER entity `normalized_key` for CVEs is lowercase; the `cve_ids`
   field convention is uppercase (`CVE-2024-1234`). NER CVE keys are uppercased
   before merging into `cve_ids`.
@@ -118,9 +122,10 @@ new (no existing topic doc), batch-call `fetch_epss(new_cve_ids)`, and merge
 topics are **not** refetched on the ingest path — the cron owns refresh.
 Fetch once per call (batched), never per-CVE.
 
-**b) Mapping change.** `cve_topics` docs currently write `epss_score` /
-`epss_percentile` but no `epss_updated_at`. Add `epss_updated_at` (type `date`)
-to the `cve_topics` mapping in `app/db/opensearch.py`.
+**b) No `cve_topics` mapping change needed.** `epss_score`, `epss_percentile`,
+and `epss_updated_at` are **already present** in the `cve_topics` mapping
+(`opensearch.py:302-304`). The inline-on-create path just needs to populate
+them; no schema work.
 
 `fetch_epss` already exists, returns exactly the
 `{cve_id: {epss_score, epss_percentile, epss_updated_at}}` shape, and batches
@@ -131,7 +136,10 @@ to the `cve_topics` mapping in `app/db/opensearch.py`.
 **`max_epss` becomes a first-class cluster field.**
 
 - Add `max_epss` (type `float`) to the `clusters` mapping in
-  `app/db/opensearch.py`.
+  `app/db/opensearch.py`. The `clusters` mapping is `dynamic: strict`, so this is
+  **required** — without it, `create_cluster`'s index call and `rescore_cluster`'s
+  update would be rejected. `ensure_indexes()` runs `put_mapping` on existing
+  indexes at startup, so the additive field applies without an index rebuild.
 - `create_cluster` (`app/ingestion/clusterer.py`) seeds `"max_epss": 0.0`,
   mirroring `max_cvss`.
 - `rescore_cluster` (`app/ingestion/scorer.py`) already fetches the cluster doc.
@@ -169,19 +177,18 @@ if max_epss is not None and max_epss > 0:
 and response building in `app/api/routes/clusters.py`. The EPSS factor also
 rides along in `top_factors` for the "Why it matters" UI for free.
 
-## Section 4 — `scripts/sync_epss.py` cron
+## Section 4 — daily EPSS refresh (reuse existing `scripts/refresh_epss.py`)
 
-New script, mirrors `scripts/sync_cisa_kev.py`:
+**`scripts/refresh_epss.py` already exists and is complete.** It scrolls all
+`cve_topics`, batch-calls `fetch_epss` (100/request), and bulk-updates
+`epss_score` / `epss_percentile` / `epss_updated_at` — non-write-once, with
+`--dry-run` and `--limit`, and an async `main()`. **Do not create a new
+`sync_epss.py`.** The earlier draft of this spec overlooked the existing script.
 
-1. Scroll all `cve_topics` docs, collect `cve_id`s.
-2. Batch `fetch_epss` (100 per request).
-3. Bulk-update each topic with fresh `epss_score` / `epss_percentile` /
-   `epss_updated_at`.
-4. **Not write-once** — EPSS overwrites on every run (FIRST.org recomputes
-   daily). This deliberately differs from the KEV/CVSS write-once helpers.
-
-Wire it into whatever schedules `sync_cisa_kev.py` (docker-compose / crontab —
-confirm exact mechanism during implementation), daily cadence.
+Remaining work for this section is purely operational: ensure `refresh_epss.py`
+is **scheduled to run daily** (check docker-compose / crontab — confirm whether
+it is already wired; if not, add it alongside `sync_cisa_kev`). No code change to
+`refresh_epss.py` itself is anticipated.
 
 **Known limitation (documented, accepted):** the cron updates `cve_topics` but
 clusters only recompute `max_epss` / `score` on their next rescore (next article
@@ -196,15 +203,17 @@ inserted **before** clustering, because `rescore_cluster` (invoked inside
 `cluster_article`) reads EPSS from `cve_topics` to compute `max_epss`. If EPSS is
 stale/absent when clustering runs, every cluster scores with `max_epss = 0`.
 
-**New sequence:** NER → embeddings → **EPSS sync** → clustering.
+**New sequence:** NER → embeddings → **EPSS refresh** → clustering.
 
-- Add `run_epss_sync(force, dry_run)` that invokes `scripts/sync_epss.py`'s
-  `main`.
+- Add `run_epss_sync(force, dry_run)` that invokes `scripts/refresh_epss.py`'s
+  async `main`. `refresh_epss.main` takes a `Namespace(dry_run, limit)`; pass
+  `limit=0`. EPSS always overwrites, so `force` has no meaning here and is
+  ignored by the wrapper.
 - Add a `--skip-epss` flag, consistent with the existing
   `--skip-ner` / `--skip-embed` / `--skip-cluster` flags.
 - Inline-on-create (Section 2a) still covers any *new* CVE topics created during
-  the clustering step; the explicit EPSS sync step refreshes all *pre-existing*
-  topics. Together they cover the full corpus.
+  the clustering step; the explicit EPSS refresh step refreshes all
+  *pre-existing* topics. Together they cover the full corpus.
 
 ## Section 6 — Testing (TDD)
 
@@ -212,12 +221,14 @@ stale/absent when clustering runs, every cluster scores with `max_epss = 0`.
   `max_epss=0.62 → 9.3 pts`; `None → no factor`; `0.0 → no factor`; 100-point
   clamp still holds with the factor added.
 - **Pipeline reorder:** a CVE present only in the body (not the RSS snippet) ends
-  up in `cve_ids` and reaches `_apply_cve_intel`.
+  up in `cve_ids` and reaches `_apply_cve_intel`; the CVE/severity write-back
+  fires even when the article has **zero NER entities**.
 - **EPSS-on-creation:** a newly created topic gets EPSS populated; an existing
   topic is left untouched by the ingest path.
 - **`rescore_cluster`:** `max_epss` correctly computed as the max across member
   CVEs.
-- **`sync_epss.py`:** overwrites EPSS on existing topics (not write-once).
+- **`rebuild_all.py`:** the EPSS refresh step runs before clustering and
+  `--skip-epss` skips it.
 
 ## Rollout
 
@@ -233,11 +244,11 @@ the code lands and tests pass, with explicit go-ahead.
 |---|---|
 | `app/ingestion/ingester.py` | Move `_apply_cve_intel` post-NER; merge NER CVEs into `cve_ids`; single combined OS update |
 | `app/ingestion/cve_topic_manager.py` | Inline EPSS fetch on topic creation (both paths) |
-| `app/db/opensearch.py` | Add `epss_updated_at` to `cve_topics` mapping; `max_epss` to `clusters` mapping |
+| `app/db/opensearch.py` | Add `max_epss` to `clusters` mapping (`cve_topics` EPSS fields already exist) |
 | `app/ingestion/clusterer.py` | Seed `max_epss: 0.0` in `create_cluster` |
 | `app/ingestion/scorer.py` | EPSS factor in `compute_cluster_score`; `max_epss` lookup + write in `rescore_cluster`; docstring fix |
 | `app/models/cluster.py` | `max_epss` on `ClusterSummary` / `ClusterDetail` |
 | `app/api/routes/clusters.py` | Include `max_epss` in `_source` + response |
-| `scripts/sync_epss.py` | New daily EPSS refresh script |
-| `scripts/rebuild_all.py` | Add EPSS sync step before clustering; `--skip-epss` flag |
+| `scripts/refresh_epss.py` | Reuse existing script — schedule daily; no code change expected |
+| `scripts/rebuild_all.py` | Add EPSS refresh step before clustering; `--skip-epss` flag |
 | `tests/` | New tests per Section 6 |
