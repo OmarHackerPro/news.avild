@@ -60,6 +60,8 @@ services:
         python scripts/ingest_feeds.py;
         echo "=== NVD CVE enrichment: $$(date -Iseconds) ===";
         python scripts/enrich_cve_nvd.py;
+        echo "=== EPSS refresh: $$(date -Iseconds) ===";
+        python scripts/refresh_epss.py;
         echo "=== Sleeping 1 hour ===";
         sleep 3600;
       done'
