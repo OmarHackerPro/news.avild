@@ -125,6 +125,7 @@ async def list_clusters(
                 categories=src.get("categories", []),
                 score=Decimal(str(src["score"])) if src.get("score") is not None else None,
                 max_cvss=src.get("max_cvss"),
+                max_epss=src.get("max_epss"),
                 confidence=src.get("confidence"),
                 top_factors=[ScoringFactor(**f) for f in (src.get("top_factors") or [])],
                 latest_at=src.get("latest_at", ""),
@@ -165,7 +166,7 @@ async def get_cluster(cluster_id: str):
             )
         )
 
-    tags = list({t for a in articles for t in a.raw_tags})
+    tags = list({t for a in articles for t in (a.keywords or [])})
     dates = [a.published_at for a in articles if a.published_at]
 
     timeline = [
@@ -182,6 +183,7 @@ async def get_cluster(cluster_id: str):
         summary=_clean_truncated_text(raw_summary) if raw_summary else None,
         why_it_matters=_clean_truncated_text(raw_why) if raw_why else None,
         score=Decimal(str(src["score"])) if src.get("score") is not None else None,
+        max_epss=src.get("max_epss"),
         confidence=src.get("confidence"),
         top_factors=[ScoringFactor(**f) for f in (src.get("top_factors") or [])],
         articles=articles,
