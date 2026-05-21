@@ -1,6 +1,6 @@
 """Cluster scoring and explainability.
 
-Computes a 0-100 importance score for a cluster from six factors:
+Computes a 0-100 importance score for a cluster from eight factors:
   1. CVSS severity      — max CVSS from NVD-enriched CVE entities  (0-30 pts)
   2. Coverage           — unique source count                       (0-25 pts)
   3. Recency            — time since the cluster last updated       (0-20 pts)
@@ -8,8 +8,9 @@ Computes a 0-100 importance score for a cluster from six factors:
   5. State bonus        — cluster maturity                         (0-10 pts)
   6. Source credibility — max credibility_weight of member articles (0-15 pts)
   7. CISA KEV           — any CVE in CISA Known Exploited Vulns    (+20 pts)
+  8. EPSS               — max exploit-prediction probability        (0-15 pts)
 
-Max raw points = 135, clamped to 100.
+Max raw points = 150, clamped to 100.
 
 Confidence reflects data completeness, not just score:
   high   — has CVSS + ≥2 unique sources + named entities
@@ -36,6 +37,7 @@ def compute_cluster_score(
     max_credibility_weight: float = 1.0,
     unique_source_count: int = 0,
     cisa_kev: bool = False,
+    max_epss: Optional[float] = None,
 ) -> dict:
     """Return {score, confidence, top_factors} — pure, no I/O."""
     factors: list[dict] = []
@@ -149,6 +151,18 @@ def compute_cluster_score(
             "points": 20.0,
         })
         total += 20.0
+
+    # ------------------------------------------------------------------
+    # 8. EPSS exploitation-likelihood component (0-15 pts)
+    # ------------------------------------------------------------------
+    if max_epss is not None and max_epss > 0:
+        epss_pts = round(min(max_epss, 1.0) * 15.0, 1)
+        factors.append({
+            "factor": "epss",
+            "label": f"EPSS {max_epss:.0%} exploit probability",
+            "points": epss_pts,
+        })
+        total += epss_pts
 
     # ------------------------------------------------------------------
     # Finalise
