@@ -89,7 +89,12 @@ _MAX_ARTICLE_CVES_FOR_CVE_TOPIC = 5  # articles with >5 CVEs skip CVE topic upse
 _ROUNDUP_KEYWORDS = frozenset([
     "patch tuesday", "monthly roundup", "cve landscape", "roundup", "weekly digest",
     "weekly update",  # Troy Hunt's "Weekly Update NNN" series
+    "weekly recap",   # The Hacker News "⚡ Weekly Recap" series
+    "this week in security",
+    "month in review",
+    "look what you made us patch",  # Google Project Zero annual roundup
     "stormcast",  # SANS ISC daily podcast
+    "[virtual event]", "[webinar]", "[conference]", "[workshop]",
 ])
 
 
@@ -164,14 +169,12 @@ async def cluster_article(
         else:
             await upsert_cve_topics(cve_ids, slug, entities, embedding)
 
-    # Roundup articles (patch tuesday, weekly digest, stormcast, CVE landscape, etc.)
-    # carry no coherent event signal — they are never clustered. The article still
-    # lives in the news index and feeds CVE topics above; it just gets no cluster doc.
-    if _is_roundup(article.get("title", ""), cve_ids):
-        return
+    is_roundup = _is_roundup(article.get("title", ""), cve_ids)
 
     # Incident cluster flow
-    cluster_id = await find_best_cluster(entities, embedding, reference_time=ref_time)
+    cluster_id = await find_best_cluster(
+        entities, embedding, article_cve_ids=cve_ids, reference_time=ref_time
+    )
 
     if cluster_id:
         await merge_into_cluster(
@@ -188,7 +191,7 @@ async def cluster_article(
             new_embedding=embedding,
         )
     elif content_type != "product_advisory":
-        await create_cluster(article, entities, embedding=embedding)
+        await create_cluster(article, entities, embedding=embedding, is_roundup=is_roundup)
 
 
 async def merge_into_cluster(
@@ -389,6 +392,7 @@ async def create_cluster(
     entities: list[dict],
     *,
     embedding: Optional[list[float]] = None,
+    is_roundup: bool = False,
 ) -> str:
     os_client = get_os_client()
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -401,7 +405,7 @@ async def create_cluster(
     doc = {
         "label": article.get("title", ""),
         "state": "new",
-        "is_roundup": False,  # roundup articles never reach create_cluster
+        "is_roundup": is_roundup,
         "is_advisory": article.get("content_type") == "ics_advisory",
         "summary": "",
         "why_it_matters": "",

@@ -27,16 +27,23 @@ _W_ENTITY = float(os.getenv("CLUSTER_WEIGHT_ENTITY", "0.18"))
 _W_EMBED = float(os.getenv("CLUSTER_WEIGHT_EMBED", "0.35"))
 
 _EMBED_LO = float(os.getenv("CLUSTER_EMBED_LO", "0.75"))
-_EMBED_HI = float(os.getenv("CLUSTER_EMBED_HI", "0.90"))
+_EMBED_HI = float(os.getenv("CLUSTER_EMBED_HI", "0.82"))
 
 _KNN_K = 10
 _STRUCTURED_WINDOW_DAYS = int(os.getenv("CLUSTER_STRUCTURED_WINDOW_DAYS", "30"))
 _EMBED_WINDOW_DAYS = int(os.getenv("CLUSTER_EMBED_WINDOW_DAYS", "30"))
+# Upper bound on how far *forward* from an article's publish date a matching cluster
+# can sit. Prevents batch-reset temporal contamination: old articles processed late
+# would otherwise match young clusters created earlier in the same run.
+_TEMPORAL_FORWARD_DAYS = int(os.getenv("CLUSTER_TEMPORAL_FORWARD_DAYS", "14"))
+
+# Excluded from Jaccard entity scoring — too taxonomic/ubiquitous to discriminate events.
+_ENTITY_SCORING_EXCLUDE = frozenset({"vendor", "cwe"})
 
 _SOURCE_FIELDS = [
     "article_count", "state", "entity_keys",
     "founding_entity_keys", "founding_entity_types",
-    "centroid_embedding", "latest_at",
+    "centroid_embedding", "latest_at", "cve_ids",
 ]
 
 
@@ -65,7 +72,7 @@ def _compute_score(
     art_others = {
         e["normalized_key"]
         for e in article_entities
-        if e["type"] not in ("cve", "vuln_alias", "actor", "campaign")
+        if e["type"] not in {"cve", "vuln_alias", "actor", "campaign"} | _ENTITY_SCORING_EXCLUDE
     }
 
     # --- Founding cluster signal sets (frozen at create time, never accumulated) ---
@@ -80,7 +87,7 @@ def _compute_score(
     founding_others = {
         ft["key"]
         for ft in founding_types
-        if ft["type"] not in ("cve", "vuln_alias", "actor", "campaign")
+        if ft["type"] not in {"cve", "vuln_alias", "actor", "campaign"} | _ENTITY_SCORING_EXCLUDE
     }
     has_entity_anchor = bool(founding_types)
 
@@ -144,16 +151,16 @@ def _compute_score(
 
 
 def _retrieval_key(entity: dict) -> str:
-    """entity_keys stores CVE IDs uppercase; all other types lowercase."""
-    key = entity["normalized_key"]
-    return key.upper() if entity["type"] == "cve" else key
+    return entity["normalized_key"]
 
 
 def _cache_candidates(
     article_entities: list[dict],
     article_embedding: Optional[list[float]],
+    article_cve_ids: list[str],
     cutoff_structured: str,
     cutoff_embed: str,
+    cutoff_forward: str,
 ) -> list[dict]:
     """Mirror `_structured_lookup` + `_knn_lookup` over the in-process cache.
 
@@ -167,16 +174,20 @@ def _cache_candidates(
 
     selected: dict[str, dict] = {}
 
-    # structured-equivalent: shares an entity key, in window, not resolved
-    art_keys = {_retrieval_key(e) for e in article_entities}
-    if art_keys:
+    # structured-equivalent: shares a non-CVE entity key OR a raw CVE ID, in window
+    non_cve_keys = {_retrieval_key(e) for e in article_entities if e["type"] != "cve"}
+    raw_cve_set = set(article_cve_ids)
+    if non_cve_keys or raw_cve_set:
         for h in all_hits:
             src = h["_source"]
             if src.get("state") == "resolved":
                 continue
-            if (src.get("latest_at") or "") < cutoff_structured:
+            latest = src.get("latest_at") or ""
+            if latest < cutoff_structured or latest > cutoff_forward:
                 continue
-            if art_keys & set(src.get("entity_keys") or []):
+            if non_cve_keys & set(src.get("entity_keys") or []):
+                selected[h["_id"]] = h
+            elif raw_cve_set & set(src.get("cve_ids") or []):
                 selected[h["_id"]] = h
 
     # k-NN-equivalent: top-K by centroid cosine, in window, not resolved
@@ -188,7 +199,8 @@ def _cache_candidates(
             src = h["_source"]
             if src.get("state") == "resolved":
                 continue
-            if (src.get("latest_at") or "") < cutoff_embed:
+            latest = src.get("latest_at") or ""
+            if latest < cutoff_embed or latest > cutoff_forward:
                 continue
             centroid = src.get("centroid_embedding")
             if not centroid:
@@ -207,18 +219,25 @@ def _cache_candidates(
 async def _get_candidates(
     article_entities: list[dict],
     article_embedding: Optional[list[float]],
+    article_cve_ids: Optional[list[str]] = None,
     reference_time: Optional[datetime] = None,
 ) -> list[dict]:
     os_client = get_os_client()
     ref = reference_time or datetime.now(timezone.utc)
     cutoff_structured = (ref - timedelta(days=_STRUCTURED_WINDOW_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
     cutoff_embed = (ref - timedelta(days=_EMBED_WINDOW_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    cutoff_forward = (ref + timedelta(days=_TEMPORAL_FORWARD_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    cve_ids = article_cve_ids or []
 
     async def _structured_lookup() -> list[dict]:
+        # Non-CVE entities via entity_keys; CVEs via cluster.cve_ids directly.
         should_clauses = [
             {"term": {"entity_keys": _retrieval_key(e)}}
             for e in article_entities
+            if e["type"] != "cve"
         ]
+        for cve in cve_ids:
+            should_clauses.append({"term": {"cve_ids": cve}})
         if not should_clauses:
             return []
         query = {
@@ -227,7 +246,7 @@ async def _get_candidates(
                     "should": should_clauses,
                     "minimum_should_match": 1,
                     "filter": [
-                        {"range": {"latest_at": {"gte": cutoff_structured}}},
+                        {"range": {"latest_at": {"gte": cutoff_structured, "lte": cutoff_forward}}},
                         {"bool": {"must_not": [{"term": {"state": "resolved"}}]}},
                     ],
                 }
@@ -265,6 +284,7 @@ async def _get_candidates(
                 h for h in hits
                 if h["_source"].get("state") != "resolved"
                 and (h["_source"].get("latest_at") or "") >= cutoff_embed
+                and (h["_source"].get("latest_at") or "") <= cutoff_forward
             ][:_KNN_K]
         except Exception as exc:
             logger.warning("k-NN candidate lookup failed: %s", exc)
@@ -272,7 +292,8 @@ async def _get_candidates(
 
     structured_hits, knn_hits = await asyncio.gather(_structured_lookup(), _knn_lookup())
     cache_hits = _cache_candidates(
-        article_entities, article_embedding, cutoff_structured, cutoff_embed
+        article_entities, article_embedding, cve_ids,
+        cutoff_structured, cutoff_embed, cutoff_forward,
     )
 
     candidates: dict[str, dict] = {}
@@ -290,11 +311,23 @@ async def _get_candidates(
 async def find_best_cluster(
     article_entities: list[dict],
     article_embedding: Optional[list[float]],
+    article_cve_ids: Optional[list[str]] = None,
     reference_time: Optional[datetime] = None,
 ) -> Optional[str]:
     """Return the cluster_id of the best matching cluster, or None to create new."""
     await ensure_idf_map()
-    candidates = await _get_candidates(article_entities, article_embedding, reference_time)
+
+    # Augment NER entities with synthetic CVE entities from the normalizer-extracted
+    # cve_ids so scoring sees CVE overlap even when NER missed an extraction.
+    cve_keys_in_entities = {e["normalized_key"] for e in article_entities if e["type"] == "cve"}
+    synthetic_cves = [
+        {"type": "cve", "normalized_key": cve.lower()}
+        for cve in (article_cve_ids or [])
+        if cve.lower() not in cve_keys_in_entities
+    ]
+    scoring_entities = article_entities + synthetic_cves
+
+    candidates = await _get_candidates(article_entities, article_embedding, article_cve_ids, reference_time)
     if not candidates:
         return None
 
@@ -302,7 +335,7 @@ async def find_best_cluster(
     best_score = -1.0
 
     for hit in candidates:
-        score = _compute_score(article_entities, hit["_source"], article_embedding)
+        score = _compute_score(scoring_entities, hit["_source"], article_embedding)
         if score > best_score:
             best_score = score
             best_id = hit["_id"]
