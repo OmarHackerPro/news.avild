@@ -107,8 +107,14 @@
   // ── Build a card from a ClusterSummary ──
   function buildCard(cluster, index) {
     var a = cluster.top_article || {};
-    var tags = a.tags || [];
-    var keywords = a.keywords || [];
+    var keywords = (a.keywords || []).slice();
+    // CVEs first, then alphabetical
+    keywords.sort(function (x, y) {
+      var xCve = /^CVE-/i.test(x), yCve = /^CVE-/i.test(y);
+      if (xCve && !yCve) return -1;
+      if (!xCve && yCve) return 1;
+      return 0;
+    });
     var severity = a.severity;
 
     var card = document.createElement('article');
@@ -135,18 +141,7 @@
       prioritySpans.push('<span class="card-tag card-category">' + esc(cluster.categories[0]) + '</span>');
     }
 
-    // Tags fill remaining slots up to a total of 6
-    var maxTags = Math.max(0, 5 - prioritySpans.length);
-    var tagSpans = tags.slice(0, maxTags).map(function (tag) {
-      var c = tag.toLowerCase().replace(/[^a-z0-9-]/g, '');
-      return '<span class="card-tag ' + c + '">' + esc(tag) + '</span>';
-    }).join('') + prioritySpans.join('');
-
-    // Keywords
-    var keywordSpans = keywords.slice(0, 3).map(function (k, i) {
-      var cl = i === 0 ? 'card-keyword highlight' : 'card-keyword';
-      return '<span class="' + cl + '">' + esc(k) + '</span>';
-    }).join('');
+    var tagSpans = prioritySpans.join('');
 
     // Source count badge
     var sourceCountHtml = '';
@@ -159,7 +154,7 @@
     var scoreHtml = '';
     if (window.currentSort === 'score' && cluster.score != null) {
       scoreHtml = '<span class="card-score"><i class="fas fa-fire"></i> ' + Number(cluster.score).toFixed(1) + '</span>';
-    } else if (window.currentSort === 'severity' && cluster.max_cvss != null) {
+    } else if (window.currentSort === 'severity' && cluster.max_cvss > 0) {
       scoreHtml = '<span class="card-score"><i class="fas fa-shield-alt"></i> CVSS ' + Number(cluster.max_cvss).toFixed(1) + '</span>';
     }
 
@@ -174,11 +169,16 @@
 
     card.setAttribute('data-orig-title', rawTitle);
     card.setAttribute('data-orig-desc', rawDesc);
+    var entityTagSpans = keywords.slice(0, 4).map(function (tag) {
+      var c = /^CVE-/i.test(tag) ? 'tag-cve' : '';
+      return '<span class="card-entity-tag' + (c ? ' ' + c : '') + '">' + esc(tag) + '</span>';
+    }).join('');
+
     card.innerHTML =
       '<div class="card-tags">' + tagSpans + '</div>' +
       '<h3 class="card-title">' + esc(rawTitle) + '</h3>' +
       '<p class="card-desc">' + esc(rawDesc) + '</p>' +
-      '<div class="card-keywords">' + keywordSpans + '</div>' +
+      (entityTagSpans ? '<div class="card-entity-tags">' + entityTagSpans + '</div>' : '') +
       '<div class="card-meta">' +
         '<span><i class="far fa-clock"></i> ' + timeAgo(a.published_at) + '</span>' +
         (a.source_name ? '<span class="card-source-name">' + esc(a.source_name) + '</span>' : '') +
