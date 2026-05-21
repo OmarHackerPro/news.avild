@@ -121,3 +121,15 @@ class TestEpssFactor:
             max_epss=1.0,
         )
         assert result["score"] <= 100.0
+
+    def test_epss_above_one_is_clamped(self):
+        """EPSS values above 1.0 cap at 15 pts and the label shows 100%."""
+        result = compute_cluster_score(**self._base_kwargs(max_epss=1.5))
+        epss = next(f for f in result["top_factors"] if f["factor"] == "epss")
+        assert epss["points"] == 15.0
+        assert epss["label"] == "EPSS 100% exploit probability"
+
+    def test_epss_negative_produces_no_factor(self):
+        """A negative EPSS value (bad input) yields no factor, not negative points."""
+        result = compute_cluster_score(**self._base_kwargs(max_epss=-0.05))
+        assert all(f["factor"] != "epss" for f in result["top_factors"])
