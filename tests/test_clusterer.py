@@ -831,3 +831,26 @@ async def test_cluster_article_stormcast_roundup_is_not_clustered():
     mock_best.assert_not_awaited()
     mock_merge.assert_not_awaited()
     mock_create.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_create_cluster_seeds_max_epss_zero():
+    os_mock = AsyncMock()
+    os_mock.index.return_value = {"_id": "cluster-epss-seed"}
+    os_mock.update.return_value = {}
+
+    article = {
+        "slug": "epss-seed-001",
+        "title": "Some vulnerability",
+        "cve_ids": ["CVE-2026-7777"],
+        "published_at": "2026-05-21T10:00:00Z",
+        "content_type": "news",
+    }
+
+    with patch("app.ingestion.clusterer.get_os_client", return_value=os_mock), \
+         patch("app.ingestion.clusterer._rescore", new_callable=AsyncMock):
+        from app.ingestion.clusterer import create_cluster
+        await create_cluster(article, [], embedding=[0.1] * 1024)
+
+    indexed = os_mock.index.call_args.kwargs["body"]
+    assert indexed["max_epss"] == 0.0

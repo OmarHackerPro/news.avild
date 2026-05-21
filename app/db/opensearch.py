@@ -139,6 +139,7 @@ _CLUSTERS_MAPPING = {
             "score":          {"type": "half_float"},
             "confidence":     {"type": "keyword"},
             "max_cvss":       {"type": "half_float"},
+            "max_epss":       {"type": "half_float"},
             "cisa_kev":       {"type": "boolean"},
             "max_credibility_weight": {"type": "half_float"},
             "top_factors": {
