@@ -304,6 +304,24 @@ async def _apply_cve_intel(article: dict) -> None:
 # Per-source ingestion
 # ---------------------------------------------------------------------------
 
+def _merge_entity_cves(cve_ids: list[str], entities: list[dict]) -> list[str]:
+    """Union RSS-extracted cve_ids with CVE-type NER entity keys.
+
+    NER runs on the full article body, so it finds CVEs the RSS snippet omits.
+    Existing IDs keep their original casing; appended NER CVEs are uppercased.
+    Dedup is case-insensitive.
+    """
+    merged = list(cve_ids or [])
+    seen = {c.upper() for c in merged}
+    for e in entities or []:
+        if e.get("type") == "cve":
+            key = (e.get("normalized_key") or "").upper()
+            if key and key not in seen:
+                merged.append(key)
+                seen.add(key)
+    return merged
+
+
 async def ingest_source(
     source: FeedSource,
     client: httpx.AsyncClient,
@@ -419,15 +437,13 @@ async def ingest_source(
             article["normalized_topics"] = tag_result["normalized_topics"]
             article.pop("tags", None)
 
-            await _apply_cve_intel(article)
-
             inserted = await (overwrite_article if update else upsert_article)(article)
             if inserted:
                 stats["inserted"] += 1
 
-                # Body extraction runs first so NER sees the full article body, not just
-                # the short RSS desc. content_html is merged back into article in-memory
-                # so extract_entities picks it up without an extra OpenSearch round-trip.
+                # Body extraction runs first so NER sees the full article body,
+                # not just the short RSS desc. content_html is merged back into
+                # article in-memory so NER picks it up without an extra fetch.
                 from app.ingestion.body_pipeline import maybe_extract_body
                 try:
                     body_updates = await maybe_extract_body(
@@ -448,40 +464,55 @@ async def ingest_source(
                         name, article.get("slug"), exc,
                     )
 
-                entities = []
+                # NER entity extraction on the full body.
+                entities: list[dict] = []
+                keyword_list: list[str] = []
                 try:
                     if not article_slug:
                         logger.warning("[%s] Article missing slug — entity store skipped", name)
-                    # LLM NER only runs on new articles, not duplicates. Use a real
-                    # session so results are cached in ner_cache (prevents re-billing
-                    # if the backfill script later processes the same slug).
+                    # LLM/sidecar NER only runs on new articles, not duplicates.
+                    # Use a real session so results are cached in ner_cache.
                     async with AsyncSessionLocal() as ner_session:
                         text_entities = await extract_entities(article, slug=article_slug, db_session=ner_session)
                     all_entities = merge_entities(text_entities, tag_result["tag_entities"])
                     entities = all_entities
                     if all_entities:
                         await store_article_entities(article["slug"], all_entities)
-                        keyword_list = list(dict.fromkeys(
-                            e["name"] for e in all_entities
-                        ))
-                        try:
-                            await get_os_client().update(
-                                index=INDEX_NEWS,
-                                id=article["slug"],
-                                body={"doc": {"keywords": keyword_list}},
-                            )
-                        except Exception:
-                            logger.exception(
-                                "[%s] Failed to update keywords for '%s'",
-                                name, article.get("slug"),
-                            )
+                        keyword_list = list(dict.fromkeys(e["name"] for e in all_entities))
                 except Exception:
                     logger.exception(
                         "[%s] Entity extraction failed for '%s'",
                         name, article.get("slug"),
                     )
 
-                # Clustering — always attempt, even without entities
+                # Merge NER-discovered CVEs into cve_ids, then enrich CVSS/severity
+                # from cve_topics. Runs unconditionally so body-level CVEs reach
+                # the lookup even when the article produced no NER entities.
+                article["cve_ids"] = _merge_entity_cves(article.get("cve_ids") or [], entities)
+                await _apply_cve_intel(article)
+
+                # One write-back to the indexed doc: cve_ids/cvss/severity always,
+                # keywords only when NER produced entities.
+                enrichment_doc: dict = {
+                    "cve_ids": article.get("cve_ids") or [],
+                    "cvss_score": article.get("cvss_score"),
+                    "severity": article.get("severity"),
+                }
+                if keyword_list:
+                    enrichment_doc["keywords"] = keyword_list
+                try:
+                    await get_os_client().update(
+                        index=INDEX_NEWS,
+                        id=article["slug"],
+                        body={"doc": enrichment_doc},
+                    )
+                except Exception:
+                    logger.exception(
+                        "[%s] Enrichment write-back failed for '%s'",
+                        name, article.get("slug"),
+                    )
+
+                # Clustering — always attempt, even without entities.
                 try:
                     await cluster_article(article, article["slug"], entities)
                 except Exception:

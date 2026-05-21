@@ -259,3 +259,36 @@ async def test_apply_cve_intel_respects_existing_value(monkeypatch):
 
     assert article["cvss_score"] == 5.0  # unchanged
     assert article["severity"] == "medium"
+
+
+class TestMergeEntityCves:
+    def test_adds_body_only_cve_from_ner(self):
+        from app.ingestion.ingester import _merge_entity_cves
+        result = _merge_entity_cves(
+            ["CVE-2026-1111"],
+            [
+                {"type": "cve", "normalized_key": "cve-2026-2222"},
+                {"type": "product", "normalized_key": "fortios"},
+            ],
+        )
+        assert result == ["CVE-2026-1111", "CVE-2026-2222"]
+
+    def test_dedups_case_insensitively(self):
+        from app.ingestion.ingester import _merge_entity_cves
+        result = _merge_entity_cves(
+            ["CVE-2026-1111"],
+            [{"type": "cve", "normalized_key": "cve-2026-1111"}],
+        )
+        assert result == ["CVE-2026-1111"]
+
+    def test_empty_inputs_return_empty_list(self):
+        from app.ingestion.ingester import _merge_entity_cves
+        assert _merge_entity_cves([], []) == []
+
+    def test_no_cve_entities_leaves_cve_ids_unchanged(self):
+        from app.ingestion.ingester import _merge_entity_cves
+        result = _merge_entity_cves(
+            ["CVE-2026-1111"],
+            [{"type": "actor", "normalized_key": "lazarus-group"}],
+        )
+        assert result == ["CVE-2026-1111"]
