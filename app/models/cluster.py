@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.news import NewsItem
 
@@ -14,10 +14,15 @@ class ScoringFactor(BaseModel):
 
 class ClusterTimelineEntry(BaseModel):
     article_slug: str = Field(json_schema_extra={"example": "fortios-rce-cve-2026-12345"})
-    source_name: str = Field(json_schema_extra={"example": "BleepingComputer"})
-    title: str = Field(json_schema_extra={"example": "Critical FortiOS RCE vulnerability exploited in the wild"})
+    source_name: str = Field(default="", json_schema_extra={"example": "BleepingComputer"})
+    title: str = Field(default="", json_schema_extra={"example": "Critical FortiOS RCE vulnerability exploited in the wild"})
     published_at: str = Field(json_schema_extra={"example": "2026-03-14T09:00:00Z"})
     added_at: str = Field(json_schema_extra={"example": "2026-03-14T09:05:00Z"})
+
+    @field_validator("source_name", "title", mode="before")
+    @classmethod
+    def _coerce_none_to_str(cls, v: object) -> str:
+        return v if isinstance(v, str) else ""
 
 
 class ClusterSummary(BaseModel):
@@ -29,6 +34,7 @@ class ClusterSummary(BaseModel):
     categories: List[str] = Field(json_schema_extra={"example": ["breaking", "research"]})
     score: Optional[Decimal] = Field(None, json_schema_extra={"example": 87.5})
     max_cvss: Optional[float] = Field(None, json_schema_extra={"example": 9.8})
+    max_epss: Optional[float] = Field(None, json_schema_extra={"example": 0.62})
     confidence: Optional[str] = Field(None, json_schema_extra={"example": "high"})
     top_factors: List[ScoringFactor] = Field(default_factory=list)
     latest_at: str = Field(json_schema_extra={"example": "2026-03-15T14:22:00Z"})  # ISO-8601
@@ -41,6 +47,7 @@ class ClusterDetail(BaseModel):
     summary: Optional[str] = Field(None, json_schema_extra={"example": "A critical remote code execution vulnerability in Fortinet FortiOS (CVE-2026-12345, CVSS 9.8) is being actively exploited. CISA has added it to the KEV catalog. Patches are available."})  # TL;DR
     why_it_matters: Optional[str] = Field(None, json_schema_extra={"example": "FortiOS is deployed across 500K+ enterprises globally. Active exploitation confirmed by multiple threat intelligence sources. Unauthenticated RCE allows full device takeover."})
     score: Optional[Decimal] = Field(None, json_schema_extra={"example": 87.5})
+    max_epss: Optional[float] = Field(None, json_schema_extra={"example": 0.62})
     confidence: Optional[str] = Field(None, json_schema_extra={"example": "high"})
     top_factors: List[ScoringFactor] = Field(default_factory=list)
     articles: List[NewsItem]
