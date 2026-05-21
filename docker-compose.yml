@@ -49,6 +49,8 @@ services:
       OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-}
       NER_SIDECAR_URL: ${NER_SIDECAR_URL:-http://ner:8001}
       NER_ACTIVE_MODEL: ${NER_ACTIVE_MODEL:-haiku-4-5}
+      NVD_API_KEY: ${NVD_API_KEY:-}
+      RANSOMWARE_LIVE_API_KEY: ${RANSOMWARE_LIVE_API_KEY:-}
     depends_on:
       - db
       - ner
@@ -56,6 +58,8 @@ services:
       sh -c 'while true; do
         echo "=== Starting feed ingestion: $$(date -Iseconds) ===";
         python scripts/ingest_feeds.py;
+        echo "=== NVD CVE enrichment: $$(date -Iseconds) ===";
+        python scripts/enrich_cve_nvd.py;
         echo "=== Sleeping 1 hour ===";
         sleep 3600;
       done'
