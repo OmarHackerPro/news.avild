@@ -75,7 +75,7 @@ async def run(args: argparse.Namespace) -> None:
         logger.info("Dry run — first 5 CVEs: %s", sample)
         return
 
-    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     migrated = nvd_raw_attached = skipped = 0
 
     for h in hits:
