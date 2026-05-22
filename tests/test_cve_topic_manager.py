@@ -124,6 +124,31 @@ async def test_upsert_cve_topics_skips_epss_for_existing_topic():
 
 
 @pytest.mark.asyncio
+async def test_upsert_one_script_null_guards_incident_fields():
+    """The upsert painless script must null-init article_ids/article_count/aliases.
+
+    cve_topics has multiple producers: ingestion (this module) creates docs with
+    the incident-tracking fields, but the NVD/KEV enrichers (via upsert_immutable)
+    create docs WITHOUT them. Without these guards the script throws
+    'failed to execute script' on every enricher-created topic.
+    """
+    from app.ingestion.cve_topic_manager import upsert_cve_topics
+
+    mock_client = _make_os_client(existing_ids=["CVE-2021-44228"])
+    with patch("app.ingestion.cve_topic_manager.get_os_client", return_value=mock_client), \
+         patch("app.ingestion.cve_topic_manager.fetch_epss", new_callable=AsyncMock, return_value={}):
+        await upsert_cve_topics(["CVE-2021-44228"], "log4shell-article", [], embedding=None)
+
+    script = mock_client.update.call_args.kwargs["body"]["script"]["source"]
+    assert "ctx._source.article_ids == null" in script
+    assert "ctx._source.article_count == null" in script
+    assert "ctx._source.aliases == null" in script
+    # Guards must run before the first dereference of each field.
+    assert script.index("article_ids == null") < script.index("article_ids.contains")
+    assert script.index("aliases == null") < script.index("aliases.contains")
+
+
+@pytest.mark.asyncio
 async def test_create_cve_topic_stubs_populates_epss():
     """Stub creation also fetches EPSS for the new CVE topics."""
     from app.ingestion.cve_topic_manager import create_cve_topic_stubs

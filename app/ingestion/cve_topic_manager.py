@@ -149,7 +149,14 @@ async def _upsert_one(
     if embedding is not None:
         doc_on_create["cve_embedding"] = embedding
 
+    # cve_topics has multiple producers: this module creates docs with the
+    # incident-tracking fields, but the NVD/KEV enrichers (upsert_immutable)
+    # create docs without them. Null-init before use, or the script throws
+    # "failed to execute script" on every enricher-created topic.
     script_source = """
+        if (ctx._source.article_ids == null) { ctx._source.article_ids = []; }
+        if (ctx._source.article_count == null) { ctx._source.article_count = 0; }
+        if (ctx._source.aliases == null) { ctx._source.aliases = []; }
         if (!ctx._source.article_ids.contains(params.slug)) {
             ctx._source.article_ids.add(params.slug);
             ctx._source.article_count += 1;
