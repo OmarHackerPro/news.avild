@@ -6,8 +6,13 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _EMBEDDER_URL = os.getenv("EMBEDDER_URL", "http://kiber-embedder:8001")
-_TIMEOUT = 10.0
-_BATCH_TIMEOUT = 60.0
+# The embedder (services/embedder) runs a single-threaded CPU encoder
+# (ThreadPoolExecutor max_workers=1). Concurrent callers queue server-side, so a
+# low client timeout abandons requests the embedder is still completing — it
+# returns 200 after the client already gave up. Timeouts must cover real CPU
+# encode latency plus server-side queueing.
+_TIMEOUT = 60.0
+_BATCH_TIMEOUT = 300.0
 
 
 async def embed_text(text: str) -> list[float] | None:
